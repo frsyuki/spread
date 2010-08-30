@@ -1,0 +1,174 @@
+#!/usr/bin/env ruby
+#
+#  SpreadOSD
+#  Copyright (C) 2010  FURUHASHI Sadayuki
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as
+#  published by the Free Software Foundation, either version 3 of the
+#  License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+require 'spread'
+
+include SpreadOSD
+
+def usage
+	puts "Usage: #{File.basename($0)} <address:port> <command> [options]"
+	puts "command:"
+	puts "   nodes                      get nodes info"
+	puts "   fault                      get fualt info"
+	puts "   recover <nid>              recover fault node"
+	puts "   replset                    get replset info"
+	puts "   activate <rsid>            activate replset"
+	puts "   deactivate <rsid>          deactivate replset"
+	puts "   create <rsid>              create new replset"
+	puts "   join <rsid> <nid>          join nid to a replset"
+	puts "   recognized_nodes           get recognized nodes"
+	puts "   add_node <nid>             add new node"
+	puts "   remove_node <nid>          remove a node"
+	puts "   add <key> <val>            add data via gateway"
+	puts "   get <key>                  get data via gateway"
+	puts "   add_obj <oid> <val>        add data directly to osd"
+	puts "   get_obj <oid>              get data directly from osd"
+	exit 1
+end
+
+if ARGV.length < 2
+	usage
+end
+
+addr = ARGV.shift
+host, port = addr.split(':', 2)
+$addr = Address.new(host, port)
+
+cmd = ARGV.shift
+
+module TArray
+	class Template < Array
+		def initialize
+			super()
+		end
+		def from_msgpack(obj)
+			obj.each {|v|
+				push self.class::CLASS.new.from_msgpack(v)
+			}
+			self
+		end
+	end
+	def self.new(klass)
+		Class.new(Template) do
+			const_set(:CLASS, klass)
+		end
+	end
+end
+
+def cmd_args(n)
+	usage if ARGV.length != n
+	ARGV.map! {|ar| ar == '-' ? $stdin.read : ar }
+	if n == 1
+		ARGV[0]
+	else
+		ARGV
+	end
+end
+
+def call(klass, *args)
+	result = $net.get_session($addr).call(*args)
+	if klass && result
+		klass.new.from_msgpack(result)
+	else
+		result
+	end
+end
+
+case cmd
+when "nodes"
+	cmd_args(0)
+	pp call(NodesInfo, :get_nodes_info)
+
+when "fault"
+	cmd_args(0)
+	pp call(FaultInfo, :get_fault_info)
+
+when "add_node"
+	nid = cmd_args(1)
+	nid = nid.to_i
+	pp call(nil, :add_node, nid)
+
+when "remove_node"
+	nid = cmd_args(1)
+	nid = nid.to_i
+	pp call(nil, :remove_node, nid)
+
+when "recover"
+	nid = cmd_args(1)
+	nid = nid.to_i
+	pp call(nil, :recover_fault, nid)
+
+when "replset"
+	cmd_args(0)
+	pp call(ReplsetInfo, :get_replset_info)
+
+when "activate"
+	rsid = cmd_args(1)
+	rsid = rsid.to_i
+	pp call(nil, :activate_replset, rsid)
+
+when "deactivate"
+	rsid = cmd_args(1)
+	rsid = rsid.to_i
+	pp call(nil, :deactivate_replset, rsid)
+
+when "create"
+	rsid = cmd_args(1)
+	rsid = rsid.to_i
+	pp call(nil, :create_replset, rsid)
+
+when "join"
+	rsid, nid = cmd_args(2)
+	rsid = rsid.to_i
+	nid = nid.to_i
+	pp call(nil, :join_replset, rsid, nid)
+
+when "recognized_nodes"
+	cmd_args(0)
+	pp call(TArray.new(Node), :recognized_nodes)
+
+when "add"
+	key, val = cmd_args(2)
+	key_seq = [key]
+	attributes = {} # TODO
+	pp call(nil, :add, key_seq, attributes, val)
+
+when "get"
+	key = cmd_args(1)
+	key_seq = [key]
+	data = call(nil, :get, key_seq)
+	data.is_a?(String) ? $stdout.write(data) : pp(data)
+
+when "add_obj"
+	oid, val = cmd_args(2)
+	oid = oid.to_i
+	pp call(nil, :add_object, oid, val)
+
+when "get_obj"
+	oid = cmd_args(1)
+	oid = oid.to_i
+	data = call(nil, :get_object, oid)
+	data.is_a?(String) ? $stdout.write(data) : pp(data)
+
+else
+	puts "unknown command #{cmd}"
+	puts ""
+	usage
+end
+
