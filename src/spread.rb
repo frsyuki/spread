@@ -20,39 +20,43 @@ require 'rubygems'
 require 'yaml'
 require 'pp'
 require 'msgpack/rpc'
+require 'json'
+require 'digest/sha1'
 require 'lib/cclog'
 require 'lib/ebus'
 require 'lib/log_storage'
+require 'lib/log_storage_index'
 require 'lib/nested_db'
 require 'lib/seqid_generator'
 require 'type/address'
-require 'type/boot_info'
-require 'type/nodes_info'
+require 'type/node_list'
 require 'type/fault_info'
 require 'type/replset_info'
 require 'type/node'
+require 'type/role_data'
 require 'type/heartbeat'
+
 require 'service/base'
-require 'service/boot_info'
-require 'service/fault_info'
+require 'service/timer'
 require 'service/heartbeat'
-require 'service/nodes_info'
-require 'service/replset_info'
 require 'service/locator'
 require 'service/term'
-require 'service/recognize'
+require 'service/routing'
+
+require 'service/mds_boot'
+require 'service/membership'
+require 'service/oid_generator'
+require 'service/metadata'
+
+require 'service/ds_boot'
+require 'service/storage_index'
 require 'service/master_storage'
 require 'service/slave_storage'
-require 'service/storage_index'
-require 'service/storage'
-require 'service/seqid_generator'
-require 'service/object_index'
-require 'service/index_client'
-require 'service/routing'
+
+require 'service/gw_boot'
+require 'service/metadata_client'
 require 'service/gateway'
-require 'service/osd_role'
-require 'service/mds_role'
-require 'service/gateway_role'
+
 require 'bus'
 require 'rpc'
 
@@ -60,8 +64,8 @@ module SpreadOSD
 
 
 $log = CCLog.new
-$log.level = CCLog::LEVEL_DEBUG
-#$log.level = CCLog::LEVEL_TRACE
+#$log.level = CCLog::LEVEL_DEBUG
+$log.level = CCLog::LEVEL_TRACE
 
 $ebus = EventBus.default = EBus.new
 

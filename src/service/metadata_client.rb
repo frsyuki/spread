@@ -19,20 +19,14 @@
 module SpreadOSD
 
 
-class IndexClientService < Service
+class MetadataClientService < Service
 	def initialize
 		super()
-		@mds_nids = []
+		@confsvr = ebus_call(:get_confsvr_address)
 	end
 
 	def add_key(key_seq, attributes, &block)
 		mds_session.callback(:add_key, key_seq, attributes) do |future|
-			block.call(future.result, future.error)
-		end
-	end
-
-	def get_child_keys(key_seq, skip, limit, &block)
-		mds_session.callback(:get_child_keys, key_seq, skip, limit) do |future|
 			block.call(future.result, future.error)
 		end
 	end
@@ -43,32 +37,40 @@ class IndexClientService < Service
 		end
 	end
 
+	def get_child_keys(key_seq, skip, limit, &block)
+		mds_session.callback(:get_child_keys, key_seq, skip, limit) do |future|
+			block.call(future.result, future.error)
+		end
+	end
+
+	def set_attributes(key_seq, attributes, &block)
+		mds_session.callback(:set_attributes, key_seq, attributes) do |future|
+			block.call(future.result, future.error)
+		end
+	end
+
 	def remove_key(key_seq, &block)
 		mds_session.callback(:remove_key, key_seq) do |future|
 			block.call(future.result, future.error)
 		end
 	end
 
-	def mds_changed(mds_nids)
-		@mds_nids = mds_nids
-	end
-
 	private
 	def mds_session
-		nid = @mds_nids.first
-		unless nid
-			raise "mds is not ready"
-		end
-		node = ebus_call(:get_node, nid)
-		node.session
+		#nid = @mds_nids.first
+		#unless nid
+		#	raise "mds is not ready"
+		#end
+		#node = ebus_call(:get_node, nid)
+		#node.session
+		$net.get_session(@confsvr)
 	end
 
-	ebus_connect :mds_changed
-
-	ebus_connect :index_add_key, :add_key
-	ebus_connect :index_get_child_keys, :get_child_keys
-	ebus_connect :index_get_key, :get_key
-	ebus_connect :index_remove_key, :remove_key
+	ebus_connect :metadata_add_key, :add_key
+	ebus_connect :metadata_get_key, :get_key
+	ebus_connect :metadata_get_child_keys, :get_child_keys
+	ebus_connect :metadata_set_attributes, :set_attributes
+	ebus_connect :metadata_remove_key, :remove_key
 end
 
 

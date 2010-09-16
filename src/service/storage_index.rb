@@ -15,56 +15,58 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'tokyocabinet'
 
 module SpreadOSD
 
 
 class StorageIndexService < Service
+	module Readable
+		def read_object(lskey)
+			oid, data = @db.read(lskey)
+			data
+		end
+	end
+
 	def initialize
 		super()
-		@path = nil
-		@db = TokyoCabinet::HDB.new
+		@index = LogStorageIndex.new
+		@dbmap = {}  # {nid => LogStorage readable}
 	end
 
 	def get_storage_index
-		self
+		@index
 	end
 
-	def open(path)
-		success = @db.open(path, TokyoCabinet::HDB::OWRITER|TokyoCabinet::HDB::OCREAT)
-		unless success
-			raise "can't open database #{path}: #{@db.errmsg(@db.ecode)}"
+	def run
+		dir_path = ebus_call(:get_storage_path)
+		@index.open("#{dir_path}/index.tch")
+	end
+
+	def shutdown
+		@index.close
+	end
+
+	def register_storage(nid, readable)
+		@dbmap[nid] = readable
+	end
+
+	def get_object(oid)
+		nid, lskey = @index.get(oid)
+		unless nid
+			return nil
 		end
-		@path = path
-	end
-
-	def close
-		@db.close
-	end
-
-	def set(oid, nid, lskey)
-		val = [nid].pack('N') + lskey.dump
-		key = [oid>>32, oid&0xffffffff].pack('NN')
-		success = @db.put(key, val)
-		unless success
-			raise "failed to put key #{@db.errmsg(@db.ecode)}"
+		readable = @dbmap[nid]
+		unless readable
+			return nil
 		end
-		nil
+		readable.read_object(lskey)
 	end
 
-	def get(oid)
-		key = [oid>>32, oid&0xffffffff].pack('NN')
-		val = @db.get(key)
-		unless val
-			return nil, nil
-		end
-		nid = val.slice!(0,4).unpack('N')[0]
-		lskey = LogStorage::Key.load(val)
-		return nid, lskey
-	end
-
+	ebus_connect :run
+	ebus_connect :shutdown
 	ebus_connect :get_storage_index
+	ebus_connect :register_storage
+	ebus_connect :rpc_get_object_direct, :get_object
 end
 
 

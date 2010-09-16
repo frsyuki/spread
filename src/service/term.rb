@@ -23,6 +23,9 @@ class Term
 	def initialize(value)
 		@value = value
 	end
+	def expired?
+		@value <= 0
+	end
 	attr_accessor :value
 end
 
@@ -61,43 +64,43 @@ class TermFeederService < Service
 	end
 
 	def on_timer
-		expired = []
+		expired_nids = []
 		@map.each_pair {|nid,term|
 			if term.value > 0
 				term.value -= 1
 				if term.value == 0
-					expired << nid
+					expired_nids << nid
 				end
 			end
 		}
-		expired
+		expired_nids
 
-		expired.each {|nid|
+		expired_nids.each {|nid|
 			$log.debug "fault detected: nid=#{nid}"
 		}
 
-		ebus_signal :fault_nodes_detected, expired
+		ebus_signal :node_fault_detected, expired_nids
 	end
 
 	def get_expired
-		expired = []
+		expired_nids = []
 		@map.each_pair {|nid,term|
 			if term.value <= 0
-				expired << nid
+				expired_nids << nid
 			end
 		}
-		expired
+		expired_nids
 	end
 
-	def nodes_info_changed(nodes_info)
-		new_map = {}
-		nodes_info.nodes.each {|node|
-			next if node.nid == @self_nid
-			term = @map[node.nid] || Term.new(@period+@first_detect)
-			new_map[node.nid] = term
-		}
-		@map = new_map
-	end
+	#def node_list_changed(node_list)
+	#	new_map = {}
+	#	node_list.nodes.each {|node|
+	#		next if node.nid == @self_nid
+	#		term = @map[node.nid] || Term.new(@period+@first_detect)
+	#		new_map[node.nid] = term
+	#	}
+	#	@map = new_map
+	#end
 
 	def fault_info_changed(fault_info)
 		@map.each_pair {|nid,term|
@@ -107,11 +110,36 @@ class TermFeederService < Service
 		}
 	end
 
-	ebus_connect :timer_clock, :on_timer
+	#def set_term_nids(nids, fault_info)
+	#	@map.reject! {|nid,term|
+	#		!nids.include?(nid)
+	#	}
+	#	nids.each {|nid|
+	#		if term = @map[nid]
+	#			if term.value <= 0 && !fault_info.include?(nid)
+	#				# recovered
+	#				term.value = @period+@first_detect
+	#			end
+	#		else
+	#			@map[nid] = Term.new(@period+@first_detect)
+	#		end
+	#	}
+	#end
+
+	def term_nids_changed(nids)
+		@map.reject! {|nid,term|
+			!nids.include?(nid)
+		}
+		nids.each {|nid|
+			next if nid == @self_nid
+			@map[nid] ||= Term.new(@period+@first_detect)
+		}
+	end
+
+	ebus_connect :on_timer
 	ebus_connect :term_order, :order
 	ebus_connect :term_reset, :reset
-	ebus_connect :nodes_info_changed
-	ebus_connect :fault_info_changed
+	ebus_connect :term_nids_changed
 end
 
 
@@ -133,14 +161,14 @@ class TermEaterService < Service
 
 		majority_border ||= @map.size/2  # /2切り捨て
 
-		expired = 0
+		expired_num = 0
 		@map.each_pair {|qsid,term|
 			if term.value <= 0
-				expired += 1
+				expired_num += 1
 			end
 		}
 
-		if expired > majority_border
+		if expired_num > majority_border
 			return true  # expired
 		else
 			return false
@@ -161,14 +189,15 @@ class TermEaterService < Service
 
 		if expired?
 			$log.error "fault detected"
-			ebus_signal :fault_detected
+			# FIXME shutdown?
+			ebus_signal :shutdown
 		end
 	end
 
 	# FIXME
 	# on qsid_changed => update keys of @map
 
-	ebus_connect :timer_clock, :on_timer
+	ebus_connect :on_timer
 	ebus_connect :term_feed, :feed
 end
 

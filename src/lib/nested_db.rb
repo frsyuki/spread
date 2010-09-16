@@ -65,7 +65,7 @@ class NestedDB
 		val = obj.dump
 		success = @db.put(key, val)
 		unless success
-			raise "failed to put key #{@db.errmsg(@db.ecode)}"
+			raise "failed to put key: #{@db.errmsg(@db.ecode)}"
 		end
 		key
 	end
@@ -74,7 +74,7 @@ class NestedDB
 		set([parent_key,key].join("\0"), obj)
 	end
 
-	def set_attributes(key, attributes)
+	def modify_attributes(key, attributes)
 		if obj = get(key)
 			obj.attributes = attributes
 			set(key, obj)

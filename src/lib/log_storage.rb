@@ -60,6 +60,9 @@ class LogStorage
 		@last_offset = 0
 	end
 
+	attr_reader :last_sidx
+	attr_reader :last_offset
+
 	def open(dir_path, prefix)
 		@dir_path = dir_path
 		@prefix = prefix
@@ -93,6 +96,9 @@ class LogStorage
 		raw = read_range(@last_file, key.offset, key.size)
 		seqid, data = MessagePack.unpack(raw)
 		return data
+	end
+
+	def read_multi(sidx, offset, limit)
 	end
 
 	private
@@ -141,6 +147,13 @@ class LogStorage
 		file.pos = offset
 		file.read(size)
 	end
+
+	## TODO
+	#def read_one(file, offset)
+	#	file.pos = offset
+	#	MessagePack::Unpacker.new
+	#	u.next
+	#end
 
 	HEADER_SIZE = 16
 	MIN_STREAM_SIZE = 32*1024*1024

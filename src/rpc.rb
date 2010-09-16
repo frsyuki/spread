@@ -26,75 +26,46 @@ class RPCDispatcher
 		ebus_connect!
 	end
 
+
 	def heartbeat(hbreq)
 		hbreq = HeartbeatRequest.new.from_msgpack(hbreq)
 		dispatch(:heartbeat, hbreq)
 	end
 
-	def add_node(nid)
-		dispatch(:add_node, nid)
+
+	def attach_node(nids)
+		dispatch(:attach_node, nids)
 	end
 
-	def remove_node(nid)
-		dispatch(:remove_node, nid)
+	def detach_node(nids)
+		dispatch(:detach_node, nids)
 	end
 
-	def recover_fault(nid)
-		dispatch(:recover_fault, nid)
+	def recover_node(nids)
+		dispatch(:recover_node, nids)
 	end
 
-	def get_nodes_info
-		dispatch(:get_nodes_info)
+	def get_node_list
+		dispatch(:get_node_list)
 	end
 
 	def get_fault_info
 		dispatch(:get_fault_info)
 	end
 
+	def get_new_nodes
+		dispatch(:get_new_nodes)
+	end
+
+	def add_new_node(node)
+		node = Node.new.from_msgpack(node)
+		dispatch(:add_new_node, node)
+	end
+
 	def get_replset_info
 		dispatch(:get_replset_info)
 	end
 
-	def create_replset(rsid)
-		dispatch(:create_replset, rsid)
-	end
-
-	def join_replset(rsid, nid)
-		dispatch(:join_replset, rsid, nid)
-	end
-
-	def activate_replset(rsid)
-		dispatch(:activate_replset, rsid)
-	end
-
-	def deactivate_replset(rsid)
-		dispatch(:deactivate_replset, rsid)
-	end
-
-	def get_object(oid)
-		dispatch(:get_object, oid)
-	end
-
-	def add_object(oid, data)
-		dispatch(:add_object, oid, data)
-	end
-
-	def get(key_seq)
-		dispatch(:get, key_seq)
-	end
-
-	def add(key_seq, attributes, data)
-		dispatch(:add, key_seq, attributes, data)
-	end
-
-	def register(node)
-		node = Node.new.from_msgpack(node)
-		dispatch(:register, node)
-	end
-
-	def recognized_nodes
-		dispatch(:recognized_nodes)
-	end
 
 	def add_key(key_seq, attributes)
 		dispatch(:add_key, key_seq, attributes)
@@ -108,12 +79,47 @@ class RPCDispatcher
 		dispatch(:get_child_keys, key_seq, skip, limit)
 	end
 
+	def set_attributes(key_seq, attributes)
+		dispatch(:set_attributes, key_seq, attributes)
+	end
+
 	def remove_key(key_seq)
 		dispatch(:remove_key, key_seq)
 	end
 
-	def set_attributes(key_seq, attributes)
-		dispatch(:set_attributes, key_seq, attributes)
+
+	def get_object(key_seq)
+		dispatch(:get_object, key_seq)
+	end
+
+	def add_object(key_seq, attributes, data)
+		dispatch(:add_object, key_seq, attributes, data)
+	end
+
+	def get_object_attributes(key_seq)
+		dispatch(:get_object_attributes, key_seq)
+	end
+
+	def set_object_attributes(key_seq, attributes)
+		dispatch(:set_object_attributes, key_seq, attributes)
+	end
+
+
+	def add_object_direct(oid, data)
+		dispatch(:add_object_direct, oid, data)
+	end
+
+	def get_object_direct(oid)
+		dispatch(:get_object_direct, oid)
+	end
+
+
+	def replicate_pull(sidx, offset, limit)
+		dispatch(:replicate_pull, sidx, offset, limit)
+	end
+
+	def replicate_request(nid)
+		dispatch(:replicate_request, nid)
 	end
 
 	private

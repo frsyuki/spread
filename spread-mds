@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 #
 #  SpreadOSD
 #  Copyright (C) 2010  FURUHASHI Sadayuki
@@ -16,43 +17,41 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-module SpreadOSD
+require 'spread'
+require 'optparse'
 
+include SpreadOSD
 
-class FaultInfoService < Service
-	def initialize
-		super()
-		@fault_info = FaultInfo.new
+op = OptionParser.new
+op.banner += " <config.yaml>"
+
+(class<<self;self;end).module_eval do
+	define_method(:usage) do |msg|
+		puts op.to_s
+		puts "error: #{msg}" if msg
+		exit 1
 	end
-
-	attr_reader :fault_info
-
-	def fault_nodes_detected(nids)
-		if @fault_info.add_nids(nids)
-			ebus_signal :fault_info_changed, @fault_info
-		end
-	end
-
-	def rpc_recover_fault(nid)
-		if @fault_info.remove_nid(nid)
-			$log.info "recover node #{nid}"
-			ebus_signal :fault_info_changed, @fault_info
-			true
-		else
-			nil
-		end
-	end
-
-	def rpc_get_fault_info
-		@fault_info
-	end
-
-	ebus_connect :get_fault_info, :fault_info
-	ebus_connect :fault_nodes_detected
-	ebus_connect :rpc_recover_fault
-	ebus_connect :rpc_get_fault_info
 end
 
+begin
+	if ARGV.length != 1
+		raise "<config.yaml> is required."
+	end
 
+	config_path = ARGV.shift
+
+	MDSConfigService.init.read(config_path)
+
+rescue
+	usage($!.to_s)
 end
+
+MDSBootService.init
+$ebus.signal(:run)
+
+$ebus.connect(:shutdown) do
+	$net.stop
+end
+
+$net.run
 

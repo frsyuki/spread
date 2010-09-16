@@ -15,16 +15,14 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'digest/sha1'
 
 module SpreadOSD
 
 
 class ReplsetInfo
 	class SetInfo
-		def initialize(active=false, nids=[])
+		def initialize(nids=[])
 			@nids = nids
-			@active = active
 		end
 
 		attr_reader :nids
@@ -37,37 +35,16 @@ class ReplsetInfo
 			true
 		end
 
-		def activate!
-			if @active
-				return false
-			end
-			@active = true
-			true
-		end
-
-		def deactivate!
-			unless @active
-				return false
-			end
-			@active = false
-			true
-		end
-
-		def active?
-			@active
-		end
-
 		def to_s
-			"<#{@active ? 'active' : 'inactive'} nids=[#{@nids.join(',')}]>"
+			"<nids=[#{@nids.join(',')}]>"
 		end
 
 		public
 		def to_msgpack(out = '')
-			[@active, @nids].to_msgpack(out)
+			[@nids].to_msgpack(out)
 		end
 		def from_msgpack(obj)
-			@active = obj[0]
-			@nids = obj[1]
+			@nids = obj[0]
 			self
 		end
 	end
@@ -75,6 +52,21 @@ class ReplsetInfo
 	def initialize
 		@map = {}  # {rsid => SetInfo}
 		@path = nil
+		update_hash
+	end
+
+	def rebuild(rsid_nids_map)
+		map = {}
+		rsid_nids_map.each_pair {|rsid,nids|
+			info = map[rsid] = SetInfo.new
+			nids.each {|nid|
+				info.join(nid)
+			}
+		}
+		if @map == map
+			return false
+		end
+		@map = map
 		update_hash
 	end
 
@@ -93,13 +85,10 @@ class ReplsetInfo
 			rsid = s['id']
 			raise "id field is requred" unless rsid
 
-			active = s['active']
-			active = false unless active
-
 			nids = s['nids']
 			raise "nids field is requred" unless nids
 
-			map[rsid] = SetInfo.new(active, nids)
+			map[rsid] = SetInfo.new(nids)
 		}
 		@map = map
 
@@ -115,7 +104,6 @@ class ReplsetInfo
 		@map.each_pair {|rsid,info|
 			yaml.push({
 				'id'     => rsid,
-				'active' => info.active?,
 				'nids'   => info.nids,
 			})
 		}
@@ -145,35 +133,12 @@ class ReplsetInfo
 		false
 	end
 
-	def activate!(rsid)
-		if info = @map[rsid]
-			if info.activate!
-				update_hash
-				return true
-			end
-		end
-		false
-	end
-
-	def deactivate!(rsid)
-		if info = @map[rsid]
-			if info.deactivate!
-				update_hash
-				return true
-			end
-		end
-		false
-	end
-
-	def active?(rsid)
-		if info = @map[rsid]
-			return info.active?
-		end
-		nil
-	end
-
 	def include?(rsid)
 		@map.include?(rsid)
+	end
+
+	def get_rsids
+		@map.keys
 	end
 
 	def [](rsid)

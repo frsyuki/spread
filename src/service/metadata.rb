@@ -19,14 +19,14 @@
 module SpreadOSD
 
 
-class ObjectIndexService < Service
+class MetadataService < Service
 	def initialize
 		super()
 		@db = NestedDB.new
 	end
 
 	def run
-		path = ebus_call(:get_index_path)
+		path = ebus_call(:get_mds_db_path)
 		@db.open(path)
 	end
 
@@ -36,8 +36,8 @@ class ObjectIndexService < Service
 
 	def add_key(key_seq, attributes)
 		key = NestedDB.join_key(key_seq)
-		oid = ebus_call(:next_oid)
-		replset = ebus_call(:choice_replset, key)
+		oid = ebus_call(:generate_next_oid)
+		replset = ebus_call(:choice_next_replset, key)
 		obj = NestedDB::Object.new(replset, oid, attributes)
 		@db.set(key, obj)
 		[replset, oid]
@@ -54,7 +54,14 @@ class ObjectIndexService < Service
 
 	def get_child_keys(key_seq, skip, limit)
 		key = NestedDB.join_key(key_seq)
-		@db.get_child_keys(key, skip, limit)
+		@db.get_child_keys(key, skip, limit).map {|key|
+			key.split("\0")
+		}
+	end
+
+	def set_attributes(key_seq, attributes)
+		key = NestedDB.join_key(key_seq)
+		@db.modify_attributes(key, attributes)
 	end
 
 	def remove_key(key_seq)
@@ -62,19 +69,13 @@ class ObjectIndexService < Service
 		@db.remove(key)
 	end
 
-	# TODO
-	#def set_attributes(key_seq, attributes)
-	#	key = NestedDB.join_key(key_seq)
-	#	@db.set_attributes(key, attributes)
-	#end
-
 	ebus_connect :run
 	ebus_connect :shutdown
 	ebus_connect :rpc_add_key, :add_key
 	ebus_connect :rpc_get_key, :get_key
 	ebus_connect :rpc_get_child_keys, :get_child_keys
+	ebus_connect :rpc_set_attributes, :set_attributes
 	ebus_connect :rpc_remove_key, :remove_key
-	#ebus_connect :rpc_set_attributes, :set_attributes
 end
 
 

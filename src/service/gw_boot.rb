@@ -19,21 +19,41 @@
 module SpreadOSD
 
 
-class BootInfo
+class GWBootService < Service
 	def initialize
-		@confsvr = nil
-		@name = nil
-		@address = nil
-		@nid = nil
-		@roles = nil
-		@role_data = {}
+		super()
+		init_service
 	end
 
-	attr_reader :confsvr
-	attr_reader :role_data
+	def init_service
+		LocatorService.init
+		RoutingService.init
+		MetadataClientService.init
+		GatewayService.init
+		HeartbeatLeanerService.init
+		TimerService.init
+	end
 
-	def node
-		Node.new(@nid, @address, @name, @roles)
+	def run
+		rpc = RPCDispatcher.new
+
+		$net.serve(rpc)
+
+		addr = ebus_call(:get_listen_address)
+		host = addr.host
+		port = addr.port
+		$net.listen(host, port)
+
+		puts "run on #{port}"
+	end
+
+	ebus_connect :run
+end
+
+
+class GWConfigService < Service
+	def initialize
+		super()
 	end
 
 	def read(path)
@@ -46,46 +66,26 @@ class BootInfo
 		host, port = confsvr.split(':',2)
 		@confsvr = Address.new(host, port)
 
-		name = yaml['name']
-		raise "name field is requred" unless name
-		@name = name
+		listen = yaml['listen']
+		raise "listen field is requred" unless listen
 
-		address = yaml['address']
-		raise "address field is requred" unless name
-		host, port = address.split(':',2)
-		@address = Address.new(host, port)
-
-		nid = yaml['nid']
-		raise "nid field is require" unless nid
-		@nid = nid
-
-		role = yaml['role']
-		raise "role field is require" unless role
-		if role.is_a?(Array)
-			@roles = role
+		if listen.is_a?(Integer)
+			host = "0.0.0.0"
+			port = listen
 		else
-			@roles = [role]
+			host, port = listen.split(':',2)
 		end
+		@listen = Address.new(host, port)
 
-		@role_data = {}
-		@roles.each {|role|
-			if data = yaml[role]
-				@role_data[role] = data
-			end
-		}
+		@self_node = Node.new(@nid, @address, @name, DSRoleData.new(@replset))
 
 		@path = path
-
-		self
 	end
 
 	def write(path = @path)
 		yaml = {
-			'confsvr' => @confsvr.to_s,
-			'name'    => @name,
-			'address' => @address.to_s,
-			'nid'     => @nid,
-			'role'    => @roles,
+			'confsvr'    => @confsvr.to_s,
+			'listen'     => @listen.to_s,
 		}
 		yaml.merge!(@role_data)
 
@@ -94,6 +94,12 @@ class BootInfo
 
 		self
 	end
+
+	attr_reader :confsvr
+	attr_reader :listen
+
+	ebus_connect :get_confsvr_address, :confsvr
+	ebus_connect :get_listen_address, :listen
 end
 
 

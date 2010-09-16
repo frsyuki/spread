@@ -15,7 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'digest/sha1'
 
 module SpreadOSD
 
@@ -23,46 +22,43 @@ module SpreadOSD
 class RoutingService < Service
 	def initialize
 		super()
-		@mds_nids = []
-		@replset_info = nil
+		@replset_info = ReplsetInfo.new
 	end
 
-	attr_reader :mds_nids
-
-	def nodes_info_changed(nodes_info)
-		mds_nids = []
-		nodes_info.nodes.each {|node|
-			if node.is?(:mds)
-				mds_nids << node.nid
-			end
-		}
-
-		if @mds_nids != mds_nids
-			@mds_nids = mds_nids
-			ebus_signal(:mds_changed, mds_nids)
-		end
-	end
-
-	def replset_info_changed(replset_info)
-		@replset_info = replset_info
-	end
+	attr_reader :replset_info
 
 	def get_replset_nids(rsid)
-		unless @replset_info.include?(rsid)
+		info = @replset_info[rsid]
+		unless info
 			raise "Unknown replset id: #{rsid}"
 		end
-		info = @replset_info[rsid]
-		## TODO
-		#unless info.active?
-		#	raise "Replset id #{rsid} is not active"
-		#end
 		info.nids
 	end
 
-	ebus_connect :get_mds_nids, :mds_nids
+	def node_list_changed(node_list)
+		map = {}  # {rsid => [nids]}
+		node_list.get_role_nodes("ds").each {|node|
+			ds_role_data = node.role_data
+			rsid = ds_role_data.rsid
+			nids = map[rsid] ||= []
+			nids << node.nid
+		}
+		if @replset_info.rebuild(map)
+			ebus_signal :replset_info_changed, @replset_info
+		end
+		$log.trace @replset_info.inspect
+	end
+
+	# TODO
+	def choice_next_replset(key)
+		rsids = @replset_info.get_rsids
+		rsids.shuffle.first
+	end
+
 	ebus_connect :get_replset_nids
-	ebus_connect :nodes_info_changed
-	ebus_connect :replset_info_changed
+	ebus_connect :choice_next_replset
+	ebus_connect :rpc_get_replset_info, :replset_info
+	ebus_connect :node_list_changed
 end
 
 

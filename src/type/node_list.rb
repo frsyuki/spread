@@ -15,12 +15,11 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'digest/sha1'
 
 module SpreadOSD
 
 
-class NodesInfo
+class NodeList
 	def initialize
 		@nodes = []
 		@path = nil
@@ -40,26 +39,27 @@ class NodesInfo
 		yaml = YAML.load(raw)
 
 		@nodes = yaml.map {|n|
-			name = n['name']
-			raise "name field is requred" unless name
+			#name = n['name']
+			#raise "name field is requred" unless name
 
-			address = n['address']
-			raise "address field is requred" unless name
-			host, port = address.split(':',2)
-			address = Address.new(host, port)
+			#address = n['address']
+			#raise "address field is requred" unless name
+			#host, port = address.split(':',2)
+			#address = Address.new(host, port)
 
-			nid = n['nid']
-			raise "nid field is require" unless nid
+			#nid = n['nid']
+			#raise "nid field is require" unless nid
 
-			role = n['role']
-			raise "role field is require" unless role
-			if role.is_a?(Array)
-				roles = role
-			else
-				roles = [role]
-			end
+			#role = n['role']
+			#raise "role field is require" unless role
 
-			Node.new(nid, address, name, roles)
+			#data = n['data']
+			#raise "data field is require" unless data
+
+			#role_data = RoleData.data_from_msgpack(role, data)
+
+			#Node.new(nid, address, name, role_data)
+			Node.new.from_msgpack(n)
 		}
 
 		@path = path
@@ -71,12 +71,14 @@ class NodesInfo
 		return nil unless path
 
 		yaml = @nodes.map {|node|
-			{
-				'name'    => node.name,
-				'address' => node.address.to_s,
-				'nid'     => node.nid,
-				'role'    => node.roles,
-			}
+			MessagePack.unpack(node.to_msgpack)
+			#{
+			#	'name'      => node.name,
+			#	'address'   => node.address.to_s,
+			#	'nid'       => node.nid,
+			#	'role'      => node.role,
+			#	'role_data' => node.role_data,
+			#}
 		}
 
 		raw = YAML.dump(yaml)
@@ -94,12 +96,29 @@ class NodesInfo
 		true
 	end
 
+	def include?(nid)
+		@nodes.each {|node|
+			if node.nid == nid
+				return true
+			end
+		}
+		return false
+	end
+
 	def remove(nid)
 		unless @nodes.reject! {|node| node.nid == nid }
 			return nil
 		end
 		update_hash
 		true
+	end
+
+	def get_nids
+		@nodes.map {|node| node.nid }
+	end
+
+	def get_role_nodes(role)
+		@nodes.select {|node| node.role == role }
 	end
 
 	def get_hash

@@ -20,38 +20,41 @@ module SpreadOSD
 
 
 class MasterStorageService < Service
+	include StorageIndexService::Readable
+
 	def initialize
 		super()
 		@self_nid = ebus_call(:self_nid)
 		@db = LogStorage.new
 		@index = ebus_call(:get_storage_index)
+		ebus_call(:register_storage, @self_nid, self)
 	end
 
-	def get_master_storage
-		self
-	end
-
-	def open(dir_path)
+	def run
+		dir_path = ebus_call(:get_storage_path)
 		@db.open(dir_path, @self_nid.to_s)
 	end
 
-	def close
+	def shutdown
 		@db.close
 	end
 
-	def add(oid, data)
+	def add_object(oid, data)
 		v = [oid, data]
 		@db.append(v) {|lskey|
 			@index.set(oid, @self_nid, lskey)
 		}
+		true
 	end
 
-	def read(lskey)
-		oid, data = @db.read(lskey)
-		data
+	def rpc_replicate_pull(sidx, offset, limit)
+		# TODO
 	end
 
-	ebus_connect :get_master_storage
+	ebus_connect :run
+	ebus_connect :shutdown
+	ebus_connect :rpc_add_object_direct, :add_object
+	ebus_connect :rpc_replicate_pull
 end
 
 

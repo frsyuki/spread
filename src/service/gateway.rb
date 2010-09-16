@@ -24,15 +24,15 @@ class GatewayService < Service
 		super()
 	end
 
-	def rpc_get(key_seq)
+	def rpc_get_object(key_seq)
 		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:index_get_key, key_seq) do |result, error|
+		ebus_call(:metadata_get_key, key_seq) do |result, error|
 			if result
 				replset, oid, attributes = *result
-				nids = ebus_call(:get_replset_nids, replset)
-				nid = nids.first
+				nids = ebus_call(:get_replset_nids, replset)  # FIXME error
+				nid = nids.first  # FIXME round robin?
 				node = ebus_call(:get_node, nid)
-				node.session.callback(:get_object, oid) do |future|
+				node.session.callback(:get_object_direct, oid) do |future|
 					ar.result(future.result, future.error)
 				end
 			elsif !error
@@ -44,16 +44,16 @@ class GatewayService < Service
 		ar
 	end
 
-	def rpc_add(key_seq, attributes, data)
+	def rpc_add_object(key_seq, attributes, data)
 		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:index_add_key, key_seq, attributes) do |result, error|
+		ebus_call(:metadata_add_key, key_seq, attributes) do |result, error|
 			if result
 				begin
 					replset, oid = *result
 					nids = ebus_call(:get_replset_nids, replset)
 					nid = nids.first
 					node = ebus_call(:get_node, nid)
-					node.session.callback(:add_object, oid, data) do |future|
+					node.session.callback(:add_object_direct, oid, data) do |future|
 						ar.result(future.result, future.error)
 					end
 				rescue
@@ -66,8 +66,42 @@ class GatewayService < Service
 		ar
 	end
 
-	ebus_connect :rpc_get
-	ebus_connect :rpc_add
+	def rpc_set_object_attributes(key_seq, attributes)
+		ar = MessagePack::RPC::AsyncResult.new
+		ebus_call(:metadata_set_attributes, key_seq, attributes) do |result, error|
+			ar.result(result, error)
+		end
+		ar
+	end
+
+	def rpc_get_object_attributes(key_seq)
+		ar = MessagePack::RPC::AsyncResult.new
+		ebus_call(:metadata_get_key, key_seq) do |result, error|
+			if result
+				replset, oid, attributes = *result
+				ar.result(attributes)
+			elsif !error
+				ar.result(nil)
+			else
+				ar.error(error)
+			end
+		end
+		ar
+	end
+
+	def rpc_get_child_keys(key_seq, skip, limit)
+		ar = MessagePack::RPC::AsyncResult.new
+		ebus_call(:metadata_get_child_keys, key_seq, skip, limit) do |result, error|
+			ar.result(result, error)
+		end
+		ar
+	end
+
+	ebus_connect :rpc_get_object
+	ebus_connect :rpc_add_object
+	ebus_connect :rpc_set_object_attributes
+	ebus_connect :rpc_get_object_attributes
+	ebus_connect :rpc_get_child_keys
 end
 
 

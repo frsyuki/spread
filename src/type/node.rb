@@ -20,45 +20,46 @@ module SpreadOSD
 
 
 class Node
-	QUORUM_SERVER = 0b0001
-	SLICE_SERVER  = 0b0010
-	GATEWAY       = 0b0100
-
-	def initialize(nid=0, address=nil, name=nil, roles=[])
+	def initialize(nid=0, address=nil, name=nil, role_data=nil)
 		@nid = nid
 		@address = address
 		@name = name
-		@roles = roles.map {|r| r.to_sym }
+		@role_data = role_data
 	end
 
 	attr_reader :nid
 	attr_reader :address
 	attr_reader :name
-	attr_reader :roles
+	attr_reader :role_data
+
+	def role
+		@role_data.class::ID
+	end
 
 	def session
 		$net.get_session(*@address)
 	end
 
 	def to_s
-		"Node<#{@nid} #{@address} #{@name.dump} #{@roles.join(',')}>"
+		"Node<#{@nid} #{@address} #{@name.dump} #{@role_data.inspect}>"
 	end
 
-	def is?(role_name)
-		@roles.include?(role_name.to_sym)
+	def ==(o)
+		# FIXME
+		@nid == o.nid && @address == o.address
 	end
 
 	public
 	def to_msgpack(out = '')
-		roles = @roles.map {|r| r.to_s }
-		[@nid, @address.dump, @name, roles].to_msgpack(out)
+		role = @role_data.class::ID
+		[@nid, @address.dump, @name, role, @role_data].to_msgpack(out)
 	end
 	def from_msgpack(obj)
-		@nid = obj[0]
+		@nid =  obj[0]
 		@address = Address.load(obj[1])
-		@name = obj[2]
-		roles = obj[3]
-		@roles = roles.map {|r| r.to_sym }
+		@name  = obj[2]
+		role   = obj[3]
+		@role_data = RoleData.data_from_msgpack(role, obj[4])
 		self
 	end
 end

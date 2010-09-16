@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 #
 #  SpreadOSD
 #  Copyright (C) 2010  FURUHASHI Sadayuki
@@ -16,42 +17,41 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-module SpreadOSD
+require 'spread'
+require 'optparse'
 
+include SpreadOSD
 
-class OSDRoleService < Service
-	def initialize
-		super()
-		role_config
-		LocatorService.init
-		StorageIndexService.init
-		MasterStorageService.init
-		SlaveStorageService.init
-		StorageService.init
+op = OptionParser.new
+op.banner += " <config.yaml>"
+
+(class<<self;self;end).module_eval do
+	define_method(:usage) do |msg|
+		puts op.to_s
+		puts "error: #{msg}" if msg
+		exit 1
 	end
-
-	def role_config
-		role_data = ebus_call(:role_data)
-		data = role_data['osd'] || {}
-
-		@store_path = data["store_path"]
-		raise "store_path field is required on osd role" unless @store_path
-	end
-
-	attr_reader :store_path
-
-	def run
-	end
-
-	def shutdown
-	end
-
-	ebus_connect :get_store_path, :store_path
-
-	ebus_connect :run
-	ebus_connect :shutdown
 end
 
+begin
+	if ARGV.length != 1
+		raise "<config.yaml> is required."
+	end
 
+	config_path = ARGV.shift
+
+	DSConfigService.init.read(config_path)
+
+rescue
+	usage($!.to_s)
 end
+
+DSBootService.init
+$ebus.signal(:run)
+
+$ebus.connect(:shutdown) do
+	$net.stop
+end
+
+$net.run
 

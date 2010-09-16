@@ -25,6 +25,7 @@ class LocatorService < Service
 		@nodes_map = {}   # {nid => node}
 	end
 
+	# アクティブなノードのみ含む
 	def get_node(nid)
 		unless @nodes_map.include?(nid)
 			raise "Unknown node id: #{nid}"
@@ -32,16 +33,16 @@ class LocatorService < Service
 		@nodes_map[nid]
 	end
 
-	def nodes_info_changed(nodes_info)
+	def node_list_changed(node_list)
 		nodes_map = {}
-		nodes_info.nodes.each {|node|
+		node_list.nodes.each {|node|
 			nodes_map[node.nid] = node
 			$log.trace "node: #{node}"
 		}
 		@nodes_map = nodes_map
 	end
 
-	ebus_connect :nodes_info_changed
+	ebus_connect :node_list_changed
 	ebus_connect :get_node
 end
 

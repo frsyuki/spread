@@ -19,45 +19,30 @@
 module SpreadOSD
 
 
-class BootInfoService < Service
+class OIDGeneratorService < Service
 	def initialize
 		super()
-		@self_node = nil
-		@role_data = {}
-		@confsvr_address = nil
+		@seqdb = SeqidGenerator.new
+		@self_nid = ebus_call(:self_nid)
 	end
 
-	attr_reader :self_node
-	attr_reader :role_data
-	attr_reader :confsvr_address
-
-	def self_address
-		@self_node.address
+	def generate_next_oid
+		seq = @seqdb.next_id(:oid)
+		seq << 16 | @self_nid
 	end
 
-	def self_nid
-		@self_node.nid
+	def run
+		path = ebus_call(:get_seqid_path)
+		@seqdb.open(path)
 	end
 
-	def self_name
-		@self_node.name
+	def shutdown
+		@seqdb.close
 	end
 
-	def boot_info_loaded(boot)
-		@self_node = boot.node
-		@role_data = boot.role_data
-		@confsvr_address = boot.confsvr
-		$log.debug "self: #{@self_node}"
-		nil
-	end
-
-	ebus_connect :boot_info_loaded
-	ebus_connect :self_node
-	ebus_connect :self_address
-	ebus_connect :self_nid
-	ebus_connect :self_name
-	ebus_connect :role_data
-	ebus_connect :confsvr_address
+	ebus_connect :run
+	ebus_connect :shutdown
+	ebus_connect :generate_next_oid
 end
 
 

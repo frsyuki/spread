@@ -21,59 +21,51 @@ module SpreadOSD
 
 class HeartbeatRequest
 	# config_hash
-	def initialize(nid=nil, nodes_info_hash=0, fault_info_hash=0, replset_info_hash=0)
+	def initialize(nid=nil, node_list_hash=0, fault_info_hash=0)
 		@nid = nid
-		@nodes_info_hash = nodes_info_hash
+		@node_list_hash = node_list_hash
 		@fault_info_hash = fault_info_hash
-		@replset_info_hash = replset_info_hash
 	end
 
 	attr_accessor :nid
-	attr_accessor :nodes_info_hash
+	attr_accessor :node_list_hash
 	attr_accessor :fault_info_hash
-	attr_accessor :replset_info_hash
 
 	public
 	def to_msgpack(out = '')
-		[@nid, @nodes_info_hash, @fault_info_hash, @replset_info_hash].to_msgpack(out)
+		[@nid, @node_list_hash, @fault_info_hash].to_msgpack(out)
 	end
 	def from_msgpack(obj)
 		@nid = obj[0]
-		@nodes_info_hash = obj[1]
+		@node_list_hash = obj[1]
 		@fault_info_hash = obj[2]
-		@replset_info_hash = obj[3]
 		self
 	end
 end
 
 
 class HeartbeatResponse
-	def initialize(term=nil, nodes_info=nil, fault_info=nil, replset_info=nil)
+	def initialize(term=nil, node_list=nil, fault_info=nil)
 		@term = term
-		@nodes_info = nodes_info
+		@node_list = node_list
 		@fault_info = fault_info
-		@replset_info = replset_info
 	end
 
 	attr_accessor :term
-	attr_accessor :nodes_info
+	attr_accessor :node_list
 	attr_accessor :fault_info
-	attr_accessor :replset_info
 
 	public
 	def to_msgpack(out = '')
-		[@term, @nodes_info, @fault_info, @replset_info].to_msgpack(out)
+		[@term, @node_list, @fault_info].to_msgpack(out)
 	end
 	def from_msgpack(obj)
 		@term = obj[0]
-		if nodes_info = obj[1]
-			@nodes_info = NodesInfo.new.from_msgpack(nodes_info)
+		if node_list = obj[1]
+			@node_list = NodeList.new.from_msgpack(node_list)
 		end
 		if fault_info = obj[2]
 			@fault_info = FaultInfo.new.from_msgpack(fault_info)
-		end
-		if replset_info = obj[3]
-			@replset_info = ReplsetInfo.new.from_msgpack(replset_info)
 		end
 		self
 	end

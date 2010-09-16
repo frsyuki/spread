@@ -24,21 +24,18 @@ include SpreadOSD
 def usage
 	puts "Usage: #{File.basename($0)} <address:port> <command> [options]"
 	puts "command:"
-	puts "   nodes                      get nodes info"
-	puts "   fault                      get fualt info"
-	puts "   recover <nid>              recover fault node"
-	puts "   replset                    get replset info"
-	puts "   activate <rsid>            activate replset"
-	puts "   deactivate <rsid>          deactivate replset"
-	puts "   create <rsid>              create new replset"
-	puts "   join <rsid> <nid>          join nid to a replset"
-	puts "   recognized_nodes           get recognized nodes"
-	puts "   add_node <nid>             add new node"
-	puts "   remove_node <nid>          remove a node"
-	puts "   add <key> <val>            add data via gateway"
-	puts "   get <key>                  get data via gateway"
-	puts "   add_obj <oid> <val>        add data directly to osd"
-	puts "   get_obj <oid>              get data directly from osd"
+	puts "   nodes                  get active nodes"
+	puts "   new_nodes              get not-attached nodes"
+	puts "   fault_nodes            get fault nodes"
+	puts "   attach_nodes <nid...>  attach new nodes"
+	puts "   detach_nodes <nid...>  detach fault nodes"
+	puts "   recover_nodes <nid...> recover fault nodes"
+	puts "   replset                get replset infomation"
+	puts "   add_obj <path> <val>   add new object"
+	puts "   get_obj <path>         get the object"
+	puts "   set_attr <path> <json> set attributes to the object"
+	puts "   get_attr <path>        get attributes of the object"
+	puts "   get_child <path>       get child keys"
 	exit 1
 end
 
@@ -72,6 +69,9 @@ module TArray
 end
 
 def cmd_args(n)
+	if n < 0
+		return ARGV
+	end
 	usage if ARGV.length != n
 	ARGV.map! {|ar| ar == '-' ? $stdin.read : ar }
 	if n == 1
@@ -93,78 +93,61 @@ end
 case cmd
 when "nodes"
 	cmd_args(0)
-	pp call(NodesInfo, :get_nodes_info)
+	pp call(NodeList, :get_node_list)
 
-when "fault"
+when "fault_nodes"
 	cmd_args(0)
 	pp call(FaultInfo, :get_fault_info)
 
-when "add_node"
-	nid = cmd_args(1)
-	nid = nid.to_i
-	pp call(nil, :add_node, nid)
+when "new_nodes"
+	cmd_args(0)
+	pp call(TArray.new(Node), :get_new_nodes)
 
-when "remove_node"
-	nid = cmd_args(1)
-	nid = nid.to_i
-	pp call(nil, :remove_node, nid)
+when "attach_nodes"
+	nids = cmd_args(-1)
+	nids.map! {|nid| nid.to_i }
+	pp call(nil, :attach_node, nids)
 
-when "recover"
-	nid = cmd_args(1)
-	nid = nid.to_i
-	pp call(nil, :recover_fault, nid)
+when "detach_nodes"
+	nids = cmd_args(-1)
+	nids.map! {|nid| nid.to_i }
+	pp call(nil, :detach_node, nids)
+
+when "recover_nodes"
+	nids = cmd_args(-1)
+	nids.map! {|nid| nid.to_i }
+	pp call(nil, :recover_node, nids)
 
 when "replset"
 	cmd_args(0)
 	pp call(ReplsetInfo, :get_replset_info)
 
-when "activate"
-	rsid = cmd_args(1)
-	rsid = rsid.to_i
-	pp call(nil, :activate_replset, rsid)
-
-when "deactivate"
-	rsid = cmd_args(1)
-	rsid = rsid.to_i
-	pp call(nil, :deactivate_replset, rsid)
-
-when "create"
-	rsid = cmd_args(1)
-	rsid = rsid.to_i
-	pp call(nil, :create_replset, rsid)
-
-when "join"
-	rsid, nid = cmd_args(2)
-	rsid = rsid.to_i
-	nid = nid.to_i
-	pp call(nil, :join_replset, rsid, nid)
-
-when "recognized_nodes"
-	cmd_args(0)
-	pp call(TArray.new(Node), :recognized_nodes)
-
-when "add"
-	key, val = cmd_args(2)
-	key_seq = [key]
-	attributes = {} # TODO
-	pp call(nil, :add, key_seq, attributes, val)
-
-when "get"
-	key = cmd_args(1)
-	key_seq = [key]
-	data = call(nil, :get, key_seq)
-	data.is_a?(String) ? $stdout.write(data) : pp(data)
-
 when "add_obj"
-	oid, val = cmd_args(2)
-	oid = oid.to_i
-	pp call(nil, :add_object, oid, val)
+	path, val = cmd_args(2)
+	key_seq = path.split('/')
+	attributes = {}
+	pp call(nil, :add_object, key_seq, attributes, val)
 
 when "get_obj"
-	oid = cmd_args(1)
-	oid = oid.to_i
-	data = call(nil, :get_object, oid)
-	data.is_a?(String) ? $stdout.write(data) : pp(data)
+	path = cmd_args(1)
+	key_seq = path.split('/')
+	pp call(nil, :get_object, key_seq)
+
+when "get_attr"
+	path = cmd_args(1)
+	key_seq = path.split('/')
+	pp call(nil, :get_object_attributes, key_seq)
+
+when "set_attr"
+	path, val = cmd_args(2)
+	key_seq = path.split('/')
+	attributes = JSON.parse(val)
+	pp call(nil, :set_object_attributes, key_seq, attributes)
+
+when "get_child"
+	path = cmd_args(1)
+	key_seq = path.split('/')
+	pp call(nil, :get_child_keys, key_seq, 0, 1000)
 
 else
 	puts "unknown command #{cmd}"

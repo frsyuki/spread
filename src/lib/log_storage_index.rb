@@ -15,33 +15,47 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+require 'tokyocabinet'
 
 module SpreadOSD
 
 
-class GatewayRoleService < Service
+class LogStorageIndex
 	def initialize
-		super()
-		role_config
-		LocatorService.init
-		RoutingService.init
-		IndexClientService.init
-		GatewayService.init
+		@db = TokyoCabinet::HDB.new
 	end
 
-	def role_config
-		role_data = ebus_call(:role_data)
-		data = role_data['gw'] || {}
+	def open(path)
+		success = @db.open(path, TokyoCabinet::HDB::OWRITER|TokyoCabinet::HDB::OCREAT)
+		unless success
+			raise "can't open database #{path}: #{@db.errmsg(@db.ecode)}"
+		end
 	end
 
-	def run
+	def close
+		@db.close
 	end
 
-	def shutdown
+	def set(oid, logid, lskey)
+		val = [logid].pack('N') + lskey.dump
+		key = [oid>>32, oid&0xffffffff].pack('NN')
+		success = @db.put(key, val)
+		unless success
+			raise "failed to put key #{@db.errmsg(@db.ecode)}"
+		end
+		nil
 	end
 
-	ebus_connect :run
-	ebus_connect :shutdown
+	def get(oid)
+		key = [oid>>32, oid&0xffffffff].pack('NN')
+		val = @db.get(key)
+		unless val
+			return nil, nil
+		end
+		logid = val.slice!(0,4).unpack('N')[0]
+		lskey = LogStorage::Key.load(val)
+		return logid, lskey
+	end
 end
 
 

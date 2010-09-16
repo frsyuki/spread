@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 #
 #  SpreadOSD
 #  Copyright (C) 2010  FURUHASHI Sadayuki
@@ -16,35 +17,41 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-module SpreadOSD
+require 'spread'
+require 'optparse'
 
+include SpreadOSD
 
-class SeqidGeneratorService < Service
-	def initialize
-		super()
-		@seqdb = SeqidGenerator.new
-		@self_nid = ebus_call(:self_nid)
+op = OptionParser.new
+op.banner += " <config.yaml>"
+
+(class<<self;self;end).module_eval do
+	define_method(:usage) do |msg|
+		puts op.to_s
+		puts "error: #{msg}" if msg
+		exit 1
 	end
-
-	def next_oid
-		seq = @seqdb.next_id(:oid)
-		seq << 16 | @self_nid
-	end
-
-	def run
-		path = ebus_call(:get_seqid_path)
-		@seqdb.open(path)
-	end
-
-	def shutdown
-		@seqdb.close
-	end
-
-	ebus_connect :run
-	ebus_connect :shutdown
-	ebus_connect :next_oid
 end
 
+begin
+	if ARGV.length != 1
+		raise "<config.yaml> is required."
+	end
 
+	config_path = ARGV.shift
+
+	GWConfigService.init.read(config_path)
+
+rescue
+	usage($!.to_s)
 end
+
+GWBootService.init
+$ebus.signal(:run)
+
+$ebus.connect(:shutdown) do
+	$net.stop
+end
+
+$net.run
 

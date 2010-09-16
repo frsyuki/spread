@@ -15,7 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'digest/sha1'
 
 module SpreadOSD
 
@@ -28,7 +27,7 @@ class FaultInfo
 
 	attr_reader :nids
 
-	def add_nid(nid)
+	def add(nid)
 		if @nids.include?(nid)
 			return nil
 		end
@@ -37,7 +36,7 @@ class FaultInfo
 		true
 	end
 
-	def add_nids(nids)
+	def adds(nids)
 		added = []
 		nids.each {|nid|
 			unless @nids.include?(nid)
@@ -52,14 +51,20 @@ class FaultInfo
 		return added
 	end
 
-	def remove_nid(nid)
-		removed = @nids.delete(nid)
+	def remove(nid)
+		unless @nids.delete(nid)
+			return nil
+		end
 		update_hash
-		removed ? true : nil
+		true
 	end
 
 	def include?(nid)
 		@nids.include?(nid)
+	end
+
+	def get_nids
+		@nids.dup
 	end
 
 	def get_hash

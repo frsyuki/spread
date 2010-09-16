@@ -27,19 +27,14 @@ class HeartbeatServerService < Service
 	def rpc_heartbeat(hbreq)
 		hbres = HeartbeatResponse.new
 
-		nodes_info = ebus_call(:get_nodes_info)
-		if hbreq.nodes_info_hash != nodes_info.get_hash
-			hbres.nodes_info = nodes_info
+		node_list = ebus_call(:get_node_list)
+		if hbreq.node_list_hash != node_list.get_hash
+			hbres.node_list = node_list
 		end
 
 		fault_info = ebus_call(:get_fault_info)
 		if hbreq.fault_info_hash != fault_info.get_hash
 			hbres.fault_info = fault_info
-		end
-
-		replset_info = ebus_call(:get_replset_info)
-		if hbreq.replset_info_hash != replset_info.get_hash
-			hbres.replset_info = replset_info
 		end
 
 		if hbreq.nid
@@ -57,18 +52,16 @@ class HeartbeatClientService < Service
 	def initialize
 		super()
 		@self_nid = ebus_call(:self_nid)
-		@confsvr = ebus_call(:confsvr_address)
-		@nodes_info_hash = 0
+		@confsvr = ebus_call(:get_confsvr_address)
+		@node_list_hash = 0
 		@fault_info_hash = 0
-		@replset_info_hash = 0
 	end
 
 	def on_timer
 		hbreq = HeartbeatRequest.new
 		hbreq.nid = @self_nid
-		hbreq.nodes_info_hash = @nodes_info_hash
+		hbreq.node_list_hash = @node_list_hash
 		hbreq.fault_info_hash = @fault_info_hash
-		hbreq.replset_info_hash = @replset_info_hash
 
 		s = $net.get_session(@confsvr)
 		s.callback(:heartbeat, hbreq) do |future|
@@ -79,19 +72,14 @@ class HeartbeatClientService < Service
 	def heartbeat_ack(future)
 		hbres = HeartbeatResponse.new.from_msgpack(future.get)
 
-		if hbres.nodes_info
-			ebus_signal(:nodes_info_changed, hbres.nodes_info)
-			@nodes_info_hash = hbres.nodes_info.get_hash
+		if hbres.node_list
+			@node_list_hash = hbres.node_list.get_hash
+			ebus_signal(:node_list_changed, hbres.node_list)
 		end
 
 		if hbres.fault_info
-			ebus_signal(:fault_info_changed, hbres.fault_info)
 			@fault_info_hash = hbres.fault_info.get_hash
-		end
-
-		if hbres.replset_info
-			ebus_signal(:replset_info_changed, hbres.replset_info)
-			@replset_info_hash = hbres.replset_info.get_hash
+			ebus_signal(:fault_info_changed, hbres.fault_info)
 		end
 
 		if hbres.term
@@ -99,31 +87,29 @@ class HeartbeatClientService < Service
 			ebus_call(:term_feed, 0, hbres.term)
 		else
 			# FIXME
-			s = $net.get_session(@confsvr)
 			self_node = ebus_call(:self_node)
-			s.notify(:register, self_node)
+			s = $net.get_session(@confsvr)
+			s.notify(:add_new_node, self_node)
 		end
 	end
 
-	ebus_connect :timer_clock, :on_timer
+	ebus_connect :on_timer
 end
 
 
 class HeartbeatLeanerService < Service
 	def initialize
 		super()
-		@confsvr = ebus_call(:confsvr_address)
-		@nodes_info_hash = 0
+		@confsvr = ebus_call(:get_confsvr_address)
+		@node_list_hash = 0
 		@fault_info_hash = 0
-		@replset_info_hash = 0
 	end
 
 	def on_timer
 		hbreq = HeartbeatRequest.new
 		hbreq.nid = nil
-		hbreq.nodes_info_hash = @nodes_info_hash
+		hbreq.node_list_hash = @node_list_hash
 		hbreq.fault_info_hash = @fault_info_hash
-		hbreq.replset_info_hash = @replset_info_hash
 
 		s = $net.get_session(@confsvr)
 		s.callback(:heartbeat, hbreq) do |future|
@@ -134,24 +120,18 @@ class HeartbeatLeanerService < Service
 	def heartbeat_ack(future)
 		hbres = HeartbeatResponse.new.from_msgpack(future.get)
 
-		if hbres.nodes_info
-			ebus_signal(:nodes_info_changed, hbres.nodes_info)
-			@nodes_info_hash = hbres.nodes_info.get_hash
+		if hbres.node_list
+			@node_list_hash = hbres.node_list.get_hash
+			ebus_signal(:node_list_changed, hbres.node_list)
 		end
 
 		if hbres.fault_info
-			ebus_signal(:fault_info_changed, hbres.fault_info)
 			@fault_info_hash = hbres.fault_info.get_hash
-		end
-
-		if hbres.replset_info
-			ebus_signal(:replset_info_changed, hbres.replset_info)
-			# FIXME qsid
-			@replset_info_hash = hbres.replset_info.get_hash
+			ebus_signal(:fault_info_changed, hbres.fault_info)
 		end
 	end
 
-	ebus_connect :timer_clock, :on_timer
+	ebus_connect :on_timer
 end
 
 

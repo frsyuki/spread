@@ -19,48 +19,58 @@
 module SpreadOSD
 
 
-class RecognizeService < Service
-	def initialize()
-		super()
-		@nodes = {}
-		@known_nids = {}
-	end
-
-	def register(node)
-		unless @known_nids.include?(node.nid)
-			@nodes[node.nid] = node
+class RoleData
+	def self.data_from_msgpack(role, obj)
+		case role
+		when DSRoleData::ID
+			return DSRoleData.new.from_msgpack(obj)
+		when MDSRoleData::ID
+			return MDSRoleData.new.from_msgpack(obj)
+		else
+			# FIXME
+			raise "unknown role"
 		end
-		true
+	end
+end
+
+
+class DSRoleData < RoleData
+	ID = "ds"
+
+	def initialize(rsid=nil)
+		@rsid = rsid
 	end
 
-	def recognized_node(nid)
-		@nodes[nid]
+	attr_reader :rsid
+
+	public
+	def to_msgpack(out = '')
+		[@rsid].to_msgpack(out)
+	end
+	def from_msgpack(obj)
+		@rsid = obj[0]
+		self
+	end
+end
+
+
+class MDSRoleData < RoleData
+	ID = "mds"
+
+	def initialize(qsid=nil)
+		@qsid = qsid
 	end
 
-	def nodes_info_changed(nodes_info)
-		known_nids = []
-		nodes_info.nodes.each {|node|
-			known_nids[node.nid] = node.nid
-		}
-		@known_nids = known_nids
+	attr_reader :qsid
 
-		@nodes.reject! {|nid,node|
-			@known_nids.include?(nid)
-		}
+	public
+	def to_msgpack(out = '')
+		[@qsid].to_msgpack(out)
 	end
-
-	def rpc_recognized_nodes
-		@nodes.values
+	def from_msgpack(obj)
+		@qsid = obj[0]
+		self
 	end
-
-	def on_timer
-	end
-
-	ebus_connect :rpc_register, :register
-	ebus_connect :recognized_node
-	ebus_connect :rpc_recognized_nodes
-	ebus_connect :nodes_info_changed
-	ebus_connect :timer_clock, :on_timer
 end
 
 

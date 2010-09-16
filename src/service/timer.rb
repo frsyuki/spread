@@ -19,49 +19,18 @@
 module SpreadOSD
 
 
-class StorageService < Service
+class TimerService < Service
 	def initialize
 		super()
-		@self_nid = ebus_call(:self_nid)
-		@master = ebus_call(:get_master_storage)
-		@slave = ebus_call(:get_slave_storage)
-		@index = ebus_call(:get_storage_index)
 	end
 
 	def run
-		dir_path = ebus_call(:get_store_path)
-		@index.open("#{dir_path}/index.tch")
-		@slave.open(dir_path)
-		@master.open(dir_path)
-	end
-
-	def shutdown
-		@master.close
-		@slave.close
-		@index.close
-	end
-
-	def get(oid)
-		nid, lskey = @index.get(oid)
-		unless nid
-			return nil
+		$net.start_timer(1.0, true) do
+			$ebus.signal(:on_timer)
 		end
-		if nid == @self_nid
-			@master.read(lskey)
-		else
-			@slave.read(nid, lskey)
-		end
-	end
-
-	def add(oid, data)
-		@master.add(oid, data)
-		true
 	end
 
 	ebus_connect :run
-	ebus_connect :shutdown
-	ebus_connect :rpc_get_object, :get
-	ebus_connect :rpc_add_object, :add
 end
 
 
