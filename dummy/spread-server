@@ -1,0 +1,219 @@
+#!/usr/bin/env ruby
+
+require 'tokyocabinet'
+require 'msgpack/rpc'
+
+class SpreadDummyServer
+	def initialize
+		@db = TokyoCabinet::HDB.new     # {mid => data}
+		@meta = TokyoCabinet::BDB.new   # {key => [attributes, mid]}
+	end
+
+	def open(db_path)
+		path = "#{db_path}.tcb"
+		success = @meta.open(path, TokyoCabinet::BDB::OWRITER|TokyoCabinet::BDB::OCREAT)
+		unless success
+			raise "can't open database #{path}: #{@meta.errmsg(@meta.ecode)}"
+		end
+
+		path = "#{db_path}.tch"
+		success = @db.open(path, TokyoCabinet::HDB::OWRITER|TokyoCabinet::HDB::OCREAT)
+		unless success
+			raise "can't open database #{path}: #{@db.errmsg(@db.ecode)}"
+		end
+
+		path = "#{db_path}.seqid"
+		if File.exist?(path)
+			@seqdb = File.open(path, "r+")
+		else
+			@seqdb = File.open(path, "w+")
+		end
+	end
+
+	def close
+		@meta.close
+		@db.close
+		@seqdb.close
+	end
+
+	# call-seq:
+	#     add(path, attributes, data) -> mid:String
+	def add(path, attributes, data)
+		key = path.gsub("/", "\0")
+
+		mid = next_id
+		mid_raw = [0,0,0,mid].pack('NNNN')
+
+		@db.put(mid_raw, data)
+		meta = [attributes, mid].to_msgpack
+		@meta.put(key, meta)
+
+		mid_raw
+	end
+
+	# call-seq:
+	#     get(path) -> [attributes, data]
+	def get(path)
+		key = path.gsub("/", "\0")
+
+		meta = @meta.get(key)
+		unless meta
+			return nil
+		end
+
+		attributes, mid = MessagePack.unpack(meta)
+		mid_raw = [0,0,0,mid].pack('NNNN')
+
+		data = @db.get(mid_raw)
+
+		return [attributes, data]
+	end
+
+	# call-seq:
+	#     get_attributes(path) -> attributes
+	def get_attributes(path)
+		key = path.gsub("/", "\0")
+
+		meta = @meta.get(key)
+		unless meta
+			return nil
+		end
+
+		attributes, mid = MessagePack.unpack(meta)
+
+		return attributes
+	end
+
+	# call-seq:
+	#     set_attributes(path, attributes)
+	def set_attributes(path, attributes)
+		key = path.gsub("/", "\0")
+
+		meta = @meta.get(key)
+		unless meta
+			return nil
+		end
+
+		old_attributes, mid = MessagePack.unpack(meta)
+		meta = [attributes, mid].to_msgpack
+		@meta.put(key, meta)
+
+		return true
+	end
+
+	# call-seq:
+	#     get_direct(mid) -> data
+	def get_direct(mid_raw)
+		data = @db.get(mid_raw)
+		unless data
+			return nil
+		end
+
+		return data
+	end
+
+	# call-seq:
+	#     get_child_keys(path, skip, limit) -> [path]
+	def get_child_keys(path, skip, limit)
+		return [] if limit <= 0
+
+		key = path.gsub("/", "\0")
+
+		prefix = "#{key}\0"
+		keys = []
+		cur = TokyoCabinet::BDBCUR.new(@meta)
+
+		success = cur.jump(prefix)
+		while success
+			key = cur.key
+
+			if key[0, prefix.length] != prefix
+				break
+			end
+
+			if !key.index("\0", prefix.length) # ignore grandchild
+				if skip > 0
+					skip -= 1
+				else
+					keys << key
+					if (limit -= 1) <= 0
+						break
+					end
+				end
+			end
+
+			success = cur.next
+		end
+
+		keys.each {|key| key.gsub!("\0", "/") }
+		return keys
+	end
+
+	private
+	def next_id
+		@seqdb.pos = 0
+		num = @seqdb.read.to_i + 1
+		@seqdb.pos = 0
+		@seqdb.write num.to_s
+		num
+	end
+end
+
+
+require 'optparse'
+
+if ARGV.length != 2
+	puts "usage: #{$0} <listen-port> <db-path>"
+	exit 1
+end
+
+port = ARGV[0].to_i
+db_path = ARGV[1]
+
+ds = SpreadDummyServer.new
+ds.open(db_path)
+
+begin
+	svr = MessagePack::RPC::Server.new
+	svr.listen("0.0.0.0", port, ds)
+	svr.run
+ensure
+	ds.close
+end
+
+__END__
+ds = SpreadDummyServer.new
+ds.open("./test")
+begin
+
+	mid1 = ds.add("k1", {"a"=>1}, "v1")
+	mid2 = ds.add("k2", {"b"=>2}, "v2")
+	mid3 = ds.add("k1/k3", {"c"=>3}, "v3")
+	mid4 = ds.add("k1/k3/k4", {"d"=>4}, "v4")
+
+	p ds.get("k1")
+	p ds.get_attributes("k1")
+	p ds.get_direct(mid1)
+
+	p ds.get("k2")
+	p ds.get_attributes("k2")
+	p ds.get_direct(mid2)
+
+	p ds.get("k1/k3")
+	p ds.get_attributes("k1/k3")
+	p ds.get_direct(mid3)
+
+	p ds.get("k1/k3/k4")
+	p ds.get_attributes("k1/k3/k4")
+	p ds.get_direct(mid4)
+
+	p ds.get("none")
+	p ds.get_attributes("none")
+	p ds.set_attributes("none", {"x"=>nil})
+
+	p ds.get_child_keys("k1", 0, 100)
+
+ensure
+	ds.close
+end
+
