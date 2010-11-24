@@ -18,18 +18,7 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
-	end
-
-	def self.init
-		self.instance
-	end
+class GWStatusService < StatusService
 end
 
 

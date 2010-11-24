@@ -18,17 +18,44 @@
 module SpreadOSD
 
 
-require 'singleton'
+Address = MessagePack::RPC::Address
 
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
+class Node
+	def initialize(nid=0, address=nil, name=nil, rsids=[])
+		@nid = nid
+		@address = address
+		@name = name
+		@rsids = rsids
 	end
 
-	def self.init
-		self.instance
+	attr_reader :nid
+	attr_accessor :address
+	attr_accessor :name
+	attr_accessor :rsids
+
+	def session
+		$net.get_session(*@address)
+	end
+
+	def to_s
+		"Node<#{@nid} #{@address} #{@name.dump} #{@rsids.inspect}>"
+	end
+
+	def ==(o)
+		# FIXME
+		@nid == o.nid && @address == o.address
+	end
+
+	public
+	def to_msgpack(out = '')
+		[@nid, @address.dump, @name, @rsids].to_msgpack(out)
+	end
+	def from_msgpack(obj)
+		@nid =  obj[0]
+		@address = Address.load(obj[1])
+		@name  = obj[2]
+		@rsids = obj[3]
+		self
 	end
 end
 

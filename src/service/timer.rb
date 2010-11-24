@@ -15,7 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
 module SpreadOSD
 
 
@@ -25,8 +24,8 @@ class TimerService < Service
 	end
 
 	def run
-		$net.start_timer(1.0, true) do
-			$ebus.signal(:on_timer)
+		ebus_call(:start_timer, 1.0, true) do
+			ebus_signal(:on_timer)
 		end
 	end
 
@@ -35,4 +34,3 @@ end
 
 
 end
-

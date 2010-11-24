@@ -15,95 +15,277 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
 module SpreadOSD
 
 
 class GatewayService < Service
+	DATA_COLUMN = "data"
+
 	def initialize
-		super()
+		super
+		@sc = StorageClientService.instance
 	end
 
-	def rpc_get_object(key_seq)
+	def rpc_get(key)
 		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:metadata_get_key, key_seq) do |result, error|
-			if result
-				replset, oid, attributes = *result
-				nids = ebus_call(:get_replset_nids, replset)  # FIXME error
-				nid = nids.first  # FIXME round robin?
-				node = ebus_call(:get_node, nid)
-				node.session.callback(:get_object_direct, oid) do |future|
-					ar.result(future.result, future.error)
+
+		ebus_call(:mds_get, key) do |map|
+			if rsid = map[DATA_COLUMN]
+				rsid = rsid.to_i
+				get_data(rsid, key) do |data|
+					map[DATA_COLUMN] = data
+					ar.result(map)
 				end
-			elsif !error
-				ar.result(nil)
+
 			else
-				ar.error(error)
+				ar.result(map)
 			end
+
 		end
+
 		ar
 	end
 
-	def rpc_add_object(key_seq, attributes, data)
+	def get_data(rsid, key, &block)
+		@sc.get(rsid, key) do |data|
+			block.call(data)
+		end
+	rescue
+		# FIXME
+		$log.warn $!
+		block.call(nil)
+	end
+
+	def rpc_set(key, map)
 		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:metadata_add_key, key_seq, attributes) do |result, error|
-			if result
+
+		data = map[DATA_COLUMN]
+
+		ebus_call(:mds_get, key) do |current|
+			rsid_s = current[DATA_COLUMN]
+
+			if data
+				if rsid_s
+					map[DATA_COLUMN] = rsid_s
+				end
+				set_data_set_map(rsid_s.to_i, key, map, data) do |success|
+					ar.result(success)
+				end
+
+			elsif rsid_s
+				set_map_remove_data(rsid_s.to_i, key, map) do |success|
+					ar.result(success)
+				end
+
+			else
+				set_map(key, map) do |success|
+					ar.result(success)
+				end
+			end
+		end
+
+		ar
+	end
+
+	def set_data_set_map(rsid, key, map, data, &block)
+		@sc.set(rsid, key, data) do |success|
+			if success
 				begin
-					replset, oid = *result
-					nids = ebus_call(:get_replset_nids, replset)
-					nid = nids.first
-					node = ebus_call(:get_node, nid)
-					node.session.callback(:add_object_direct, oid, data) do |future|
-						ar.result(future.result, future.error)
-					end
+					ebus_call(:mds_set, key, map, &block)
 				rescue
-					ar.error($!.to_s)
+					# FIXME
+					$log.warn $!
+					block.call(false)
 				end
 			else
-				ar.error(error)
+				block.call(false)
 			end
 		end
-		ar
+	rescue
+		# FIXME
+		$log.warn $!
+		block.call(false)
 	end
 
-	def rpc_set_object_attributes(key_seq, attributes)
-		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:metadata_set_attributes, key_seq, attributes) do |result, error|
-			ar.result(result, error)
-		end
-		ar
-	end
-
-	def rpc_get_object_attributes(key_seq)
-		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:metadata_get_key, key_seq) do |result, error|
-			if result
-				replset, oid, attributes = *result
-				ar.result(attributes)
-			elsif !error
-				ar.result(nil)
+	def set_map_remove_data(rsid, key, map, &block)
+		ebus_call(:mds_set, key, map) do |success|
+			if success
+				begin
+					@sc.remove(rsid, key, &block)
+				rescue
+					# FIXME
+					$log.warn $!
+					block.call(false)
+				end
 			else
-				ar.error(error)
+				block.call(false)
 			end
 		end
-		ar
+	rescue
+		# FIXME
+		$log.warn $!
+		block.call(false)
 	end
 
-	def rpc_get_child_keys(key_seq, skip, limit)
+	def set_map(key, map, &block)
+		ebus_call(:mds_set, key, map, &block)
+	rescue
+		# FIXME
+		$log.warn $!
+		block.call(false)
+	end
+
+=begin
+	def rpc_set(key, map)
 		ar = MessagePack::RPC::AsyncResult.new
-		ebus_call(:metadata_get_child_keys, key_seq, skip, limit) do |result, error|
-			ar.result(result, error)
+
+		if data = map[DATA_COLUMN]
+			#rsid = ebus_call(:choice_rsid)
+			#rsid_s = rsid.to_s
+			#map[DATA_COLUMN] = rsid_s
+			#
+			#modproc = Proc.new do |current|
+			#	if rsid_current = current[DATA_COLUMN]
+			#		rsid_s = map[DATA_COLUMN] = rsid_current
+			#	end
+			#	map
+			#end
+			#
+			#ebus_call(:atomic, key, modproc) do |success|
+			#	if success
+			#		rsid = rsid_s.to_i
+			#		set_data(rsid, key, map) do |success|
+			#			ar.rescue(success)
+			#		end
+			#	else
+			#		ar.result(false)
+			#	end
+			#end
+
+			rsid = ebus_call(:choice_rsid)
+			map[DATA_COLUMN] = rsid.to_s
+
+			ebus_call(:mds_add_or_get, key, map) do |current|
+				if current
+					update_mds_set_data(rsid, key, map, current, data) do |success|
+						ar.result(success)
+					end
+
+				else
+					set_data(rsid, key, data) do |success|
+						ar.result(success)
+					end
+				end
+			end
+
+		else
+			# remove existent data?
+			ebus_call(:mds_set, key, map) do |success|
+				ar.result(success)
+			end
 		end
+
 		ar
 	end
 
-	ebus_connect :rpc_get_object
-	ebus_connect :rpc_add_object
-	ebus_connect :rpc_set_object_attributes
-	ebus_connect :rpc_get_object_attributes
-	ebus_connect :rpc_get_child_keys
+	def update_mds_set_data(rsid, key, map, current, data, &block)
+		if rsid_current = current[DATA_COLUMN]
+			rsid_s = map[DATA_COLUMN] = rsid_current
+			rsid = rsid_s.to_i
+		end
+		ebus_call(:mds_set, key, map) do |success|
+			if success
+				set_data(rsid, key, data, &block)
+			else
+				block.call(false)
+			end
+		end
+	rescue
+		# FIXME
+		$log.warn $!
+		block.call(false)
+	end
+=end
+
+	def set_data(rsid, key, data, &block)
+		@sc.set(rsid, key, data) do |success|
+			block.call(success)
+		end
+	rescue
+		# FIXME
+		$log.warn $!
+		block.call(false)
+	end
+
+	def rpc_remove(key)
+		ar = MessagePack::RPC::AsyncResult.new
+
+		ebus_call(:mds_remove, key) do |map|
+			if rsid = map[DATA_COLUMN]
+				rsid = rsid.to_i
+				remove_data(rsid, key) do |success|
+					ar.result(success)
+				end
+
+			else
+				ar.result(true)
+			end
+
+		end
+
+		ar
+	end
+
+	def remove_data(rsid, key, &block)
+		@sc.remove(rsid, key) do |success|
+			block.call(success)
+		end
+	rescue
+		# FIXME
+		block.call(false)
+	end
+
+	def rpc_get_direct(key, rsid)
+		ar = MessagePack::RPC::AsyncResult.new
+
+		get_data(rsid, key) do |data|
+			ar.result(data)
+		end
+
+		ar
+	end
+
+	def rpc_set_direct(key, rsid, data)
+		ar = MessagePack::RPC::AsyncResult.new
+
+		set_data(rsid, key, data) do |success|
+			ar.result(success)
+		end
+
+		ar
+	end
+
+	def rpc_remove_direct(key, rsid)
+		ar = MessagePack::RPC::AsyncResult.new
+
+		remove_data(rsid, key) do |success|
+			ar.result(success)
+		end
+
+		ar
+	end
+
+	#def rpc_select(conds, columns, order, limit, skip)
+	#end
+
+	#def rpc_count(conds)
+	#end
+
+	ebus_connect :rpc_get
+	ebus_connect :rpc_set
+	ebus_connect :rpc_remove
+	ebus_connect :rpc_get_direct
 end
 
 
 end
-

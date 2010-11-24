@@ -18,18 +18,46 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class StatusService < Service
 	def initialize
 		super
+
+		@methods = {}
+		public_methods.each {|name|
+			if name =~ /^stat_(.*)$/
+				@methods[$~[1]] = method(name)
+			end
+		}
+
+		@start_time = Time.now
 	end
 
-	def self.init
-		self.instance
+	def rpc_status(cmd)
+		if m = @methods[cmd]
+			m.call
+		else
+			raise "no such status"
+		end
 	end
+
+	def stat_uptime
+		uptime = Time.now - @start_time
+		uptime.to_i
+	end
+
+	def stat_time
+		Time.now.to_i
+	end
+
+	def stat_pid
+		Process.pid
+	end
+
+	#def stat_version
+	#	# FIXME stat_version
+	#end
+
+	ebus_connect :rpc_status
 end
 
 

@@ -18,17 +18,21 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
+class MemoryRelayLog < RelayLog
+	def initialize(path)
+		@mem = 0
 	end
 
-	def self.init
-		self.instance
+	def close
+		@mem = 0
+	end
+
+	def get_offset
+		@mem
+	end
+
+	def set_offset(offset)
+		@mem = offset
 	end
 end
 

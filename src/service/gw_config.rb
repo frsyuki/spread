@@ -18,18 +18,20 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class GWConfigService < ConfigService
 	def initialize
 		super
 	end
 
-	def self.init
-		self.instance
-	end
+	attr_accessor :cs_address
+
+	attr_accessor :fault_path
+	attr_accessor :membership_path
+
+	ebus_connect :get_cs_address, :cs_address
+
+	ebus_connect :get_fault_path, :fault_path
+	ebus_connect :get_membership_path, :membership_path
 end
 
 

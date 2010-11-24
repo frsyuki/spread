@@ -18,17 +18,36 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
+class HashStorage < Storage
+	def initialize(path)
+		@hash = {}
 	end
 
-	def self.init
-		self.instance
+	def close
+		@hash.clear
+	end
+
+	def get(key)
+		puts "hash storage get: #{key}"
+		@hash[key]
+	end
+
+	def set(key, data)
+		puts "hash storage set: #{key}=#{data}"
+		@hash[key] = data.to_s
+	end
+
+	def remove(key)
+		puts "hash storage remove: #{key}"
+		if @hash.delete(key)
+			true
+		else
+			false
+		end
+	end
+
+	def get_items
+		@hash.size
 	end
 end
 

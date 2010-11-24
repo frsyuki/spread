@@ -18,17 +18,28 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
+class ArrayUpdateLog < UpdateLog
+	def initialize(path)
+		@array = []
 	end
 
-	def self.init
-		self.instance
+	def close
+		@array.clear
+	end
+
+	def append(data, &block)
+		@array.push(data)
+		begin
+			block.call
+		rescue
+			@array.pop
+			raise
+		end
+	end
+
+	# offsetから1レコード取り出して返す
+	def get(offset)
+		return @array[offset], offset+1
 	end
 end
 

@@ -18,18 +18,27 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class CSConfigService < ConfigService
 	def initialize
 		super
 	end
 
-	def self.init
-		self.instance
+	def rpc_get_mds
+		@mds_addrs
 	end
+
+	#attr_accessor :self_address
+
+	attr_accessor :mds_addrs
+
+	attr_accessor :fault_path
+	attr_accessor :membership_path
+
+	ebus_connect :get_fault_path, :fault_path
+	ebus_connect :get_membership_path, :membership_path
+	ebus_connect :get_mds_addrs, :mds_addrs
+
+	ebus_connect :rpc_get_mds
 end
 
 

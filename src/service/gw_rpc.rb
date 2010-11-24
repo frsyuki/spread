@@ -18,17 +18,54 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class GWRPCService < Service
 	def initialize
 		super
 	end
 
-	def self.init
-		self.instance
+	def get(key)
+		dispatch(:get, key)
+	end
+
+	def set(key, map)
+		dispatch(:set, key, map)
+	end
+
+	def remove(key)
+		dispatch(:remove, key)
+	end
+
+	def status(cmd)
+		dispatch(:status, cmd)
+	end
+
+	def get_direct(key, rsid)
+		dispatch(:get_direct, key, rsid)
+	end
+
+	def set_direct(key, rsid, data)
+		dispatch(:set_direct, key, rsid, data)
+	end
+
+	def remove_direct(key)
+		dispatch(:remove_direct, key, rsid)
+	end
+
+	private
+	def dispatch(name, *args)
+		$log.trace { "rpc: #{name} #{args}" }
+		ebus_call("rpc_#{name}".to_sym, *args)
+	rescue => e
+		msg = ["rpc error on #{name}: #{e}"]
+		e.backtrace.each {|bt| msg <<  "    #{bt}" }
+		$log.error msg.join("\n")
+		raise
+	end
+
+	public
+	def self.serve
+		$net.serve(instance)
+		$net
 	end
 end
 

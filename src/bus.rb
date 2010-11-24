@@ -15,104 +15,92 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'lib/ebus'
-
 module SpreadOSD
 
 
 class EBus < EventBus::Static
+	signal_slot :run
+	signal_slot :shutdown
+
+	# NetService
+	call_slot :get_session
+	call_slot :start_timer
+
+	# TimerService
+	signal_slot :on_timer
+
+	# DSConfigService
+	call_slot :self_nid
+	call_slot :self_name
+	call_slot :self_address
+	call_slot :self_rsids
+	call_slot :self_node
+	call_slot :get_storage_path
+	call_slot :get_ulog_path
+	call_slot :get_rlog_path
+
+	# DSConfigService, GWConfigService
+	call_slot :get_cs_address
+
+	# GWConfigService
+	call_slot :get_mds_addrs
+
+	# CSConfigService, DSConfigService, GWConfigService
+	call_slot :get_fault_path
+	call_slot :get_membership_path
+	call_slot :rpc_get_mds
+
+	# StorageService, GatewayService
+	call_slot :rpc_get
+	call_slot :rpc_set
+	call_slot :rpc_remove
+	call_slot :rpc_get_direct
+	call_slot :rpc_set_direct
+	call_slot :rpc_remove_direct
+
+	# StorageService
+	call_slot :rpc_replicate_pull
+	call_slot :rpc_replicate_notify
+	call_slot :stat_db_items
+	call_slot :stat_cmd_get
+	call_slot :stat_cmd_set
+	call_slot :stat_cmd_remove
+
 	# MembershipService
-	signal_slot :node_fault_detected
-	call_slot :get_node_list
-	call_slot :get_fault_info
-	call_slot :rpc_attach_node
-	call_slot :rpc_detach_node
+	call_slot :get_session_nid
+	call_slot :get_node
+	call_slot :get_replset_nids
+	call_slot :is_fault
+	call_slot :stat_membership_info
+	call_slot :stat_replest_info
+	call_slot :stat_fault_info
+
+	# MembershipManagerService
+	call_slot :rpc_add_node
+	call_slot :rpc_remove_node
+	call_slot :rpc_update_node_info
 	call_slot :rpc_recover_node
-	call_slot :rpc_get_node_list
-	call_slot :rpc_get_fault_info
-	call_slot :rpc_get_new_nodes
-	call_slot :rpc_add_new_node
+	call_slot :rpc_set_replset_weight
+	call_slot :reset_fault_detector
+
+	# MembershipClientService
+	call_slot :choice_rsid
 
 	# HeartbeatServerService
 	call_slot :rpc_heartbeat
+	call_slot :update_config_sync
 
-	# XConfigService
-	call_slot :self_node
-	call_slot :self_name
-	call_slot :self_address
-	call_slot :self_nid
+	# HeartbeatClientService
+	call_slot :config_sync_register
 
-	# DSConfigService
-	call_slot :get_confsvr_address
-	call_slot :get_storage_path
+	# MDSService
+	call_slot :mds_get
+	call_slot :mds_set
+	call_slot :mds_remove
+	#call_slot :mds_add_or_get
 
-	# MDSConfigService
-	call_slot :get_nodes_path
-	call_slot :get_replset_path
-	call_slot :get_seqid_path
-	call_slot :get_mds_db_path
-
-	# GWConfigService
-	call_slot :get_listen_address
-
-	# TermFeederService
-	signal_slot :term_nids_changed
-	call_slot :term_order
-	call_slot :term_reset
-
-	# TermEaterService
-	call_slot :term_feed
-
-	# LocatorService
-	call_slot :get_node
-
-	# MetadataService
-	call_slot :rpc_add_key
-	call_slot :rpc_get_key
-	call_slot :rpc_get_child_keys
-	call_slot :rpc_set_attributes
-	call_slot :rpc_remove_key
-
-	# MasterStorageService
-	call_slot :rpc_add_object_direct
-	call_slot :rpc_replicate_pull
-
-	# SlaveStorageService
-	call_slot :rpc_replicate_request
-
-	# StorageIndexService
-	call_slot :get_storage_index
-	call_slot :register_storage
-	call_slot :rpc_get_object_direct
-
-	# RoutingService
-	call_slot :get_replset_nids
-	call_slot :choice_next_replset
-	call_slot :rpc_get_replset_info
-
-	# MetadataClientService
-	call_slot :metadata_get_key
-	call_slot :metadata_add_key
-	call_slot :metadata_get_child_keys
-	call_slot :metadata_set_attributes
-	call_slot :metadata_remove_key
-
-	# GatewayService
-	call_slot :rpc_get_object
-	call_slot :rpc_add_object
-	call_slot :rpc_set_object_attributes
-	call_slot :rpc_get_object_attributes
-
-	# OIDGeneratorService
-	call_slot :generate_next_oid
-
-	# global signals
-	signal_slot :run
-	signal_slot :shutdown
-	signal_slot :on_timer
-	signal_slot :node_list_changed
-	signal_slot :fault_info_changed
-	signal_slot :replset_info_changed
+	# StatusService
+	call_slot :rpc_status
 
 	def ebus_signal_error(err)
 		if RUBY_VERSION >= "1.9"
@@ -120,13 +108,12 @@ class EBus < EventBus::Static
 		else
 			bt = 9
 		end
-		#out = ["#{err}"]
-		#err.backtrace.each {|msg| out << "    #{msg}" }
-		#$log.debug out.join("\n")
-		$log.debug "#{err.backtrace[bt]}: #{err}"
+		out = ["#{err}"]
+		err.backtrace.each {|msg| out << "    #{msg}" }
+		$log.debug out.join("\n")
+		#$log.debug "#{err.backtrace[bt]}: #{err}"
 	end
 end
 
 
 end
-

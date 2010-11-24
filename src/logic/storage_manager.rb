@@ -18,18 +18,50 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
+class StorageManager
+	def initialize(self_nid)
+		@self_nid = self_nid
+		@master = MasterStorageManager.new(self)
+		@slave = SlaveStorageManager.new(self)
 	end
 
-	def self.init
-		self.instance
+	def open(storage_path, ulog_path, rlog_path)
+		@storage = Storage.open(storage_path)
+		@master.open(ulog_path, @storage)
+		@slave.open(rlog_path, @storage)
 	end
+
+	def close
+		@slave.close
+		@master.close
+		@storage.close
+	end
+
+	def get(key)
+		@storage.get(key)
+	end
+
+	def set(key, data)
+		@master.set(key, data)
+	end
+
+	def remove(key)
+		@master.remove(key)
+	end
+
+	def replicate_pull(offset, limit)
+		@master.replicate_pull(offset, limit)
+	end
+
+	def try_pull(nid, session)
+		@slave.try_pull(nid, session)
+	end
+
+	def get_items
+		@master.get_items
+	end
+
+	attr_reader :self_nid
 end
 
 

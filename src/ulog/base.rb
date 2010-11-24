@@ -18,17 +18,9 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
-	end
-
-	def self.init
-		self.instance
+class UpdateLog
+	def self.open(path)
+		ulog = FileUpdateLog.new(path)
 	end
 end
 

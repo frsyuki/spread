@@ -18,19 +18,9 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
-	end
-
-	def self.init
-		self.instance
-	end
-end
+CS_DEFAULT_PORT = 18700
+DS_DEFAULT_PORT = 18900
+GW_DEFAULT_PORT = 18800
 
 
 end

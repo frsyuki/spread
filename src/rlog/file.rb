@@ -18,17 +18,42 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
+class FileRelayLog < RelayLog
+	def initialize(path)
+		@path = path
+		@tmp_path = "#{@path}.tmp"
+		@file = nil
 	end
 
-	def self.init
-		self.instance
+	def close
+		if @file
+			@file.close
+			@file = nil
+		end
+		nil
+	end
+
+	def get_offset
+		unless @file
+			@file = File.open(@path)
+		end
+		@file.pos = 0
+		@file.read.to_i
+	rescue
+		0
+	end
+
+	def set_offset(offset, &block)
+		File.open(@tmp_path, "w") {|f|
+			f.write(offset.to_s)
+		}
+
+		if block
+			block.call
+		end
+
+		File.rename(@tmp_path, @path)
+		close
 	end
 end
 

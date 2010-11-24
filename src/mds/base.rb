@@ -18,17 +18,9 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
-	def initialize
-		super
-	end
-
-	def self.init
-		self.instance
+class MDS
+	def self.open(addrs)
+		TokyoTyrantMDS.new(addrs)
 	end
 end
 

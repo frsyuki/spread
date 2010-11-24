@@ -18,17 +18,9 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class ConfigService < Service
 	def initialize
 		super
-	end
-
-	def self.init
-		self.instance
 	end
 end
 

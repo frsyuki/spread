@@ -18,18 +18,21 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class NetService < Service
 	def initialize
 		super
 	end
 
-	def self.init
-		self.instance
+	def get_session(address)
+		$net.get_session(address)
 	end
+
+	def start_timer(interval, repeat, &block)
+		$net.start_timer(interval, repeat, &block)
+	end
+
+	ebus_connect :get_session
+	ebus_connect :start_timer
 end
 
 

@@ -18,17 +18,21 @@
 module SpreadOSD
 
 
-require 'singleton'
-
-class Service < EventBus::Base
-	include Singleton
-
+class CSStatusService < StatusService
 	def initialize
 		super
 	end
 
-	def self.init
-		self.instance
+	def stat_nodes
+		ebus_call(:stat_membership_info)
+	end
+
+	def stat_replset
+		ebus_call(:stat_replest_info)
+	end
+
+	def stat_fault
+		ebus_call(:stat_fault_info)
 	end
 end
 
