@@ -163,6 +163,8 @@ class HeartbeatMemberService < HeartbeatClientService
 			# MembershipMemberService
 			#register_self
 		end
+
+		ebus_call(:try_register_node)
 	end
 end
 

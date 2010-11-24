@@ -205,20 +205,19 @@ class MembershipMemberService < MembershipService
 		ebus_call(:config_sync_register, CONFIG_SYNC_MEMBERSHIP,
 							@membership.get_hash) do |obj|
 			@membership.from_msgpack(obj)
-			check_register_self
+			try_register_node
 			@membership.get_hash
 		end
 
 		ebus_call(:config_sync_register, CONFIG_SYNC_FAULT_LIST,
 							@fault_list.get_hash) do |obj|
 			@fault_list.from_msgpack(obj)
-			check_register_self
+			try_register_node
 			@fault_list.get_hash
 		end
 	end
 
-	private
-	def check_register_self
+	def try_register_node
 		begin
 			node = @membership.get_node(@self_nid)
 		rescue
@@ -244,6 +243,9 @@ class MembershipMemberService < MembershipService
 		nil
 	end
 
+	ebus_connect :try_register_node
+
+	private
 	def get_cs_session
 		ebus_call(:get_session, ebus_call(:get_cs_address))
 	end

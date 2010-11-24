@@ -97,7 +97,9 @@ when 'get_data'
 	key = cmd_args(1)
 	map = call(nil, :get, key)
 	if map
-		pp map["data"]
+		data = map["data"]
+		size = (data || "").size
+		puts "#{size} bytes"
 	else
 		pp nil
 	end

@@ -73,7 +73,6 @@ class FaultList
 				fault_nids << row[0].to_i
 			end
 
-			p fault_nids
 			@fault_nids = fault_nids
 
 		rescue
@@ -162,7 +161,7 @@ class FaultDetector
 	def initialize
 		@period = 10
 		@detect = 5
-		@first_detect = 600
+		@first_detect = 20  # FIXME
 		@map = {}  # {nid => Term}
 	end
 

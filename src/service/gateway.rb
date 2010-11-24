@@ -66,9 +66,12 @@ class GatewayService < Service
 
 			if data
 				if rsid_s
-					map[DATA_COLUMN] = rsid_s
+					rsid = rsid_s.to_i
+				else
+					rsid = ebus_call(:choice_rsid)
 				end
-				set_data_set_map(rsid_s.to_i, key, map, data) do |success|
+				map[DATA_COLUMN] = rsid.to_s
+				set_data_set_map(rsid, key, map, data) do |success|
 					ar.result(success)
 				end
 

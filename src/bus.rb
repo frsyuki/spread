@@ -86,6 +86,9 @@ class EBus < EventBus::Static
 	# MembershipClientService
 	call_slot :choice_rsid
 
+	# MembershipMemberService
+	call_slot :try_register_node
+
 	# HeartbeatServerService
 	call_slot :rpc_heartbeat
 	call_slot :update_config_sync

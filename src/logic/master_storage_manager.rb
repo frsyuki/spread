@@ -24,7 +24,6 @@ class MasterStorageManager
 	end
 
 	def open(ulog_path, storage)
-		puts "open"
 		@ulog = UpdateLog.open(ulog_path)
 		@storage = storage
 	end

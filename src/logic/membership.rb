@@ -44,7 +44,12 @@ class NodeList
 	end
 
 	def delete(nid)
-		@map.delete(nid)
+		if node = @map.delete(nid)
+			on_change
+			node
+		else
+			false
+		end
 	end
 
 	def include?(nid)

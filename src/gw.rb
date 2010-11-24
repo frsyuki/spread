@@ -94,6 +94,10 @@ net = GWRPCService.serve
 
 $ebus.call(:run)
 
+$ebus.connect(:on_timer) do
+	GC.start # FIXME
+end
+
 net.listen(listen_host, listen_port)
 
 puts "start on #{listen_host}:#{listen_port}"

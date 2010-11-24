@@ -31,7 +31,7 @@ class SlaveStorageManager
 			@rlog.close
 		end
 
-		def try_pull(session, limit)
+		def try_pull(nid, session, limit)
 			if @pulling
 				return nil
 			end
@@ -40,7 +40,7 @@ class SlaveStorageManager
 			begin
 				offset = @rlog.get_offset
 				session.callback(:replicate_pull, offset, limit) do |future|
-					ack_replicate_pull(future)
+					ack_replicate_pull(nid, future)
 				end
 
 			rescue
@@ -50,7 +50,7 @@ class SlaveStorageManager
 		end
 
 		private
-		def ack_replicate_pull(future)
+		def ack_replicate_pull(nid, future)
 			next_offset, buffer = future.get
 
 			return if buffer.empty?
@@ -63,7 +63,7 @@ class SlaveStorageManager
 
 		rescue
 			# FIXME log
-			$log.error $!
+			$log.error "try pull from nid=#{nid}: #{$!}"
 			raise
 		ensure
 			@pulling = false
@@ -112,7 +112,7 @@ class SlaveStorageManager
 
 	def try_pull(nid, session)
 		repl = open_replicator(nid)
-		repl.try_pull(session, PULL_LIMIT)
+		repl.try_pull(nid, session, PULL_LIMIT)
 	end
 
 	private
