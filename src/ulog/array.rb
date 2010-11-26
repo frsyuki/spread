@@ -27,8 +27,8 @@ class ArrayUpdateLog < UpdateLog
 		@array.clear
 	end
 
-	def append(data, &block)
-		@array.push(data)
+	def append(nid, data, &block)
+		@array.push([nid,data])
 		begin
 			block.call
 		rescue
@@ -37,9 +37,13 @@ class ArrayUpdateLog < UpdateLog
 		end
 	end
 
-	# offsetから1レコード取り出して返す
 	def get(offset)
-		return @array[offset], offset+1
+		pair = @array[offset]
+		if pair
+			return nil, offset
+		else
+			return pair[1], offset+1
+		end
 	end
 end
 

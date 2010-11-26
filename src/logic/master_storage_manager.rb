@@ -21,6 +21,7 @@ module SpreadOSD
 class MasterStorageManager
 	def initialize(manager)
 		@manager = manager
+		@self_nid = manager.self_nid
 	end
 
 	def open(ulog_path, storage)
@@ -33,14 +34,14 @@ class MasterStorageManager
 	end
 
 	def set(key, data)
-		@ulog.append(key) do
+		@ulog.append(@self_nid, key) do
 			@storage.set(key, data)
 		end
 		true
 	end
 
 	def remove(key)
-		@ulog.append(key) do
+		@ulog.append(@self_nid, key) do
 			@storage.remove(key)
 		end
 		true
