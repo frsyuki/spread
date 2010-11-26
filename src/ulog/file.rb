@@ -44,18 +44,16 @@ class FileUpdateLog < UpdateLog
 	MAGICK = "SoULog00"
 
 	class Record
-		def initialize(reltime, nid, data)
+		def initialize(reltime, data)
 			@reltime = reltime
-			@nid = nid
 			@data = data
 		end
 
 		attr_reader :reltime
-		attr_reader :nid
 		attr_reader :data
 
 		def write(stream)
-			meta = [@reltime, @nid]
+			meta = [@reltime]
 
 			bmeta = meta.to_msgpack
 			rsize = bmeta.size + @data.size
@@ -95,15 +93,14 @@ class FileUpdateLog < UpdateLog
 			meta = u.data
 
 			reltime = meta[0]
-			nid     = meta[1]
 
 			if need_data
 				stream.pos = ipos + rsize_len + meta_len
 				data = stream.read(rsize - meta_len)
-				return reltime, nid, data
+				return reltime, data
 			else
 				stream.pos = ipos + rsize_len + rsize
-				return reltime, nid
+				return reltime
 			end
 		end
 	end
@@ -128,7 +125,7 @@ class FileUpdateLog < UpdateLog
 
 		def self.read(stream)
 			offset = stream.pos
-			reltime, nid = Record.read_nodata(stream)
+			reltime = Record.read_nodata(stream)
 			new(reltime, offset)
 		end
 	end
@@ -196,7 +193,7 @@ class FileUpdateLog < UpdateLog
 			@file.close
 		end
 
-		def append(atime, nid, data, &block)
+		def append(atime, data, &block)
 			reltime = atime - @atime
 			if reltime <= @last_reltime
 				reltime = @last_reltime+1
@@ -205,7 +202,7 @@ class FileUpdateLog < UpdateLog
 
 			offset = get_offset
 
-			r = Record.new(reltime, nid, data)
+			r = Record.new(reltime, data)
 			ref = RecordRef.new(reltime, offset)
 
 			@file.pos = offset
@@ -220,7 +217,7 @@ class FileUpdateLog < UpdateLog
 			reltime + @atime
 		end
 
-		def get(time, nids)
+		def get(time)
 			reltime = time - @atime
 
 			while true
@@ -234,10 +231,6 @@ class FileUpdateLog < UpdateLog
 				end
 
 				r = ref.read_body(@file)
-				unless nids.include?(r.nid)
-					reltime = r.reltime
-					next
-				end
 
 				return r.data, r.reltime + @atime
 			end
@@ -302,17 +295,16 @@ class FileUpdateLog < UpdateLog
 		@f.close
 	end
 
-	def append(nid, data, &block)
+	def append(data, &block)
 		# FIXME rotation
 		atime = next_time
-		atime = @f.append(atime, nid, data, &block)
+		atime = @f.append(atime, data, &block)
 		atime
 	end
 
 	def get(offset)
 		# FIXME rotation
-		nids = [0]  # FIXME
-		@f.get(offset, nids)
+		@f.get(offset)
 	end
 
 	private
@@ -336,7 +328,6 @@ if $0 == __FILE__
 
 	def check(a, b)
 		if a.reltime != b.reltime ||
-				a.nid != b.nid ||
 				a.data != b.data
 			raise "test failed: expect #{a.inspect} but #{b.inspect}"
 		end
@@ -346,7 +337,7 @@ if $0 == __FILE__
 	io = StringIO.new
 
 	1000.times {|i|
-		s = FileUpdateLog::Record.new(rand(i).to_i, rand(i).to_i, "abc"*rand(i*5))
+		s = FileUpdateLog::Record.new(rand(i).to_i, "abc"*rand(i*5))
 		s.write(io)
 		src << s
 	}
@@ -366,7 +357,7 @@ if $0 == __FILE__
 	ulog = FileUpdateLog.new("./test/")
 	begin
 
-		offset = ulog.append(0, "dummy") do
+		offset = ulog.append("dummy") do
 			true
 		end
 
@@ -374,7 +365,7 @@ if $0 == __FILE__
 		100.times {|i|
 			data = "data#{rand(i)}"
 
-			ulog.append(0, data) do
+			ulog.append(data) do
 			end
 
 			src << data
