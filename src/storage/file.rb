@@ -19,6 +19,7 @@ module SpreadOSD
 
 
 require 'fileutils'
+require 'uri'
 
 class FileStorage < Storage
 	def initialize(path)
@@ -96,19 +97,16 @@ class FileStorage < Storage
 	def key_to_path(key)
 		digest = Digest::MD5.digest(key)
 		dir = "%03d" % digest.unpack('C')[0]
-		fname = encode64path(key)
+		fname = encode_path(key)
 		File.join(@path, dir, fname)
 	end
 
-	def encode64path(s)
-		b = [s].pack('m')
-		b.tr!('/','-')
-		b.gsub!(/[=\n]/,'')
-		b
+	def encode_path(s)
+		URI.encode(s, /[^-_.a-zA-Z0-9]/n)
 	end
 
-	def decode64path(b)
-		b.tr('-','/').unpack('m')[0]
+	def decode_path(b)
+		URI.decode(b, /[^-_.a-zA-Z0-9]/n)
 	end
 
 	def make_dir(path)

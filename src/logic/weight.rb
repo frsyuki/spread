@@ -131,7 +131,7 @@ class WeightBalancer < WeightInfo
 
 	def choice_rsid
 		@rr += 1
-		@rr = 0 if @rr > @array.size
+		@rr = 0 if @rr >= @array.size
 		@array[@rr]
 	end
 

@@ -65,7 +65,7 @@ class GatewayService < Service
 			rsid_s = current[DATA_COLUMN]
 
 			if data
-				if rsid_s
+				if rsid_s && !rsid_s.empty?
 					rsid = rsid_s.to_i
 				else
 					rsid = ebus_call(:choice_rsid)

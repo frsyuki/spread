@@ -247,7 +247,7 @@ class Membership
 	def get_node(nid)
 		node = @nodes.get(nid)
 		unless node
-			raise "no such node id: #{nid}"
+			raise "no such node id: #{nid.inspect}"
 		end
 		node
 	end
@@ -255,7 +255,7 @@ class Membership
 	def get_replset_nids(rsid)
 		nids = @replset[rsid]
 		if !nids || nids.empty?
-			raise "no such rsid: #{rsid}"
+			raise "no such rsid: #{rsid.inspect}"
 		end
 		nids
 	end
