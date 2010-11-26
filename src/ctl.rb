@@ -79,7 +79,9 @@ end
 def call(klass, *args)
 	#start = Time.now
 
-	result = $net.get_session(*$addr).call(*args)
+	s = $net.get_session(*$addr)
+	s.timeout = 20
+	result = s.call(*args)
 	if klass && result
 		result = klass.new.from_msgpack(result)
 	end

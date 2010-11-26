@@ -47,8 +47,9 @@ class MasterStorageManager
 	end
 
 	def replicate_pull(offset, limit)
-		buffer = ''
 		keys = []
+		msgs = []
+		size = 0
 		while true
 			key, noffset = @ulog.get(offset)
 			unless key
@@ -58,13 +59,14 @@ class MasterStorageManager
 				offset = noffset
 			else
 				data = @storage.get(key)  # data may be null
-				[key, data].to_msgpack(buffer)
+				msgs << [key, data]
 				keys << key
+				size += data.size
 				offset = noffset
-				break if buffer.size > limit
+				break if size > limit
 			end
 		end
-		[offset, buffer]
+		[offset, msgs]
 	end
 
 	def get_items

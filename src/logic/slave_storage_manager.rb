@@ -24,7 +24,6 @@ class SlaveStorageManager
 			@rlog = RelayLog.open(rlog_path)
 			@storage = storage
 			@pulling = false
-			@pac = MessagePack::Unpacker.new
 		end
 
 		def close
@@ -51,11 +50,11 @@ class SlaveStorageManager
 
 		private
 		def ack_replicate_pull(nid, future)
-			next_offset, buffer = future.get
+			next_offset, msgs = future.get
 
-			return if buffer.empty?
+			return if msgs.empty?
 
-			each_message(buffer) {|key, data|
+			msgs.each {|key,data|
 				apply(key, data)
 			}
 
@@ -74,21 +73,6 @@ class SlaveStorageManager
 				@storage.set(key, data)
 			else
 				@storage.remove(key)
-			end
-		end
-
-		def each_message(buffer, &block)
-			@pac.reset
-			n = 0
-			while n < buffer.size
-				n = @pac.execute(buffer, n)
-				if @pac.finished?
-					obj = @pac.data
-					@pac.reset
-					block.call(obj)
-					next unless buffer.empty?
-				end
-				break
 			end
 		end
 	end
