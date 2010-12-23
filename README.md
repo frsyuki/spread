@@ -5,7 +5,7 @@ A scalable distributed storage system.
 
 ## Overview
 
-SpreadOSD is a distributed key-value storage system that can store large data like photos, musics, movies, etc.
+SpreadOSD is a distributed storage system that can store large data like photos, musics, movies, etc.
 
 
 ## Architecture
@@ -96,9 +96,9 @@ Following example runs SpreadOSD on 6-node cluster:
                  --name mynode06 --storage /var/spread
     
     # Runs a GW on the application server.
-    [on client]$ spread-gw --mds node01 --port 18800
+    [on client]$ spread-gw --cs node01 --port 18800
 
-Confirm status of the cluster using *spreadctl* command:
+Confirm status of the cluster using *spreadctl* command.
 
     $ spreadctl node01 nodes
     nid            name                 address   replset      state
@@ -150,7 +150,7 @@ First, confirm the status of the cluster using *spreadctl* command.
 
 Next, run new servers.
 
-At last, the status will change:
+Then confirm the status.
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
@@ -158,33 +158,33 @@ At last, the status will change:
       1        mynode04      192.168.0.14:18900         0     active
       2        mynode05      192.168.0.15:18900         1     active
       3        mynode06      192.168.0.16:18900         1     active
-      4        mynode07      192.168.0.15:18900         2     active
-      5        mynode08      192.168.0.16:18900         2     active
+      4        mynode07      192.168.0.17:18900         2     active
+      5        mynode08      192.168.0.18:18900         2     active
 
 You may want to decrease the weight of the old replication sets.
 
 
 ### Changing weight of load balancing
 
-  $ spreadctl csaddr replset
-  replset   weight       nids  names
-        0       10        0,1  mynode03,mynode04
-        1       10        2,3  mynode03,mynode06
-        2       10        4,5  mynode07,mynode08
+    $ spreadctl csaddr replset
+    replset   weight       nids  names
+          0       10        0,1  mynode03,mynode04
+          1       10        2,3  mynode03,mynode06
+          2       10        4,5  mynode07,mynode08
 
-  $ spreadctl csaddr set_weight 0 5
-  $ spreadctl csaddr set_weight 1 5
+    $ spreadctl csaddr set_weight 0 5
+    $ spreadctl csaddr set_weight 1 5
 
-  $ spreadctl csaddr replset
-  replset   weight       nids  names
-        0        5        0,1  mynode03,mynode04
-        1        5        2,3  mynode03,mynode06
-        2       10        4,5  mynode07,mynode08
+    $ spreadctl csaddr replset
+    replset   weight       nids  names
+          0        5        0,1  mynode03,mynode04
+          1        5        2,3  mynode03,mynode06
+          2       10        4,5  mynode07,mynode08
 
 
 ### Recovering crashed DSs
 
-If a DS is crashed, it status will be "FAULT". Confirm it using *spreadctl* first.
+If a DS is crashed, its status will be **FAULT**. Confirm it using *spreadctl* first.
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
@@ -194,9 +194,9 @@ If a DS is crashed, it status will be "FAULT". Confirm it using *spreadctl* firs
       3        mynode06      192.168.0.16:18900         1     active
 
 If the data is not lost, just restart the fault server.
-Otherwise, run a new server using the same --nid and --rsid option with the crashed server.
+Otherwise, run a new server using the same *--nid* and *--rsid* option with the crashed server.
 
-Then confirm that the status is went back to "active".
+Then confirm that the status is went back to **active**.
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
@@ -208,7 +208,7 @@ Then confirm that the status is went back to "active".
 
 ### Detaching crashed DSs
 
-If a DS is crashed, it status will be "FAULT". Confirm it using *spreadctl* first.
+If a DS is crashed, its status will be **FAULT**. Confirm it using *spreadctl* first.
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
@@ -221,7 +221,7 @@ If you want to detach the instead of recovering, run following command:
 
     $ spreadctl csaddr remove_node 2
 
-Then confirm the status:
+Then confirm the status.
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
@@ -236,8 +236,8 @@ Just restart it.
 
 Note that CS stores status of the cluster to "$storage_path/membership" and "$storage_path/fault" file.
 
-If membership file is lost, DSs whose status is "FAULT" will become detached.
-If fault file is lost, DSs whose status is "FAULT" will become "active", and go back to "FAULT" after timeout time elapsed.
+If membership file is lost, DSs whose status is **FAULT** will become detached.
+If fault file is lost, DSs whose status is **FAULT** will become **active**, and go back to **FAULT** after timeout time elapsed.
 
 If you are going to recover these DSs, recover DSs before restarting CS.
 
@@ -245,6 +245,7 @@ If you are going to recover these DSs, recover DSs before restarting CS.
 ### Recovering crashed GW
 
 GW is a *stateless* server, so just restart it.
+
 
 
 ## Protocol
@@ -266,7 +267,7 @@ Returns true if it succeeded. Otherwise, it returns false.
 
 
 ### remove(key:Raw) -> success:Boolean
-Removes a map from the storage. A column named "data" in the *map* will be stored on DS. Other columns are stored on MDS.
+Removes a map from the storage.
 
 Returns true if it succeeded. Otherwise, it returns false.
 
@@ -289,6 +290,7 @@ Removes a data to the storage. This function does not access to the MDS.
 Returns true if it succeeded. Otherwise, it returns false.
 
 
+
 ## Reference
 
 ### spreadctl
@@ -302,6 +304,7 @@ Returns true if it succeeded. Otherwise, it returns false.
        remove_node <nid>            remove a node from the cluster
        set_weight <rsid> <weight>   set distribution weight
 
+
 ### spreadcli
 
     Usage: spreadcli <cs address[:port]> <command> [options]
@@ -314,6 +317,7 @@ Returns true if it succeeded. Otherwise, it returns false.
        get_direct <rsid> <key>          get the data from the replication set directly
        set_direct <rsid> <key> <data>   set the data to the replication set directly
        remove_direct <rsid> <key>       remove the data from the replication set directly
+
 
 ### spread-cs
 
@@ -338,6 +342,7 @@ Returns true if it succeeded. Otherwise, it returns false.
         -m, --cs ADDRESS                 address of config server
         -f, --fault_path PATH            path to fault status file
         -b, --membership PATH            path to membership status file
+
 
 ### spread-gw
 
