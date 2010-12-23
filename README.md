@@ -5,7 +5,7 @@ A scalable distributed storage system.
 
 ## Overview
 
-SpreadOSD is a distributed key-value storage system that can store large value like photos, sounds, movies, etc.
+SpreadOSD is a distributed key-value storage system that can store large data like photos, musics, movies, etc.
 
 
 ## Architecture
@@ -119,7 +119,7 @@ Now the cluster is active. Try to set and get using *spreadcli* command:
 
 ### Run on single host
 
-You can test SpreadOSD on single host:
+You can test SpreadOSD on single host as follows:
 
     [localhost]$ ttserver mds.tct
     [localhost]$ spread-cs --mds 127.0.0.1 -s ./data-cs
@@ -132,6 +132,119 @@ You can test SpreadOSD on single host:
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18903 --nid 3 --rsid 1 \
                  --name ds3 --storage ./data-ds3
     [localhost]$ spread-gw --cs 127.0.0.1
+
+
+
+## Cluster management
+
+### Adding new DSs
+
+First, confirm the status of the cluster using *spreadctl* command.
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode04      192.168.0.14:18900         0     active
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
+Next, run new servers.
+
+At last, the status will change:
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode04      192.168.0.14:18900         0     active
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+      4        mynode07      192.168.0.15:18900         2     active
+      5        mynode08      192.168.0.16:18900         2     active
+
+You may want to decrease the weight of the old replication sets.
+
+
+### Changing weight of load balancing
+
+  $ spreadctl csaddr replset
+  replset   weight       nids  names
+        0       10        0,1  mynode03,mynode04
+        1       10        2,3  mynode03,mynode06
+        2       10        4,5  mynode07,mynode08
+
+  $ spreadctl csaddr set_weight 0 5
+  $ spreadctl csaddr set_weight 1 5
+
+  $ spreadctl csaddr replset
+  replset   weight       nids  names
+        0        5        0,1  mynode03,mynode04
+        1        5        2,3  mynode03,mynode06
+        2       10        4,5  mynode07,mynode08
+
+
+### Recovering crashed DSs
+
+If a DS is crashed, it status will be "FAULT". Confirm it using *spreadctl* first.
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode04      192.168.0.14:18900         0     FAULT
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
+If the data is not lost, just restart the fault server.
+Otherwise, run a new server using the same --nid and --rsid option with the crashed server.
+
+Then confirm that the status is went back to "active".
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode07      192.168.0.17:18900         0     active
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
+
+### Detaching crashed DSs
+
+If a DS is crashed, it status will be "FAULT". Confirm it using *spreadctl* first.
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode04      192.168.0.14:18900         0     FAULT
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
+If you want to detach the instead of recovering, run following command:
+
+    $ spreadctl csaddr remove_node 2
+
+Then confirm the status:
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
+
+### Recovering crashed CS
+
+Just restart it.
+
+Note that CS stores status of the cluster to "$storage_path/membership" and "$storage_path/fault" file.
+
+If membership file is lost, DSs whose status is "FAULT" will become detached.
+If fault file is lost, DSs whose status is "FAULT" will become "active", and go back to "FAULT" after timeout time elapsed.
+
+If you are going to recover these DSs, recover DSs before restarting CS.
+
+
+### Recovering crashed GW
+
+GW is a *stateless* server, so just restart it.
 
 
 ## Protocol
