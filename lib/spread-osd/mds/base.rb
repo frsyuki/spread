@@ -20,7 +20,7 @@ module SpreadOSD
 
 class MDS
 	def self.open(addrs)
-		TokyoTyrantMDS.new(addrs)
+		AsyncTokyoTyrantMDS.new(addrs)
 	end
 end
 
