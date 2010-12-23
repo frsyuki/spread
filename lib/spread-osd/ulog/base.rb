@@ -20,7 +20,10 @@ module SpreadOSD
 
 class UpdateLog
 	def self.open(path)
-		ulog = FileUpdateLog.new(path)
+		if path == "*"
+			return ArrayUpdateLog.new("")
+		end
+		FileUpdateLog.new(path)
 	end
 end
 

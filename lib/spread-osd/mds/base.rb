@@ -19,8 +19,13 @@ module SpreadOSD
 
 
 class MDS
-	def self.open(addrs)
-		AsyncTokyoTyrantMDS.new(addrs)
+	def self.open(expr)
+		if expr =~ /astt:(.*)/
+			return AsyncTokyoTyrantMDS.new($~[1])
+		elsif expr =~ /tt:(.*)/
+			return TokyoTyrantMDS.new($~[1])
+		end
+		return TokyoTyrantMDS.new(expr)
 	end
 end
 

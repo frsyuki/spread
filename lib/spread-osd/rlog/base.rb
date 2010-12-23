@@ -20,8 +20,10 @@ module SpreadOSD
 
 class RelayLog
 	def self.open(path)
-		rlog = FileRelayLog.new(path)
-		#rlog = MemoryRelayLog.new(path)
+		if path == "*"
+			return MemoryRelayLog.new("")
+		end
+		return FileRelayLog.new(path)
 	end
 end
 

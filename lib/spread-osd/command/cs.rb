@@ -59,7 +59,7 @@ op.on('-b', '--membership PATH', "path to membership status file") do |path|
 	conf.membership_path = path
 end
 
-op.on('-t', '--mds ADDRESSes', "addresses of metadata server") do |addrs|
+op.on('-t', '--mds ADDRESS', "address of metadata server") do |addrs|
 	conf.mds_addrs = addrs
 end
 
