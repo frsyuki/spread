@@ -84,7 +84,7 @@ class StorageClientService < Service
 
 	def master_sort(nids, key)
 		digest = Digest::MD5.digest(key)
-		i = digest[15].unpack('C')[0]
+		i = digest.slice(15,1).unpack('C')[0]
 		n = i % nids.size
 		n.times {
 			nids.push nids.shift

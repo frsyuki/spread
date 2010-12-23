@@ -355,6 +355,92 @@ Returns true if it succeeded. Otherwise, it returns false.
 
 
 
+## Modifing source code
+
+SpreadOSD is licensed as an open source software. You can modify its source code.
+
+### Source tree
+
+    lib/spread-osd
+    |
+    +-- mds/                  Client implementations of metadata server
+    |   |
+    |   +-- base.rb
+    |   +-- tokyotyrant.rb    A client implementation for Tokyo tyrant MDS
+    |   +-- astt.rb           Asynchronous version of Tokyo Tyrant MDS
+    |
+    +-- storage/              Storage implementations of data servers
+    |   |
+    |   +-- base.rb
+    |   +-- hash.rb           On-memory storage based on a Hash instance
+    |   +-- file.rb           File based storage
+    |
+    +-- rlog/                 Relay log implementations of data servers
+    |   |
+    |   +-- base.rb
+    |   +-- memory.rb         On-memory relay log
+    |   +-- file.rb           Text file based relay log
+    |
+    +-- ulog/                 Update log implementations of data servers
+    |   |
+    |   +-- base.rb
+    |   +-- array.rb          On-memory update log based on an Array instance
+    |   +-- file.rb           Binary file based update log
+    |
+    +-- lib/                  Fundamental libraries
+    |   |
+    |   +-- ebus.rb           EventBus
+    |   +-- cclog.rb          A logging library
+    |   +-- vbcode.rb         Variable byte code
+    |
+    +-- logic/
+    |   |
+    |   +-- node.rb                     Definition of the Node class
+    |   +-- membership.rb               Node list and replication-set list
+    |   +-- fault_detector.rb           Fault detector
+    |   +-- storage_manager.rb          Storage interface
+    |   +-- master_storage_manager.rb   Storage interface for replication master
+    |   +-- slave_storage_manager.rb    Storage interface for replication slave
+    |   +-- weight.rb                   Load balancing feature
+    |
+    +-- service/
+    |   |
+    |   +-- base.rb
+    |   +-- net.rb
+    |   +-- timer.rb
+    |   |
+    |   +-- mds.rb
+    |   |
+    |   +-- storage.rb
+    |   +-- storage_client.rb
+    |   |
+    |   +-- gateway.rb
+    |   +-- heartbeat.rb
+    |   +-- membership.rb
+    |   |
+    |   +-- status.rb
+    |   +-- cs_status.rb
+    |   +-- ds_status.rb
+    |   +-- gw_status.rb
+    |   |
+    |   +-- config.rb
+    |   +-- cs_config.rb
+    |   +-- ds_config.rb
+    |   +-- gw_config.rb
+    |   |
+    |   +-- cs_rpc.rb
+    |   +-- ds_rpc.rb
+    |   +-- gw_rpc.rb
+    |
+    +-- comand/
+    |
+    +-- bus.rb                Declarations of slots of EventBus
+    |
+    +-- default.rb            Some constants like default port number
+    |
+    +-- common.rb
+
+
 ## License
 
     Copyright (C) 2010  FURUHASHI Sadayuki
