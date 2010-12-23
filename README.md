@@ -15,11 +15,10 @@ SpreadOSD consists of 4 kind of servers:
   - **DS (data server)** stores and replicates contents on the disk.
   - **MDS (metadata server)** stores metadata of the contents. It includes the information that shows which DS stores the content. [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) is used for MDS.
   - **GW (gateway)** receives requests from applications and relays it to appropriate DS.
-  - **CS (config server)** manages cluster information. It also watches status of DSs and detaches crashed DSs automatically.
+  - **CS (config server)** manages cluster configuration. It also watches status of DSs and detaches crashed DSs automatically.
 
 
 Multiple DSs composes a group that each member stores same data. The group is called as **replication-set**.
-
 
 
                         App     App     App
@@ -107,7 +106,7 @@ Confirm status of the cluster using *spreadctl* command.
       2        mynode05      192.168.0.15:18900         1     active
       3        mynode06      192.168.0.16:18900         1     active
 
-Now the cluster is active. Try to set and get using *spreadcli* command:
+Now the cluster is active. Try to set and get using *spreadcli* command.
 
     # GW is running on localhost
     [on client]$ spreadcli 127.0.0.1 set "key1" '{"type":"png","data":"..."}'
@@ -161,7 +160,7 @@ Then confirm the status.
       4        mynode07      192.168.0.17:18900         2     active
       5        mynode08      192.168.0.18:18900         2     active
 
-You may want to decrease the weight of the old replication sets.
+You may want to decrease the *weight* of the old replication sets.
 
 
 ### Changing weight of load balancing
@@ -242,7 +241,7 @@ If fault file is lost, DSs whose status is **FAULT** will become **active**, and
 If you are going to recover these DSs, recover DSs before restarting CS.
 
 
-### Recovering crashed GW
+### Recovering fault GW
 
 GW is a *stateless* server, so just restart it.
 
@@ -273,19 +272,19 @@ Returns true if it succeeded. Otherwise, it returns false.
 
 
 ### get_direct(key:Raw, rsid:Integer) -> data:Raw or nil
-Gets a data from the storage. This function does not access to the MDS.
+Gets a data from the storage. This command does not access to the MDS.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
 ### set_direct(key:Raw, data:Raw, rsid:Integer) -> success:Boolean
-Sets a data to the storage. This function does not access to the MDS.
+Sets a data to the storage. This command does not access to the MDS.
 
 Returns true if it succeeded. Otherwise, it returns false.
 
 
 ### remove_direct(key:Raw, rsid:Integer) -> succeeded:Boolean
-Removes a data to the storage. This function does not access to the MDS.
+Removes a data to the storage. This command does not access to the MDS.
 
 Returns true if it succeeded. Otherwise, it returns false.
 
@@ -366,7 +365,7 @@ SpreadOSD is licensed as an open source software. You can modify its source code
     +-- mds/                  Client implementations of metadata server
     |   |
     |   +-- base.rb
-    |   +-- tokyotyrant.rb    A client implementation for Tokyo tyrant MDS
+    |   +-- tokyotyrant.rb    A client implementation for Tokyo Tyrant MDS
     |   +-- astt.rb           Asynchronous version of Tokyo Tyrant MDS
     |
     +-- storage/              Storage implementations of data servers
@@ -379,13 +378,13 @@ SpreadOSD is licensed as an open source software. You can modify its source code
     |   |
     |   +-- base.rb
     |   +-- memory.rb         On-memory relay log
-    |   +-- file.rb           Text file based relay log
+    |   +-- file.rb           file based relay log
     |
     +-- ulog/                 Update log implementations of data servers
     |   |
     |   +-- base.rb
     |   +-- array.rb          On-memory update log based on an Array instance
-    |   +-- file.rb           Binary file based update log
+    |   +-- file.rb           file based update log
     |
     +-- lib/                  Fundamental libraries
     |   |
@@ -396,12 +395,12 @@ SpreadOSD is licensed as an open source software. You can modify its source code
     +-- logic/
     |   |
     |   +-- node.rb                     Definition of the Node class
-    |   +-- membership.rb               Node list and replication-set list
     |   +-- fault_detector.rb           Fault detector
+    |   +-- membership.rb               Node list and replication-set list
+    |   +-- weight.rb                   Load balancing feature
     |   +-- storage_manager.rb          Storage interface
     |   +-- master_storage_manager.rb   Storage interface for replication master
     |   +-- slave_storage_manager.rb    Storage interface for replication slave
-    |   +-- weight.rb                   Load balancing feature
     |
     +-- service/
     |   |
