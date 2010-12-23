@@ -26,7 +26,7 @@ class StorageClientService < Service
 	def get(rsid, key, &block)
 		nids = ebus_call(:get_replset_nids, rsid).dup
 
-		ha_call(nids, :get, key) do |data,error|
+		ha_call(nids, key, :get, key) do |data,error|
 			# FIXME error
 			block.call(data)
 		end
@@ -37,7 +37,7 @@ class StorageClientService < Service
 	def set(rsid, key, data, &block)
 		nids = ebus_call(:get_replset_nids, rsid).dup
 
-		ha_call(nids, :set, key, data) do |success,error|
+		ha_call(nids, key, :set, key, data) do |success,error|
 			# FIXME error
 			block.call(success || false)
 		end
@@ -46,15 +46,16 @@ class StorageClientService < Service
 	def remove(rsid, key, &block)
 		nids = ebus_call(:get_replset_nids, rsid).dup
 
-		ha_call(nids, :remove, key) do |success,error|
+		ha_call(nids, key, :remove, key) do |success,error|
 			# FIXME error
 			block.call(success || false)
 		end
 	end
 
 	private
-	def ha_call(nids, *args, &block)
+	def ha_call(nids, key, *args, &block)
 		active_nids = nids.dup
+		master_sort(active_nids, key)
 		active_nids.reject! {|nid|
 			ebus_call(:is_fault, nid)
 		}
@@ -66,19 +67,29 @@ class StorageClientService < Service
 	end
 
 	def ha_call_impl(nids, *args, &block)
-		nid = nids.pop
+		nid = nids.shift
 		ebus_call(:get_session_nid, nid).callback(*args) do |future|
 			if future.error
 				$log.warn future.error  # FIXME log
 				if nids.empty?
 					block.call(nil, future.error)
 				else
-					ha_call(nids, *args, &block)
+					ha_call_impl(nids, *args, &block)
 				end
 			else
 				block.call(future.result, nil)
 			end
 		end
+	end
+
+	def master_sort(nids, key)
+		digest = Digest::MD5.digest(key)
+		i = digest.unpack('C')[0]
+		n = i % nids.size
+		n.times {
+			nids.push nids.shift
+		}
+		nids
 	end
 end
 

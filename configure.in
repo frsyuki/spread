@@ -1,0 +1,17 @@
+AC_INIT(lib/spread-osd/bus.rb)
+AC_CONFIG_AUX_DIR(ac)
+AM_INIT_AUTOMAKE(spread-osd, 0.0.1)
+AC_CONFIG_HEADER(config.h)
+
+AC_CHECK_PROG(RUBY, ruby, ruby)
+if test "x$RUBY" = x; then
+	AC_MSG_ERROR([cannot find ruby. Ruby is required.])
+fi
+
+$RUBY -e "raise 'ruby >= 1.9 is required' unless RUBY_VERSION >= '1.9'"
+if test $? != 0; then
+	AC_MSG_ERROR([ruby >= 1.9 is required.])
+fi
+
+AC_OUTPUT([Makefile])
+

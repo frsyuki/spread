@@ -15,12 +15,12 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'common'
+require 'spread-osd/common'
 require 'optparse'
 
 include SpreadOSD
 
-conf = DSConfigService.init
+conf = GWConfigService.init
 
 op = OptionParser.new
 #op.banner += " <boot.yaml>"
@@ -33,40 +33,19 @@ op = OptionParser.new
 	end
 end
 
-listen_host = nil
-listen_port = nil
+storage_path = nil
 
-op.on('-i', '--nid ID', Integer, "unieque node id") do |nid|
-	conf.self_nid = nid
-end
+listen_host = '0.0.0.0'
+listen_port = GW_DEFAULT_PORT
 
-op.on('-n', '--name NAME', "node name") do |name|
-	conf.self_name = name
-end
-
-op.on('-a', '--address ADDRESS', "listen address") do |addr|
-	host, port = addr.split(':',2)
-	port = port.to_i
-	port = DS_DEFAULT_PORT if port == 0
-	conf.self_address = Address.new(host, port)
-	listen_host = host
-	listen_port = port
-end
-
-op.on('-g', '--rsid IDs', "replication set IDs") do |ids|
-	conf.self_rsids = ids.split(',').map {|id| id.to_i }
-end
-
-op.on('-s', '--storage PATH', "path to storage directory") do |path|
-	conf.storage_path = path
-end
-
-op.on('-u', '--ulog PATH', "path to update log directory") do |path|
-	conf.ulog_path = path
-end
-
-op.on('-r', '--rlog PATH', "path to relay log directory") do |path|
-	conf.rlog_path = path
+op.on('-p', '--port PORT', "listen port") do |addr|
+	if addr.include?(':')
+		listen_host, listen_port = addr.split(':',2)
+		listen_port = listen_port.to_i
+		listen_port = GW_DEFAULT_PORT if listen_port == 0
+	else
+		listen_port = addr.to_i
+	end
 end
 
 op.on('-m', '--cs ADDRESS', "address of config server") do |addr|
@@ -74,6 +53,10 @@ op.on('-m', '--cs ADDRESS', "address of config server") do |addr|
 	port = port.to_i
 	port = CS_DEFAULT_PORT if port == 0
 	conf.cs_address = Address.new(host, port)
+end
+
+op.on('-s', '--storage PATH', "path to base directory") do |path|
+	storage_path = path
 end
 
 op.on('-f', '--fault_path PATH', "path to fault status file") do |path|
@@ -92,36 +75,16 @@ begin
 		raise "unknown option: #{ARGV[0].dump}"
 	end
 
-	unless conf.self_nid
-		raise "--nid option is required"
-	end
-
-	unless conf.self_name
-		raise "--name option is required"
-	end
-
-	unless conf.self_address
-		raise "--address option is required"
-	end
-
-	unless conf.self_rsids
-		raise "--rsid option is required"
-	end
-
-	unless conf.storage_path
-		raise "--storage option is required"
-	end
-
-	unless conf.ulog_path
-		raise "--ulog option is required"
-	end
-
-	unless conf.rlog_path
-		raise "--rlog option is required"
-	end
-
 	unless conf.cs_address
 		raise "--cs option is required"
+	end
+
+	if !conf.fault_path && storage_path
+		conf.fault_path = File.join(storage_path, "fault")
+	end
+
+	if !conf.membership_path && storage_path
+		conf.membership_path = File.join(storage_path, "membership")
 	end
 
 rescue
@@ -131,12 +94,17 @@ end
 
 NetService.init
 TimerService.init
-HeartbeatMemberService.init
-MembershipMemberService.init
-StorageService.init
-DSStatusService.init
+HeartbeatClientService.init
+MembershipClientService.init
+MDSService.init
+GatewayService.init
+GWStatusService.init
 
-net = DSRPCService.serve
+
+MDSService.instance.open_blocking(conf.cs_address)
+
+
+net = GWRPCService.serve
 
 $ebus.call(:run)
 

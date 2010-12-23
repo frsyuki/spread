@@ -47,7 +47,7 @@ class GWRPCService < Service
 		dispatch(:set_direct, key, rsid, data)
 	end
 
-	def remove_direct(key)
+	def remove_direct(key, rsid)
 		dispatch(:remove_direct, key, rsid)
 	end
 

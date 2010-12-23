@@ -15,15 +15,14 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'common'
+require 'spread-osd/common'
 require 'optparse'
 
 include SpreadOSD
 
-conf = GWConfigService.init
+conf = CSConfigService.init
 
 op = OptionParser.new
-#op.banner += " <boot.yaml>"
 
 (class<<self;self;end).module_eval do
 	define_method(:usage) do |msg|
@@ -33,24 +32,23 @@ op = OptionParser.new
 	end
 end
 
+storage_path = nil
+
 listen_host = '0.0.0.0'
-listen_port = GW_DEFAULT_PORT
+listen_port = CS_DEFAULT_PORT
 
 op.on('-p', '--port PORT', "listen port") do |addr|
-	if addr.include?(':')
+	if port.include?(':')
 		listen_host, listen_port = addr.split(':',2)
 		listen_port = listen_port.to_i
-		listen_port = GW_DEFAULT_PORT if listen_port == 0
+		listen_port = CS_DEFAULT_PORT if listen_port == 0
 	else
 		listen_port = addr.to_i
 	end
 end
 
-op.on('-m', '--cs ADDRESS', "address of config server") do |addr|
-	host, port = addr.split(':',2)
-	port = port.to_i
-	port = CS_DEFAULT_PORT if port == 0
-	conf.cs_address = Address.new(host, port)
+op.on('-s', '--storage PATH', "path to base directory") do |path|
+	storage_path = path
 end
 
 op.on('-f', '--fault_path PATH', "path to fault status file") do |path|
@@ -61,6 +59,10 @@ op.on('-b', '--membership PATH', "path to membership status file") do |path|
 	conf.membership_path = path
 end
 
+op.on('-t', '--mds ADDRESSes', "addresses of metadata server") do |addrs|
+	conf.mds_addrs = addrs
+end
+
 
 begin
 	op.parse!(ARGV)
@@ -69,34 +71,31 @@ begin
 		raise "unknown option: #{ARGV[0].dump}"
 	end
 
-	unless conf.cs_address
-		raise "--cs option is required"
+	unless conf.mds_addrs
+		raise "--mds option is required"
+	end
+
+	if !conf.fault_path && storage_path
+		conf.fault_path = File.join(storage_path, "fault")
+	end
+
+	if !conf.membership_path && storage_path
+		conf.membership_path = File.join(storage_path, "membership")
 	end
 
 rescue
 	usage $!.to_s
 end
 
-
 NetService.init
 TimerService.init
-HeartbeatClientService.init
-MembershipClientService.init
-MDSService.init
-GatewayService.init
-GWStatusService.init
+HeartbeatServerService.init
+MembershipManagerService.init
+CSStatusService.init
 
-
-MDSService.instance.open_blocking(conf.cs_address)
-
-
-net = GWRPCService.serve
+net = CSRPCService.serve
 
 $ebus.call(:run)
-
-$ebus.connect(:on_timer) do
-	GC.start # FIXME
-end
 
 net.listen(listen_host, listen_port)
 
