@@ -51,8 +51,7 @@ class GatewayService < Service
 			block.call(data)
 		end
 	rescue
-		# FIXME
-		$log.warn $!
+		$log.warn $!  # FIXME log
 		block.call(nil)
 	end
 
@@ -96,8 +95,7 @@ class GatewayService < Service
 				begin
 					ebus_call(:mds_set, key, map, &block)
 				rescue
-					# FIXME
-					$log.warn $!
+					$log.warn $!  # FIXME log
 					block.call(false)
 				end
 			else
@@ -105,8 +103,7 @@ class GatewayService < Service
 			end
 		end
 	rescue
-		# FIXME
-		$log.warn $!
+		$log.warn $!  # FIXME log
 		block.call(false)
 	end
 
@@ -125,16 +122,14 @@ class GatewayService < Service
 			end
 		end
 	rescue
-		# FIXME
-		$log.warn $!
+		$log.warn $!  # FIXME log
 		block.call(false)
 	end
 
 	def set_map(key, map, &block)
 		ebus_call(:mds_set, key, map, &block)
 	rescue
-		# FIXME
-		$log.warn $!
+		$log.warn $!  # FIXME log
 		block.call(false)
 	end
 
@@ -215,8 +210,7 @@ class GatewayService < Service
 			block.call(success)
 		end
 	rescue
-		# FIXME
-		$log.warn $!
+		$log.warn $!  # FIXME log
 		block.call(false)
 	end
 
@@ -244,7 +238,7 @@ class GatewayService < Service
 			block.call(success)
 		end
 	rescue
-		# FIXME
+		$log.warn $!  # FIXME log
 		block.call(false)
 	end
 

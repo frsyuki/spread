@@ -19,7 +19,7 @@ require 'msgpack/rpc'
 require 'pp'
 
 def usage
-	puts "Usage: #{File.basename($0)} <address[:port]> <command> [options]"
+	puts "Usage: #{File.basename($0)} <cs address[:port]> <command> [options]"
 	puts "command:"
 	puts "   nodes                        show list of nodes"
 	puts "   replset                      show list of replication sets"
