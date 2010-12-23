@@ -32,7 +32,7 @@ Multiple DSs composes a group that each member stores same data. The group is ca
     |      |      |  |    |   |    |   |    | Multiple DSs a composes replication-set
     | TokyoTyrant |  | DS |   | DS |   | DS | DSs in a replication-set stores same data
     +-------------+  |    |   |    |   |    |
-     MDSs store      | DS |   | DS |   | DS |
+     MDSs store      | DS |   | DS |   | DS | ... You can add replication-sets at any time
      metadata        +----+   +----+   +----+
                          \       |       /
                           -----  |  ----- CS manages cluster configuration
@@ -164,6 +164,14 @@ You may want to decrease the *weight* of the old replication sets.
 
 
 ### Changing weight of load balancing
+
+You can set a **weight** parameter for replication-sets. It affects to decieds which replication-set is selected to store a new data.
+
+A replication-set is selected at the probability of **weight / (sum of all weights)**.
+
+If the weight is 0, new data will never be stored on the replication-set.
+
+You can change the weight using *spreadctl* command.
 
     $ spreadctl csaddr replset
     replset   weight       nids  names

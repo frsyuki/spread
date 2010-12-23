@@ -17,7 +17,8 @@ begin
 		gemspec.add_dependency "tokyotyrant", ">= 1.13"
 		gemspec.test_files = Dir["test/test_*.rb"]
 		gemspec.files = Dir["lib/**/*", "ext/**/*", "test/**/*", "spec/**/*", "tasks/**/*"] +
-			%w[AUTHORS ChangeLog COPYING NOTICE README]
+			%w[AUTHORS ChangeLog COPYING NOTICE README.md README.ja.md]
+		gemspec.extra_rdoc_files = []
 		gemspec.add_development_dependency('rspec')
 	end
 	Jeweler::GemcutterTasks.new

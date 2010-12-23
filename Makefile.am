@@ -69,7 +69,8 @@ EXTRA_DIST = \
 	$(nobase_pkgdata_SCRIPTS) \
 	Rakefile \
 	VERSION \
-	README.md
+	README.md \
+	README.ja.md
 
 $(bin_SCRIPTS):
 	mkdir -p `dirname $@`
