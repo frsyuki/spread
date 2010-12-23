@@ -34,6 +34,8 @@ class AsyncTokyoTyrantSocket < Rev::TCPSocket
 		@loop = loop
 	end
 
+	attr_reader :addr
+
 	def touch(time)
 		@time = time
 	end
@@ -74,14 +76,18 @@ class AsyncTokyoTyrantSocket < Rev::TCPSocket
 
 		@buffer << data
 
-		if @state
-			@state = @state.call(@buffer)
-		else
-			@state = @queue[0].call(@buffer)
-		end
+		while !@buffer.empty?
+			if @state
+				@state = @state.call(@buffer)
+			else
+				@state = @queue[0].call(@buffer)
+			end
 
-		if @state == nil
-			@queue.shift
+			if @state
+				break
+			else
+				@queue.shift
+			end
 		end
 	end
 
@@ -100,7 +106,11 @@ class AsyncTokyoTyrantSocket < Rev::TCPSocket
 
 		def result(data)
 			if @callback
-				@callback.call(data) rescue nil
+				begin
+					@callback.call(data)
+				rescue
+					$log.warn $!  # FIXME log
+				end
 				@callback = nil
 			end
 		end
@@ -178,7 +188,7 @@ class AsyncTokyoTyrant
 	def initialize(loop, timeout)
 		@servers = []  # [stream]
 		@rr = 0
-		@ck = ConnectionKeeper.new(@servers, timeout)
+		@ck = ConnectionKeeper.new(method(:try_connect), @servers, timeout)
 		loop.attach(@ck)
 		@loop = loop
 	end
@@ -192,16 +202,17 @@ class AsyncTokyoTyrant
 	end
 
 	class ConnectionKeeper < Rev::TimerWatcher
-		def initialize(servers, timeout)
+		def initialize(connect_method, servers, timeout)
 			super(1.0, true)
+			@connect_method = connect_method
 			@timeout = timeout
 			@servers = servers
 		end
 		def on_timer
 			now = Time.now.to_f
-			@servers.each {|s|
+			@servers.each_with_index {|s,idx|
 				if s.closed?
-					#
+					@connect_method.call(idx, s.addr)
 				elsif s.connected?
 					s.touch(now)
 				elsif now - s.time > @timeout
@@ -215,12 +226,11 @@ class AsyncTokyoTyrant
 
 	def add_server(host, port)
 		addr = MessagePack::RPC::Address.new(host, port)
-		if s = @servers.find {|s| s.addr == addr }
-			s.close rescue nil
+		idx = @servers.find_index {|s| s.addr == addr }
+		unless idx
+			idx = @servers.size
 		end
-		s = AsyncTokyoTyrantSocket.connect(addr.host, addr.port, @loop, addr, @servers)
-		@servers << s
-		@loop.attach(s)
+		try_connect(idx, addr)
 	end
 
 	attr_reader :servers
@@ -229,21 +239,36 @@ class AsyncTokyoTyrant
 		choice_server.send_get(block, key)
 		nil
 	rescue
-		block.call(nil)
+		$log.warn $!  # FIXME log
+		begin
+			block.call(nil)
+		rescue
+			$log.warn $!  # FIXME log
+		end
 	end
 
 	def put(key, val, &block)
 		choice_server.send_put(block, key, val)
 		nil
 	rescue
-		block.call(false)
+		$log.warn $!  # FIXME log
+		begin
+			block.call(false)
+		rescue
+			$log.warn $!  # FIXME log
+		end
 	end
 
 	def out(key, &block)
 		choice_server.send_out(block, key)
 		nil
 	rescue
-		block.call(false)
+		$log.warn $!  # FIXME log
+		begin
+			block.call(false)
+		rescue
+			$log.warn $!  # FIXME log
+		end
 	end
 
 	private
@@ -258,20 +283,24 @@ class AsyncTokyoTyrant
 			idx = (@rr+i) % @servers.size
 			s = @servers[idx]
 			if s.closed?
-				#
+				try_connect(idx, s.addr)
 			elsif s.connected?
 				return s
-			elsif s.closed?
-				addr = s.addr
-				s = AsyncTokyoTyrantSocket.connect(addr.host, addr.port, @loop, addr, @servers)
-				@servers[idx] = s
-				@loop.attach(s)
 			else
 				#
 			end
 		}
 
 		raise "all Tokyo Tyrant servers are down"
+	end
+
+	def try_connect(idx, addr)
+		if s = @servers[idx]
+			s.close rescue nil
+		end
+		s = AsyncTokyoTyrantSocket.connect(addr.host, addr.port, @loop, addr, @servers)
+		@servers[idx] = s
+		@loop.attach(s)
 	end
 end
 
@@ -314,7 +343,7 @@ class AsyncTokyoTyrantMDS < MDS
 	def remove(key, &block)
 		@ast.get(key) {|vbuf|
 			if vbuf
-				map = Hash[vbuf.split("\0")]
+				map = Hash[*vbuf.split("\0")]
 				@ast.out(key) {|success|
 					block.call(map)
 				}

@@ -27,6 +27,25 @@ class MDS
 		end
 		return TokyoTyrantMDS.new(expr)
 	end
+
+
+	# call-seq:
+	#   get(key:String, &block) -> block.call(found:Hash or {})
+	#
+	#def get(key, &block)
+	#end
+
+	# call-seq:
+	#   set(key:String, map:Hash, &block) -> block.call(success:Boolean)
+	#
+	#def set(key, map, &block)
+	#end
+
+	# call-seq:
+	#   remove(key:String, &block) -> block.call(deleted:Hash or {})
+	#
+	#def remove(key, &block)
+	#end
 end
 
 

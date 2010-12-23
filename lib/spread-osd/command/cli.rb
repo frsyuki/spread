@@ -70,7 +70,7 @@ def call(klass, *args)
 	end
 
 	finish = Time.now
-	puts "#{finish - start} sec."
+	$stderr.puts "#{finish - start} sec."
 
 	result
 end
@@ -126,8 +126,8 @@ when 'remove_direct'
 	pp call(nil, :remove_direct, key, rsid)
 
 else
-	puts "unknown command #{cmd}"
-	puts ""
+	$stderr.puts "unknown command #{cmd}"
+	$stderr.puts ""
 	usage
 end
 

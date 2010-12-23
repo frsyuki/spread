@@ -155,7 +155,7 @@ when 'remove_node'
 when 'replset'
 	cmd_args(0)
 	REPLSET_FORMAT = "%7s %8s %10s  %s"
-	puts REPLSET_FORMAT % %w[replset weight nids names,...]
+	puts REPLSET_FORMAT % %w[replset weight nids names]
 	node_map = get_node_map
 	call(nil,'status','replset').each {|rsid,(nids,weight)|
 		names = nids.map {|nid| node_map[nid][1] }.join(',')
