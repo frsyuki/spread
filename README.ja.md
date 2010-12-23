@@ -7,6 +7,9 @@ SpreadOSD - 分散ストレージシステム
 
 SpreadOSDは、画像、音声、動画などの大きなデータを保存するのに適した、分散ストレージシステムです。
 
+サーバを追加することで容量を動的に増加させることができます。
+レプリケーションをサポートし、極めて短いダウンタイムでフェイルオーバーします。
+
 
 ## アーキテクチャ
 
@@ -203,11 +206,27 @@ rake と gem を使ってインストールすることもできます。
 
 落ちたプロセスを再起動させてください。
 
+状態が**active**に戻っていることを確認してください。
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode04      192.168.0.14:18900         0     active
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
 #### データが失われている場合
 
-まず、同じレプリケーション･セット内の別のDSからデータをコピーしてください。例えばrsyncを次のように実行します：
+まず、故障したサーバを切り離してください：
 
-    # node03から更新ログ以外のデータをコピーする
+    $ spreadctl csaddr remove_node 2
+
+次に、同じレプリケーション･セット内の別のDSからデータをコピーしてください。例えばrsyncを次のように実行します：
+
+    # node03から現在のリレーログをコピーする
+    [on node07]$ scp node03:/var/spread/rlog-* /var/spread/
+    
+    # node03からリレーログと更新ログ以外のデータをコピーする
     # rsyncのオプション:
     #   -a  アーカイブモード
     #   -v  verbose
@@ -215,7 +234,7 @@ rake と gem を使ってインストールすることもできます。
     #       arcfour128アルゴリズムは高速ですが、強度が低いことに注意してください。
     #       安全なネットワーク以外では、"blowfish"を使ってください。
     #   --bwlimit 帯域をKB/s単位で制限する
-    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" \
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" --exclude "rlog-*" \
                        --bwlimit 32768 node03:/var/spread/ /var/spread/
     
     # 更新ログは削除しておく
@@ -223,16 +242,16 @@ rake と gem を使ってインストールすることもできます。
 
 このときにコピー元のノード（この例ではnode03）を停止させる必要はありません。
 
-次に、*--nid*と*--rsid*オプションを故障したサーバと同じにした状態で、新しいサーバを起動してください。
+次に、*--rsid*オプションを故障したサーバと同じにした状態で、新しいサーバを起動してください。*--nid*オプションには必ず新しい番号を割り当ててください。
 
-最後に、状態が**active**に戻っていることを確認してください。
+最後にクラスタの状態を確認してください。
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
       0        mynode03      192.168.0.13:18900         0     active
-      1        mynode07      192.168.0.17:18900         0     active
       2        mynode05      192.168.0.15:18900         1     active
       3        mynode06      192.168.0.16:18900         1     active
+      4        mynode07      192.168.0.17:18900         0     active
 
 
 ### 故障したDSを切り離す

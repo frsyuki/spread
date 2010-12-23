@@ -7,6 +7,9 @@ A scalable distributed storage system.
 
 SpreadOSD is a distributed storage system that can store large data like photos, musics, movies, etc.
 
+You can increase storage capacity dynamically as adding servers.
+Replication is supported, and failover is done within a very short downtime.
+
 
 ## Architecture
 
@@ -204,11 +207,27 @@ If a DS is crashed, its status will be **FAULT**. Confirm it using *spreadctl* f
 
 Just restart the fault server.
 
+Confirm that the status is went back to **active**.
+
+    $ spreadctl csaddr nodes
+    nid            name                 address   replset      state
+      0        mynode03      192.168.0.13:18900         0     active
+      1        mynode04      192.168.0.14:18900         0     active
+      2        mynode05      192.168.0.15:18900         1     active
+      3        mynode06      192.168.0.16:18900         1     active
+
 #### If data is lost
 
-First, copy whole data from other DS in the same replication-set. For example, run rsync as follows:
+First, detach the crashed server as follows:
 
-    # Copy data from node03 excluding update logs
+    $ spreadctl csaddr remove_node 2
+
+Second, copy whole data from other DS in the same replication-set. For example, run rsync as follows:
+
+    # Copy relay logs from node03 first
+    [on node07]$ scp node03:/var/spread/rlog-* /var/spread/
+
+    # Copy data from node03 excluding update logs and relay logs
     # rsync option:
     #   -a  Archive mode
     #   -v  Verbose mode
@@ -216,24 +235,24 @@ First, copy whole data from other DS in the same replication-set. For example, r
     #       Note that arcfour128 is fast but weak algorithm.
     #       Use "blowfish" if the network is insecure.
     #   --bwlimit limits bandwidth in KB/s
-    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" \
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" --excluding "rlog-*" \
                        --bwlimit 32768 node03:/var/spread/ /var/spread/
     
-    # Remove update logs
+    # Ensure update logs are removed
     [on node07]$ rm -f /var/spread/ulog-*
 
 You do not have to stop the source node (node03, in this example).
 
-Second, run a new server using the same *--nid* and *--rsid* option with the crashed server.
+Third, run a new server using the same *--nid* option with the crashed server. New unique ID must be assigned for --nid option.
 
-Then confirm that the status is went back to **active**.
+Then confirm that the status of the cluster.
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state
       0        mynode03      192.168.0.13:18900         0     active
-      1        mynode07      192.168.0.17:18900         0     active
       2        mynode05      192.168.0.15:18900         1     active
       3        mynode06      192.168.0.16:18900         1     active
+      4        mynode07      192.168.0.17:18900         0     active
 
 
 ### Detaching crashed DSs
