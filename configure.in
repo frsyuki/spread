@@ -5,13 +5,49 @@ AC_CONFIG_HEADER(config.h)
 
 AC_CHECK_PROG(RUBY, ruby, ruby)
 if test "x$RUBY" = x; then
-	AC_MSG_ERROR([cannot find ruby. Ruby is required.])
+	AC_MSG_ERROR([cannot find ruby. Ruby >= 1.9 is required.])
 fi
 
+AC_MSG_CHECKING([for ruby >= 1.9])
 $RUBY -e "raise 'ruby >= 1.9 is required' unless RUBY_VERSION >= '1.9'"
 if test $? != 0; then
-	AC_MSG_ERROR([ruby >= 1.9 is required.])
+	AC_MSG_ERROR([ruby >= 1.9 is not found.
+
+Install ruby >=1.9 and try to add RUBY=/path/to/ruby-1.9 option
+to ./configure as follows:
+
+  $ ./configure RUBY=/usr/local/bin/ruby
+])
 fi
+ruby_path="`which \"$RUBY\"`"
+ruby_bin="`basename \"$ruby_path\"`"
+gem_bin="`echo \"$ruby_bin\" | sed s/ruby/gem/`"
+gem_path="`dirname \"$ruby_path\"`/$gem_bin"
+AC_MSG_RESULT([$ruby_path])
+
+AC_MSG_CHECKING([for msgpack-rpc gem >= 0.4.3])
+$RUBY -e "gem 'msgpack-rpc', '>= 0.4.3'"
+if test $? != 0; then
+	AC_MSG_ERROR([msgpack-rpc gem >= 0.4.3 is not found.
+
+Install or upgrade 'msgpack-rpc' gem as follows:
+
+  $ sudo $gem_path install msgpack-rpc
+])
+fi
+AC_MSG_RESULT([yes])
+
+AC_MSG_CHECKING([for tokyotyrant gem >= 1.13])
+$RUBY -e "gem 'tokyotyrant', '>= 1.13'"
+if test $? != 0; then
+	AC_MSG_ERROR([tokyotyrant gem >= 1.13 is not found.
+
+Install or upgrade 'tokyotyrant' gem as follows:
+
+  $ sudo $gem_path install tokyotyrant
+])
+fi
+AC_MSG_RESULT([yes])
 
 AC_OUTPUT([Makefile])
 
