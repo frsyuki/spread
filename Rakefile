@@ -6,7 +6,7 @@ begin
 	require 'jeweler'
 	Jeweler::Tasks.new do |gemspec|
 		gemspec.name = "spread-osd"
-		gemspec.summary = "SpreadOSD - a distributed media storage"
+		gemspec.summary = "SpreadOSD - a distributed storage system"
 		gemspec.author = "FURUHASHI Sadayuki"
 		gemspec.email = "frsyuki@users.sourceforge.jp"
 		gemspec.homepage = "http://github.com/frsyuki/spread-osd"

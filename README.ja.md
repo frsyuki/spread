@@ -2,6 +2,7 @@ SpreadOSD
 =========
 SpreadOSD - 分散ストレージシステム
 
+
 ## 概要
 
 SpreadOSDは、画像、音声、動画などの大きなデータを保存するのに適した、分散ストレージシステムです。
@@ -30,7 +31,7 @@ SpreadOSDは、次の4種類のサーバから構成されます：
     |      |      |  |    |   |    |   |    | レプリケーション･セット
     | TokyoTyrant |  | DS |   | DS |   | DS | 同じレプリケーション･セット内のDSは同じデータを保存
     +-------------+  |    |   |    |   |    |
-    MDS              | DS |   | DS |   | DS | ... レプリケーションセットはいつでも追加できる
+    MDS              | DS |   | DS |   | DS | ... レプリケーションセットはいつでも追加可能
     メタデータを保存 +----+   +----+   +----+
                          \       |       /
                           -----  |  ----- CSはクラスタの設定情報を管理
@@ -82,15 +83,15 @@ rake と gem を使ってインストールすることもできます。
     
     # レプリケーション･セット0のDSを起動
     [on node03]$ spread-ds --cs node03 --address node03 --nid 0 --rsid 0 \
-                 --name mynode03 --storage /var/spread
+                           --name mynode03 --storage /var/spread
     [on node04]$ spread-ds --cs node04 --address node04 --nid 1 --rsid 0 \
-                 --name mynode04 --storage /var/spread
+                           --name mynode04 --storage /var/spread
     
     # レプリケーション･セット1のDSを起動
     [on node05]$ spread-ds --cs node05 --address node05 --nid 2 --rsid 1 \
-                 --name mynode05 --storage /var/spread
+                           --name mynode05 --storage /var/spread
     [on node06]$ spread-ds --cs node06 --address node06 --nid 3 --rsid 1 \
-                 --name mynode06 --storage /var/spread
+                           --name mynode06 --storage /var/spread
     
     # アプリケーションサーバ上でGWを起動
     [on client]$ spread-gw --cs node01 --port 18800
@@ -121,13 +122,13 @@ rake と gem を使ってインストールすることもできます。
     [localhost]$ ttserver mds.tct
     [localhost]$ spread-cs --mds 127.0.0.1 -s ./data-cs
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18900 --nid 0 --rsid 0 \
-                 --name ds0 --storage ./data-ds0
+                           --name ds0 --storage ./data-ds0
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18901 --nid 1 --rsid 0 \
-                 --name ds1 --storage ./data-ds1
+                           --name ds1 --storage ./data-ds1
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18902 --nid 2 --rsid 1 \
-                 --name ds2 --storage ./data-ds2
+                           --name ds2 --storage ./data-ds2
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18903 --nid 3 --rsid 1 \
-                 --name ds3 --storage ./data-ds3
+                           --name ds3 --storage ./data-ds3
     [localhost]$ spread-gw --cs 127.0.0.1
 
 
@@ -198,10 +199,33 @@ rake と gem を使ってインストールすることもできます。
       2        mynode05      192.168.0.15:18900         1     active
       3        mynode06      192.168.0.16:18900         1     active
 
-データが失われていない場合は、単に落ちたプロセスを再起動させてください。
-データが失われている場合は、*--nid*と*--rsid*オプションを故障したサーバと同じにした状態で、新しいサーバを起動してください。
+#### データが失われていない場合
 
-最後に状態が**active**に戻っていることを確認してください。
+落ちたプロセスを再起動させてください。
+
+#### データが失われている場合
+
+まず、同じレプリケーション･セット内の別のDSからデータをコピーしてください。例えばrsyncを次のように実行します：
+
+    # node03から更新ログ以外のデータをコピーする
+    # rsyncのオプション:
+    #   -a  アーカイブモード
+    #   -v  verbose
+    #   -e  sshでarcfour128アルゴリズムを使う
+    #       arcfour128アルゴリズムは高速ですが、強度が低いことに注意してください。
+    #       安全なネットワーク以外では、"blowfish"を使ってください。
+    #   --bwlimit 帯域をKB/s単位で制限する
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" \
+                       --bwlimit 32768 node03:/var/spread/ /var/spread/
+    
+    # 更新ログは削除しておく
+    [on node07]$ rm -f /var/spread/ulog-*
+
+このときにコピー元のノード（この例ではnode03）を停止させる必要はありません。
+
+次に、*--nid*と*--rsid*オプションを故障したサーバと同じにした状態で、新しいサーバを起動してください。
+
+最後に、状態が**active**に戻っていることを確認してください。
 
     $ spreadctl csaddr nodes
     nid            name                 address   replset      state

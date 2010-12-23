@@ -84,15 +84,15 @@ Following example runs SpreadOSD on 6-node cluster:
     
     # Runs DSs for repliset-set 0.
     [on node03]$ spread-ds --cs node03 --address node03 --nid 0 --rsid 0 \
-                 --name mynode03 --storage /var/spread
+                           --name mynode03 --storage /var/spread
     [on node04]$ spread-ds --cs node04 --address node04 --nid 1 --rsid 0 \
-                 --name mynode04 --storage /var/spread
+                           --name mynode04 --storage /var/spread
     
     # Runs DSs for repliset-set 1.
     [on node05]$ spread-ds --cs node05 --address node05 --nid 2 --rsid 1 \
-                 --name mynode05 --storage /var/spread
+                           --name mynode05 --storage /var/spread
     [on node06]$ spread-ds --cs node06 --address node06 --nid 3 --rsid 1 \
-                 --name mynode06 --storage /var/spread
+                           --name mynode06 --storage /var/spread
     
     # Runs a GW on the application server.
     [on client]$ spread-gw --cs node01 --port 18800
@@ -123,13 +123,13 @@ You can test SpreadOSD on single host as follows:
     [localhost]$ ttserver mds.tct
     [localhost]$ spread-cs --mds 127.0.0.1 -s ./data-cs
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18900 --nid 0 --rsid 0 \
-                 --name ds0 --storage ./data-ds0
+                           --name ds0 --storage ./data-ds0
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18901 --nid 1 --rsid 0 \
-                 --name ds1 --storage ./data-ds1
+                           --name ds1 --storage ./data-ds1
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18902 --nid 2 --rsid 1 \
-                 --name ds2 --storage ./data-ds2
+                           --name ds2 --storage ./data-ds2
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18903 --nid 3 --rsid 1 \
-                 --name ds3 --storage ./data-ds3
+                           --name ds3 --storage ./data-ds3
     [localhost]$ spread-gw --cs 127.0.0.1
 
 
@@ -200,8 +200,31 @@ If a DS is crashed, its status will be **FAULT**. Confirm it using *spreadctl* f
       2        mynode05      192.168.0.15:18900         1     active
       3        mynode06      192.168.0.16:18900         1     active
 
-If the data is not lost, just restart the fault server.
-Otherwise, run a new server using the same *--nid* and *--rsid* option with the crashed server.
+#### If data is not lost
+
+Just restart the fault server.
+
+#### If data is lost
+
+First, copy whole data from other DS in the same replication-set. For example, run rsync as follows:
+
+    # Copy data from node03 excluding update logs
+    # rsync option:
+    #   -a  Archive mode
+    #   -v  Verbose mode
+    #   -e  Uses ssh with arcfour128 cipher algorithm.
+    #       Note that arcfour128 is fast but weak algorithm.
+    #       Use "blowfish" if the network is insecure.
+    #   --bwlimit limits bandwidth in KB/s
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" \
+                       --bwlimit 32768 node03:/var/spread/ /var/spread/
+    
+    # Remove update logs
+    [on node07]$ rm -f /var/spread/ulog-*
+
+You do not have to stop the source node (node03, in this example).
+
+Second, run a new server using the same *--nid* and *--rsid* option with the crashed server.
 
 Then confirm that the status is went back to **active**.
 
