@@ -1,7 +1,6 @@
 AC_INIT(lib/spread-osd/bus.rb)
 AC_CONFIG_AUX_DIR(ac)
 AM_INIT_AUTOMAKE(spread-osd, 0.0.1)
-AC_CONFIG_HEADER(config.h)
 
 AC_CHECK_PROG(RUBY, ruby, ruby)
 if test "x$RUBY" = x; then

@@ -5,11 +5,13 @@ nobase_pkgdata_SCRIPTS = \
 	bin/spread-cs \
 	bin/spread-ds \
 	bin/spread-gw \
+	bin/spreadcli \
 	bin/spreadctl \
 	lib/spread-osd/bus.rb \
 	lib/spread-osd/common.rb \
 	lib/spread-osd/default.rb \
 	lib/spread-osd/command/cs.rb \
+	lib/spread-osd/command/cli.rb \
 	lib/spread-osd/command/ctl.rb \
 	lib/spread-osd/command/ds.rb \
 	lib/spread-osd/command/gw.rb \
@@ -60,6 +62,7 @@ bin_SCRIPTS = \
 	$(BUILD_TMP)/spread-cs \
 	$(BUILD_TMP)/spread-ds \
 	$(BUILD_TMP)/spread-gw \
+	$(BUILD_TMP)/spreadcli \
 	$(BUILD_TMP)/spreadctl
 
 EXTRA_DIST = \

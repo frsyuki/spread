@@ -61,7 +61,7 @@ class MasterStorageManager
 				data = @storage.get(key)  # data may be null
 				msgs << [key, data]
 				keys << key
-				size += data.size
+				size += data.size if data
 				offset = noffset
 				break if size > limit
 			end
