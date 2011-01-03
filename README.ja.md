@@ -41,9 +41,10 @@ SpreadOSDは、次の4種類のサーバから構成されます：
                                \ | /
                                 CS
 
+
 ## インストール
 
-以下のライブラリが必要です：
+以下のソフトウェアが必要です：
 
   - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) >= 1.1.40
   - [ruby](http://www.ruby-lang.org/) >= 1.9.1
@@ -69,6 +70,45 @@ rake と gem を使ってインストールすることもできます。
   - spread-cs: CS
   - spread-ds: DS
   - spread-gw: GW
+
+
+### フルインストールガイド
+
+まず以下のパッケージをインストールしてください。
+
+  - gcc-g++ >= 4.1
+  - openssl-devel (or libssl-dev) to build ruby
+  - zlib-devel (or zlib1g-dev) to build ruby
+  - readline-devel (or libreadline6-dev) to build ruby
+
+以下の手順でSpreadOSDを/opt/local/spreadにインストールできます。
+
+    # Tokyo Tyrantをインストール
+    $ wget http://fallabs.com/tokyotyrant/tokyotyrant-1.1.41.tar.gz
+    $ tar zxvf tokyotyrant-1.1.41.tar.gz
+    $ cd tokyotyrant-1.1.41
+    $ ./configure --prefix=/opt/local/spread
+    $ make
+    $ sudo make install
+    
+    # ruby-1.9をインストール
+    $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p0.tar.bz2
+    $ tar jxvf ruby-1.9.2-p0.tar.bz2
+    $ cd ruby-1.9.2
+    $ ./configure --prefix=/opt/local/spread
+    $ make
+    $ sudo make install
+    
+    # 必要なgemをインストール
+    $ sudo /opt/local/spread/bin/gem install msgpack-rpc
+    $ sudo /opt/local/spread/bin/gem install tokyotyrant
+    
+    # SpreadOSDをインストール
+    $ git clone http://github.com/frsyuki/spread.git
+    $ cd spread
+    $ ./configure RUBY=/opt/local/spread/bin/ruby --prefix=/opt/local/spread
+    $ make
+    $ sudo make install
 
 
 ## チュートリアル
@@ -167,7 +207,7 @@ rake と gem を使ってインストールすることもできます。
 
 ### 負荷分散の重みを変更する
 
-レプリケーション･セットには、新しいデータをどのレプリケーション･セットを保存するかを決める**重み**を指定することができます。
+レプリケーション･セットには、新しいデータをどのレプリケーション･セットを保存するかを決める**重み**を指定することができます。デフォルトの重みは10です。
 
 あるレプリケーション･セットは、**そのレプリケーション･セットの重み / すべての重みの総和** の確率で選択されます。
 
@@ -204,7 +244,7 @@ rake と gem を使ってインストールすることもできます。
 
 #### データが失われていない場合
 
-落ちたプロセスを再起動させてください。
+落ちたプロセスを再起動させてください。このとき、*--nid*オプションと*--rsid*オプションは落ちる前と同じにしてください。
 
 状態が**active**に戻っていることを確認してください。
 
@@ -223,10 +263,10 @@ rake と gem を使ってインストールすることもできます。
 
 次に、同じレプリケーション･セット内の別のDSからデータをコピーしてください。例えばrsyncを次のように実行します：
 
-    # node03から現在のリレーログをコピーする
+    # node03から現在のリレー状態ログをコピーする
     [on node07]$ scp node03:/var/spread/rlog-* /var/spread/
     
-    # node03からリレーログと更新ログ以外のデータをコピーする
+    # node03からリレー状態ログと更新ログ以外のデータをコピーする
     # rsyncのオプション:
     #   -a  アーカイブモード
     #   -v  verbose
@@ -266,6 +306,7 @@ rake と gem を使ってインストールすることもできます。
       3        mynode06      192.168.0.16:18900         1     active
 
 サーバを復旧するのではなく切り離したい場合は、次のようにコマンドを実行してください：
+
     $ spreadctl csaddr remove_node 2
 
 最後にクラスタの状態を確認してください。
@@ -282,6 +323,7 @@ rake と gem を使ってインストールすることもできます。
 CSは単に再起動してください。
 
 CSは、クラスタの状態を"$storage_path/membership"ファイルと"$storage_path/fault"ファイルに保存しています。
+
 もしmembershipファイルが失われた場合は、状態が**FAULT**であるサーバは切り離されます。
 もしfaultファイルが失われた場合は、状態が**FAULT**であるサーバは**active**になり、タイムアウト時間が経過した後で**FAULT**に戻ります。
 
@@ -339,7 +381,6 @@ mapを削除します。
 
 ## リファレンス
 
-
 ### spreadctl
 
     Usage: spreadctl <cs address[:port]> <command> [options]
@@ -385,7 +426,7 @@ mapを削除します。
         -g, --rsid IDs                   レプリケーション･セットのID
         -s, --storage PATH               ストレージのディレクトリ
         -u, --ulog PATH                  更新ログを保存するディレクトリ
-        -r, --rlog PATH                  リレーログを保存するディレクトリ
+        -r, --rlog PATH                  リレー状態ログを保存するディレクトリ
         -m, --cs ADDRESS                 config serverのアドレス
         -f, --fault_path PATH            落ちたノードを記録するファイルのパス
         -b, --membership PATH            ノード一覧表を記録するファイルのパス
@@ -422,11 +463,11 @@ SpreadOSDはオープンソフトウェアです。ソースコードを改変�
     |   +-- hash.rb           Hashベースのオンメモリのストレージ
     |   +-- file.rb           ファイルベースのストレージ
     |
-    +-- rlog/                 データサーバのリレーログの実装
+    +-- rlog/                 データサーバのリレー状態ログの実装
     |   |
     |   +-- base.rb
-    |   +-- memory.rb         オンメモリのリレーログ
-    |   +-- file.rb           ファイルベースのリレーログ
+    |   +-- memory.rb         オンメモリのリレー状態ログ
+    |   +-- file.rb           ファイルベースのリレー状態ログ
     |
     +-- ulog/                 データサーバの更新ログの実装
     |   |

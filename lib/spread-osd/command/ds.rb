@@ -122,7 +122,7 @@ begin
 	end
 
 	unless conf.rlog_path
-		conf.ulog_path = conf.storage_path
+		conf.rlog_path = conf.storage_path
 		#raise "--rlog option is required"
 	end
 

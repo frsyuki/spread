@@ -20,8 +20,7 @@ SpreadOSD consists of 4 kind of servers:
   - **GW (gateway)** receives requests from applications and relays it to appropriate DS.
   - **CS (config server)** manages cluster configuration. It also watches status of DSs and detaches crashed DSs automatically.
 
-
-Multiple DSs composes a group that each member stores same data. The group is called as **replication-set**.
+Multiple DSs composes a group that each member stores same data. The group is called **replication-set**.
 
 
                         App     App     App
@@ -32,8 +31,8 @@ Multiple DSs composes a group that each member stores same data. The group is ca
     | TokyoTyrant |    |
     |      |      |  +----+   +----+   +----+
     | TokyoTyrant |  | DS |   | DS |   | DS |
-    |      |      |  |    |   |    |   |    | Multiple DSs a composes replication-set
-    | TokyoTyrant |  | DS |   | DS |   | DS | DSs in a replication-set stores same data
+    |      |      |  |    |   |    |   |    | Multiple DSs composes a replication-set
+    | TokyoTyrant |  | DS |   | DS |   | DS | DSs in a replication-set store same data
     +-------------+  |    |   |    |   |    |
      MDSs store      | DS |   | DS |   | DS | ... You can add replication-sets at any time
      metadata        +----+   +----+   +----+
@@ -42,9 +41,10 @@ Multiple DSs composes a group that each member stores same data. The group is ca
                                \ | /
                                 CS
 
+
 ## Installation
 
-Following libraries are required to run SpreadOSD:
+Following softwares are required to run SpreadOSD:
 
   - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) >= 1.1.40
   - [ruby](http://www.ruby-lang.org/) >= 1.9.1
@@ -70,6 +70,45 @@ Following commands will be installed:
   - spread-cs: CS server program
   - spread-ds: DS server program
   - spread-gw: GW server program
+
+
+### Full installation guide
+
+Install folowing packages first:
+
+  - gcc-g++ >= 4.1
+  - openssl-devel (or libssl-dev) to build ruby
+  - zlib-devel (or zlib1g-dev) to build ruby
+  - readline-devel (or libreadline6-dev) to build ruby
+
+Following guide installs SpreadOSD on /opt/local/spread.
+
+    # Install Tokyo Tyrant
+    $ wget http://fallabs.com/tokyotyrant/tokyotyrant-1.1.41.tar.gz
+    $ tar zxvf tokyotyrant-1.1.41.tar.gz
+    $ cd tokyotyrant-1.1.41
+    $ ./configure --prefix=/opt/local/spread
+    $ make
+    $ sudo make install
+    
+    # Install ruby-1.9
+    $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p0.tar.bz2
+    $ tar jxvf ruby-1.9.2-p0.tar.bz2
+    $ cd ruby-1.9.2
+    $ ./configure --prefix=/opt/local/spread
+    $ make
+    $ sudo make install
+    
+    # Install gems
+    $ sudo /opt/local/spread/bin/gem install msgpack-rpc
+    $ sudo /opt/local/spread/bin/gem install tokyotyrant
+    
+    # Install SpreadOSD
+    $ git clone http://github.com/frsyuki/spread.git
+    $ cd spread
+    $ ./configure RUBY=/opt/local/spread/bin/ruby --prefix=/opt/local/spread
+    $ make
+    $ sudo make install
 
 
 ## Tutorial
@@ -168,7 +207,7 @@ You may want to decrease the *weight* of the old replication sets.
 
 ### Changing weight of load balancing
 
-You can set a **weight** parameter for replication-sets. It affects to decieds which replication-set is selected to store a new data.
+You can set a **weight** parameter for replication-sets. It affects to decieds which replication-set is selected to store a new data. The default weight is 10.
 
 A replication-set is selected at the probability of **weight / (sum of all weights)**.
 
@@ -205,7 +244,7 @@ If a DS is crashed, its status will be **FAULT**. Confirm it using *spreadctl* f
 
 #### If data is not lost
 
-Just restart the fault server.
+Restart the fault server. Use same **--nid** option and same **--rsid** option.
 
 Confirm that the status is went back to **active**.
 
@@ -224,10 +263,10 @@ First, detach the crashed server as follows:
 
 Second, copy whole data from other DS in the same replication-set. For example, run rsync as follows:
 
-    # Copy relay logs from node03 first
+    # Copy relay status logs from node03 first
     [on node07]$ scp node03:/var/spread/rlog-* /var/spread/
 
-    # Copy data from node03 excluding update logs and relay logs
+    # Copy data from node03 excluding update logs and relay status logs
     # rsync option:
     #   -a  Archive mode
     #   -v  Verbose mode
@@ -387,7 +426,7 @@ Returns true if it succeeded. Otherwise, it returns false.
         -g, --rsid IDs                   replication set IDs
         -s, --storage PATH               path to storage directory
         -u, --ulog PATH                  path to update log directory
-        -r, --rlog PATH                  path to relay log directory
+        -r, --rlog PATH                  path to relay status log directory
         -m, --cs ADDRESS                 address of config server
         -f, --fault_path PATH            path to fault status file
         -b, --membership PATH            path to membership status file
@@ -424,11 +463,11 @@ SpreadOSD is licensed as an open source software. You can modify its source code
     |   +-- hash.rb           On-memory storage based on a Hash instance
     |   +-- file.rb           File based storage
     |
-    +-- rlog/                 Relay log implementations of data servers
+    +-- rlog/                 Relay status log implementations of data servers
     |   |
     |   +-- base.rb
-    |   +-- memory.rb         On-memory relay log
-    |   +-- file.rb           file based relay log
+    |   +-- memory.rb         On-memory relay status log
+    |   +-- file.rb           file based relay status log
     |
     +-- ulog/                 Update log implementations of data servers
     |   |

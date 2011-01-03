@@ -25,6 +25,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/logic/slave_storage_manager.rb \
 	lib/spread-osd/logic/storage_manager.rb \
 	lib/spread-osd/logic/weight.rb \
+	lib/spread-osd/mds/astt.rb \
 	lib/spread-osd/mds/base.rb \
 	lib/spread-osd/mds/tokyotyrant.rb \
 	lib/spread-osd/rlog/base.rb \
@@ -75,7 +76,7 @@ EXTRA_DIST = \
 $(bin_SCRIPTS):
 	mkdir -p `dirname $@`
 	$(RUBY) -e "puts '#!'+File.expand_path('`which $(RUBY)`')" > "$@.tmp"
-	echo "\$$LOAD_PATH << '$(pkgdatadir)/..'" >> "$@.tmp"
+	echo "\$$LOAD_PATH << '$(pkgdatadir)/lib'" >> "$@.tmp"
 	echo "load '$(pkgdatadir)/bin/`basename $@`'" >> "$@.tmp"
 	chmod 755 "$@.tmp"
 	mv "$@.tmp" "$@"
