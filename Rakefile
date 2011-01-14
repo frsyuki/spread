@@ -10,11 +10,12 @@ begin
 		gemspec.author = "FURUHASHI Sadayuki"
 		gemspec.email = "frsyuki@users.sourceforge.jp"
 		gemspec.homepage = "http://github.com/frsyuki/spread-osd"
-		gemspec.has_rdoc = true
+		gemspec.has_rdoc = false
 		gemspec.require_paths = ["lib"]
 		gemspec.add_dependency "msgpack", ">= 0.4.4"
 		gemspec.add_dependency "msgpack-rpc", ">= 0.4.3"
 		gemspec.add_dependency "tokyotyrant", ">= 1.13"
+		gemspec.add_dependency "rack", ">= 1.2.1"
 		gemspec.test_files = Dir["test/test_*.rb"]
 		gemspec.files = Dir["lib/**/*", "ext/**/*", "test/**/*", "spec/**/*", "tasks/**/*"] +
 			%w[AUTHORS ChangeLog COPYING NOTICE README.md README.ja.md]

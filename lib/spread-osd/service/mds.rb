@@ -18,68 +18,147 @@
 module SpreadOSD
 
 
-class MDSService < Service
-	def initialize
-		super
-		@addrs = nil
-		@mds = nil
+class MDSBus < Bus
+	call_slot :open
+	call_slot :close
+
+	# @return
+	#   found: ObjectKey
+	#   not found: nil
+	call_slot :get_okey
+
+	# @return
+	#   found: Hash (may be {})
+	#   not found: nil
+	call_slot :get_attrs
+
+	# @return
+	#   found: [ObjectKey, Hash (may be {})]
+	#   not found: [nil, nil]
+	call_slot :get_okey_attrs
+
+	# @return new ObjectKey or existent ObjectKey
+	call_slot :set_okey
+
+	# @return new ObjectKey or existent ObjectKey
+	call_slot :set_okey_attrs
+
+	# @return
+	#   found and removed: true
+	#   not found: nil
+	call_slot :remove
+
+	# @return array
+	call_slot :select
+end
+
+
+module MDSSelector
+	IMPLS = {}
+
+	def self.register(name, klass)
+		IMPLS[name.to_sym] = klass
+		nil
 	end
 
-	def open_blocking(cs_addr)
-		addrs = ebus_call(:get_session, cs_addr).call(:get_mds)
-		reopen(addrs)
-	end
-
-	def run
-		ebus_call(:config_sync_register, CONFIG_SYNC_MDS_ADDRESS,
-							get_hash) do |obj|
-			reopen(obj)
-			get_hash
+	def self.select!(uri)
+		if m = /^(\w{1,8})\:(.*)/.match(uri)
+			type = m[1].to_sym
+			expr = m[2]
+		else
+			type = :tt
+			expr = uri
 		end
+
+		klass = IMPLS[type]
+		unless klass
+			raise "unknown MDS type: #{type}"
+		end
+
+		klass.bind!
+
+		MDSBus.open(expr)
 	end
 
-	def shutdown
-		@mds.close if @mds
+	def self.open!
+		cs_address = ConfigBus.get_cs_address
+		uri = ProcessBus.get_session(cs_address).call(:get_mds_uri)
+		select!(uri)
+	end
+end
+
+
+class MDSService < Service
+	module Query
+		QC_EQ                = 0
+		QC_NOT_EQ            = 1
+		QC_LESS_THAN         = 2
+		QC_LESS_THAN_EQ      = 3
+		QC_GRATER_THAN       = 4
+		QC_GRATER_THAN_EQ    = 5
+		QC_NULL              = 6
+		QC_NOT_NULL          = 8
+
+		ORDER_NONE           = 0
+		ORDER_STR_ASC        = 1
+		ORDER_STR_DESC       = 2
+		ORDER_NUM_ASC        = 3
+		ORDER_NUM_DESC       = 4
 	end
 
-	def mds_get(key, &block)
-		@mds.get(key, &block)
-	end
-
-	def mds_set(key, map, &block)
-		@mds.set(key, map, &block)
-	end
-
-	def mds_remove(key, &block)
-		@mds.remove(key, &block)
-	end
-
-	#def mds_add_or_get(key, map, &block)
-	#	@mds.add_or_get(key, map, &block)
+	#def open(expr)
 	#end
 
-	ebus_connect :run
-	ebus_connect :shutdown
-	ebus_connect :mds_get
-	ebus_connect :mds_set
-	ebus_connect :mds_remove
-	#ebus_connect :mds_add_or_get
+	#def close
+	#end
 
-	private
-	def reopen(new_addrs)
-		new_mds = MDS.open(new_addrs)
-		@mds.close if @mds
-		@mds = new_mds
-		@addrs = new_addrs
-		update_hash
+	#def get_okey(sid, key=nil, &cb)
+	#end
+
+	#def get_attrs(sid, key=nil, &cb)
+	#end
+
+	#def get_okey_attrs(sid, key=nil, &cb)
+	#end
+
+	#def set_okey(key, &cb)
+	#end
+
+	#def set_okey_attrs(key, attrs, &cb)
+	#end
+
+	#def remove(key, &cb)
+	#end
+
+	def select(cols, conds, order, order_col, limit, skip, sid=nil)
+		raise "select is not supported on MDS"
 	end
 
-	def get_hash
-		@addrs_hash
+	ebus_connect :MDSBus,
+		:get_okey,
+		:get_attrs,
+		:get_okey_attrs,
+		:set_okey,
+		:set_okey_attrs,
+		:remove,
+		:select,
+		:open,
+		:close
+
+	def shutdown
+		MDSBus.close
 	end
 
-	def update_hash
-		@addrs_hash = Digest::SHA1.digest(@addrs)
+	ebus_connect :ProcessBus,
+		:shutdown
+
+	protected
+	def new_okey(key, sid=get_current_sid, rsid=MembershipBus.select_next_rsid)
+		ObjectKey.new(key, sid, rsid)
+	end
+
+	def get_current_sid
+		SnapshotBus.get_current_sid
 	end
 end
 

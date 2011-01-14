@@ -129,7 +129,10 @@ class WeightBalancer < WeightInfo
 		nil
 	end
 
-	def choice_rsid
+	def select_next_rsid
+		if @array.empty?
+			raise "no replication set is registered"
+		end
 		@rr += 1
 		@rr = 0 if @rr >= @array.size
 		@array[@rr]

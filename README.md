@@ -5,7 +5,7 @@ A scalable distributed storage system.
 
 ## Overview
 
-SpreadOSD is a distributed storage system that can store large data like photos, musics, movies, etc.
+SpreadOSD is a distributed storage system that can store large data link photos, music movies, etc.
 
 You can increase storage capacity dynamically as adding servers.
 Replication is supported, and failover is done within a very short downtime.
@@ -17,7 +17,7 @@ SpreadOSD consists of 4 kind of servers:
 
   - **DS (data server)** stores and replicates contents on the disk.
   - **MDS (metadata server)** stores metadata of the contents. It includes the information that shows which DS stores the content. [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) is used for MDS.
-  - **GW (gateway)** receives requests from applications and relays it to appropriate DS.
+  - **GW (gateway)** receives requests from applications and relays it to appropriate DS. You can use DS as a GW.
   - **CS (config server)** manages cluster configuration. It also watches status of DSs and detaches crashed DSs automatically.
 
 Multiple DSs composes a group that each member stores same data. The group is called **replication-set**.
@@ -50,6 +50,7 @@ Following softwares are required to run SpreadOSD:
   - [ruby](http://www.ruby-lang.org/) >= 1.9.1
   - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) >= 0.4.3
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) >= 1.13
+  - [rack gem](http://rubygems.org/gems/rack) >= 1.2.1
 
 Configure and install in the usual way:
 
@@ -74,7 +75,9 @@ Following commands will be installed:
 
 ### Full installation guide
 
-Install folowing packages first:
+In this guide, you will install all systems on /opt/local/spread directory.
+
+Install folowing packages first to compile binaries:
 
   - gcc-g++ >= 4.1
   - openssl-devel (or libssl-dev) to build ruby
@@ -102,6 +105,7 @@ Following guide installs SpreadOSD on /opt/local/spread.
     # Install gems
     $ sudo /opt/local/spread/bin/gem install msgpack-rpc
     $ sudo /opt/local/spread/bin/gem install tokyotyrant
+    $ sudo /opt/local/spread/bin/gem install rack
     
     # Install SpreadOSD
     $ git clone http://github.com/frsyuki/spread.git
@@ -115,7 +119,7 @@ Following guide installs SpreadOSD on /opt/local/spread.
 
 Following example runs SpreadOSD on 6-node cluster:
 
-    # Runs a dual-master Tokyo Tyrant servers.
+    # Runs two Tokyo Tyrant servers as dual-master.
     [on node01]$ ttserver /var/spread/mds.tct -ulog /var/spread/ulog -sid 1 \
                           -mhost node02 -rts /var/spread/sid1.rts
     [on node02]$ ttserver /var/spread/mds.tct -ulog /var/spread/ulog -sid 2 \
@@ -126,18 +130,18 @@ Following example runs SpreadOSD on 6-node cluster:
     
     # Runs DSs for repliset-set 0.
     [on node03]$ spread-ds --cs node03 --address node03 --nid 0 --rsid 0 \
-                           --name mynode03 --storage /var/spread
+                           --name mynode03 --store /var/spread
     [on node04]$ spread-ds --cs node04 --address node04 --nid 1 --rsid 0 \
-                           --name mynode04 --storage /var/spread
+                           --name mynode04 --store /var/spread
     
     # Runs DSs for repliset-set 1.
     [on node05]$ spread-ds --cs node05 --address node05 --nid 2 --rsid 1 \
-                           --name mynode05 --storage /var/spread
+                           --name mynode05 --store /var/spread
     [on node06]$ spread-ds --cs node06 --address node06 --nid 3 --rsid 1 \
-                           --name mynode06 --storage /var/spread
+                           --name mynode06 --store /var/spread
     
     # Runs a GW on the application server.
-    [on client]$ spread-gw --cs node01 --port 18800
+    [on client]$ spread-gw --cs node01 --port 18800 --http 18080
 
 Confirm status of the cluster using *spreadctl* command.
 
@@ -151,11 +155,11 @@ Confirm status of the cluster using *spreadctl* command.
 Now the cluster is active. Try to set and get using *spreadcli* command.
 
     # GW is running on localhost
-    [on client]$ spreadcli 127.0.0.1 set "key1" '{"type":"png","data":"..."}'
-    true
+    [on client]$ spreadcli 127.0.0.1 set "key1" 'val1' '{"type":"png"}'
     
     [on client]$ spreadcli 127.0.0.1 get "key1"
-    {"type":"png","data":"..."}
+    {"type":"png"}
+    val1
 
 
 ### Run on single host
@@ -165,15 +169,13 @@ You can test SpreadOSD on single host as follows:
     [localhost]$ ttserver mds.tct
     [localhost]$ spread-cs --mds 127.0.0.1 -s ./data-cs
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18900 --nid 0 --rsid 0 \
-                           --name ds0 --storage ./data-ds0
+                           --name ds0 --store ./data-ds0
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18901 --nid 1 --rsid 0 \
-                           --name ds1 --storage ./data-ds1
+                           --name ds1 --store ./data-ds1
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18902 --nid 2 --rsid 1 \
-                           --name ds2 --storage ./data-ds2
+                           --name ds2 --store ./data-ds2
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18903 --nid 3 --rsid 1 \
-                           --name ds3 --storage ./data-ds3
-    [localhost]$ spread-gw --cs 127.0.0.1
-
+                           --name ds3 --store ./data-ds3 --http 18080
 
 
 ## Cluster management
@@ -263,10 +265,10 @@ First, detach the crashed server as follows:
 
 Second, copy whole data from other DS in the same replication-set. For example, run rsync as follows:
 
-    # Copy relay status logs from node03 first
-    [on node07]$ scp node03:/var/spread/rlog-* /var/spread/
+    # Copy relay time stamps from node03 first
+    [on node07]$ scp node03:/var/spread/rts-* /var/spread/
 
-    # Copy data from node03 excluding update logs and relay status logs
+    # Copy data from node03 excluding update logs and relay time stamps
     # rsync option:
     #   -a  Archive mode
     #   -v  Verbose mode
@@ -274,7 +276,7 @@ Second, copy whole data from other DS in the same replication-set. For example, 
     #       Note that arcfour128 is fast but weak algorithm.
     #       Use "blowfish" if the network is insecure.
     #   --bwlimit limits bandwidth in KB/s
-    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" --excluding "rlog-*" \
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" --excluding "rts-*" \
                        --bwlimit 32768 node03:/var/spread/ /var/spread/
     
     # Ensure update logs are removed
@@ -322,7 +324,7 @@ Then confirm the status.
 
 Just restart it.
 
-Note that CS stores status of the cluster to "$storage_path/membership" and "$storage_path/fault" file.
+Note that CS stores status of the cluster to "$store_path/membership" and "$store_path/fault" file.
 
 If membership file is lost, DSs whose status is **FAULT** will become detached.
 If fault file is lost, DSs whose status is **FAULT** will become **active**, and go back to **FAULT** after timeout time elapsed.
@@ -336,46 +338,121 @@ GW is a *stateless* server, so just restart it.
 
 
 
-## Protocol
+## Application interface
 
-SpreadOSD uses [MessagePack-RPC](http://msgpack.org/) as a client protocol.
+SpreadOSD uses [MessagePack-RPC](http://msgpack.org/) and HTTP as a client protocol.
 
-Client applications can use following commands:
-
-### get(key:Raw) -> map:Map<Raw,Raw>
-Gets a map from the storage.
-
-Returns the found map if it success. Otherwise, it returns an empty map.
+### MessagePack-RPC
 
 
-### set(key:Raw, map:Map<Raw,Raw>) -> success:Boolean
-Sets a map to the storage. A column named "data" in the *map* will be stored on DS. Other columns are stored on MDS.
+#### get(key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+Gets data and attributes from the storage.
 
-Returns true if it succeeded. Otherwise, it returns false.
-
-
-### remove(key:Raw) -> success:Boolean
-Removes a map from the storage.
-
-Returns true if it succeeded. Otherwise, it returns false.
+Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
 
 
-### get_direct(key:Raw, rsid:Integer) -> data:Raw or nil
-Gets a data from the storage. This command does not access to the MDS.
+#### get_data(key:Raw) -> data:Raw
+Gets data from the storage.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-### set_direct(key:Raw, data:Raw, rsid:Integer) -> success:Boolean
-Sets a data to the storage. This command does not access to the MDS.
+#### get_attrs(key:Raw) -> attributes:Map<Raw,Raw>
+Gets attributes from the storage.
 
-Returns true if it succeeded. Otherwise, it returns false.
+Returns the found attributes if it success. Otherwise, it returns nil.
 
 
-### remove_direct(key:Raw, rsid:Integer) -> succeeded:Boolean
-Removes a data to the storage. This command does not access to the MDS.
+#### gets(sid:Integer, key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+Gets data and attributes from the storage using the snapshot.
 
-Returns true if it succeeded. Otherwise, it returns false.
+Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
+
+
+#### gets_data(sid:Integer, key:Raw) -> data:Raw
+Gets data from the storage using the snapshot.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### gets_attrs(sid:Integer, key:Raw) -> attributes:Map<Raw,Raw>
+Gets attributes from the storage using the snapshot.
+
+Returns the found attributes if it success. Otherwise, it returns nil.
+
+
+#### read(key:Raw, offset:Integer, size:Integer) -> data:Raw
+Reads part of data from the storage.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### reads(sid:Integer, key:Raw, offset:Integer, size:Integer) -> data:Raw
+Reads part of data from the storage using the snapshot.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### getd_data(objectKey:Object) -> data:Raw
+Gets data from DS directly.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### readd(objectKey:Object, offset:Integer, size:Integer) -> data:Raw
+Reads part of data from DS directly.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### set(key:Raw, data:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+Sets data and attributes to the storage.
+The data is stored on DS, and the attributes are stored on MDS.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### set_data(key:Raw, data:Raw) -> objectKey:Object
+Sets data to the storage. The data is stored on DS.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### set_attrs(key:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+Sets attributes to the storage. The attributes is stored on MDS.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### write(key:Raw, offset:Integer, data:Raw) -> objectKey:Object
+Writes part of data to the storage.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### remove(key:Raw)
+Removes data and attributes from the storage.
+
+Returns true if the object is removed. Otherwise, it returns false.
+
+
+#### select(cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+
+    cols:Array<String> or nil
+    conds:Array<Condition>
+    order:Integer or nil
+    order_col:Raw or nil
+    limit:Integer or nil
+    skip:Integer or nil
+
+
+#### selects(sid, cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+
+
+
+### HTTP
+
+TODO
 
 
 
@@ -383,38 +460,56 @@ Returns true if it succeeded. Otherwise, it returns false.
 
 ### spreadctl
 
+**spreadctl** is a control command of the cluster.
+
     Usage: spreadctl <cs address[:port]> <command> [options]
     command:
        nodes                        show list of nodes
        replset                      show list of replication sets
-       stat                         show status of nodes
+       stat                         show statistics of nodes
        items                        show stored number of items
        remove_node <nid>            remove a node from the cluster
        set_weight <rsid> <weight>   set distribution weight
+       snapshot                     show snapshot list
+       add_snapshot <name>          add a snapshot
+       version                      show software version of nodes
 
 
 ### spreadcli
 
-    Usage: spreadcli <cs address[:port]> <command> [options]
+**spreadcli** is a command line client program.
+
+    Usage: cli.rb <cs address[:port]> <command> [options]
     command:
-       set <key> <json>                 set a map
-       get <key>                        get the map and show json
-       remove <key>                     remove the map
-       get_data <key>                   get the map and show map["data"]
-       set_data <key> <data>            set a map {"data":data}
-       get_direct <rsid> <key>          get the data from the replication set directly
-       set_direct <rsid> <key> <data>   set the data to the replication set directly
-       remove_direct <rsid> <key>       remove the data from the replication set directly
+       get_data <key>                     get data
+       get_attrs <key>                    get attributes
+       gets_data <sid> <key>              get data using the snapshot
+       gets_attrs <sid> <key>             get attributes using the snapshot
+       read <key> <offset> <size>         get data with the offset and the size
+       reads <sid> <key> <offset> <size>  get data with the offset and the size
+       set_data <key> <data>              set data
+       set_attrs <key> <json>             set attributes
+       write <key> <offset> <data>        set data with the offset and the size
+       get <key>                          get data and attributes
+       gets <sid> <key>                   get data and attributes using the snapshot
+       set <key> <data> <json>            set data and attributes
+       remove <key>                       remove the data
+       select <expr> [cols...]            select attributes
+       selects <sid> <expr> [cols...]     select attributes using the snapshot
 
 
 ### spread-cs
 
     Usage: spread-cs [options]
         -p, --port PORT                  listen port
-        -s, --storage PATH               path to base directory
-        -f, --fault_path PATH            path to fault status file
-        -b, --membership PATH            path to membership status file
-        -t, --mds ADDRESS                address of metadata server
+        -m, --mds ADDRESS                address of metadata server
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --snapshot_store PATH        path to snapshot status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
 ### spread-ds
@@ -424,22 +519,36 @@ Returns true if it succeeded. Otherwise, it returns false.
         -n, --name NAME                  node name
         -a, --address ADDRESS            listen address
         -g, --rsid IDs                   replication set IDs
-        -s, --storage PATH               path to storage directory
+        -s, --store PATH                 path to storage directory
         -u, --ulog PATH                  path to update log directory
-        -r, --rlog PATH                  path to relay status log directory
-        -m, --cs ADDRESS                 address of config server
-        -f, --fault_path PATH            path to fault status file
-        -b, --membership PATH            path to membership status file
+        -r, --rts PATH                   path to relay timestamp directory
+        -t, --http                       http listen port
+        -R, --read-only                  read-only mode
+        -S, --snapshot SID               read-only mode using the snapshot
+        -c, --cs ADDRESS                 address of config server
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --snapshot_store PATH        path to snapshot status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
 ### spread-gw
 
     Usage: spread-gw [options]
         -p, --port PORT                  listen port
-        -m, --cs ADDRESS                 address of config server
-        -s, --storage PATH               path to base directory
-        -f, --fault_path PATH            path to fault status file
-        -b, --membership PATH            path to membership status file
+        -t, --http PORT                  http listen port
+        -c, --cs ADDRESS                 address of config server
+        -R, --read-only                  read-only mode
+        -S, --snapshot SID               read-only mode using the snapshot
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --snapshot_store PATH        path to snapshot status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
 
@@ -451,82 +560,81 @@ SpreadOSD is licensed as an open source software. You can modify its source code
 
     lib/spread-osd
     |
-    +-- mds/                  Client implementations of metadata server
+    +-- lib/                    Fundamental libraries
     |   |
-    |   +-- base.rb
-    |   +-- tokyotyrant.rb    A client implementation for Tokyo Tyrant MDS
-    |   +-- astt.rb           Asynchronous version of Tokyo Tyrant MDS
-    |
-    +-- storage/              Storage implementations of data servers
-    |   |
-    |   +-- base.rb
-    |   +-- hash.rb           On-memory storage based on a Hash instance
-    |   +-- file.rb           File based storage
-    |
-    +-- rlog/                 Relay status log implementations of data servers
-    |   |
-    |   +-- base.rb
-    |   +-- memory.rb         On-memory relay status log
-    |   +-- file.rb           file based relay status log
-    |
-    +-- ulog/                 Update log implementations of data servers
-    |   |
-    |   +-- base.rb
-    |   +-- array.rb          On-memory update log based on an Array instance
-    |   +-- file.rb           file based update log
-    |
-    +-- lib/                  Fundamental libraries
-    |   |
-    |   +-- ebus.rb           EventBus
-    |   +-- cclog.rb          A logging library
-    |   +-- vbcode.rb         Variable byte code
+    |   +-- ebus.rb             EventBus
+    |   +-- cclog.rb            A logging library
+    |   +-- vbcode.rb           Variable byte code
     |
     +-- logic/
     |   |
-    |   +-- node.rb                     Definition of the Node class
-    |   +-- fault_detector.rb           Fault detector
-    |   +-- membership.rb               Node list and replication-set list
-    |   +-- weight.rb                   Load balancing feature
-    |   +-- storage_manager.rb          Storage interface
-    |   +-- master_storage_manager.rb   Storage interface for replication master
-    |   +-- slave_storage_manager.rb    Storage interface for replication slave
+    |   +-- node.rb             Definition of the Node class
+    |   +-- tsv_data.rb         Base class to use tab separated value
+    |   +-- fault_detector.rb   Fault detector
+    |   +-- membership.rb       Node list and replication-set list
+    |   +-- weight.rb           Load balancing feature
+    |   +-- snapshot.rb         Snapshot list
     |
     +-- service/
     |   |
     |   +-- base.rb
-    |   +-- net.rb
-    |   +-- timer.rb
+    |   +-- bus.rb
     |   |
-    |   +-- mds.rb
-    |   |
-    |   +-- storage.rb
-    |   +-- storage_client.rb
-    |   |
-    |   +-- gateway.rb
+    |   +-- process.rb
     |   +-- heartbeat.rb
     |   +-- membership.rb
+    |   +-- snapshot.rb
     |   |
-    |   +-- status.rb
-    |   +-- cs_status.rb
-    |   +-- ds_status.rb
-    |   +-- gw_status.rb
+    |   +-- data_server.rb
+    |   +-- data_client.rb
+    |   +-- slave.rb
+    |   |
+    |   +-- gateway.rb
+    |   +-- gateway_ro.rb
+    |   +-- gw_http.rb
     |   |
     |   +-- config.rb
-    |   +-- cs_config.rb
-    |   +-- ds_config.rb
-    |   +-- gw_config.rb
+    |   +-- config_cs.rb
+    |   +-- config_ds.rb
+    |   +-- config_gw.rb
     |   |
-    |   +-- cs_rpc.rb
-    |   +-- ds_rpc.rb
-    |   +-- gw_rpc.rb
+    |   +-- stat.rb
+    |   +-- stat_cs.rb
+    |   +-- stat_ds.rb
+    |   +-- stat_gw.rb
+    |   |
+    |   +-- rpc.rb
+    |   +-- rpc_cs.rb
+    |   +-- rpc_ds.rb
+    |   +-- rpc_gw.rb
+    |   |
+    |   +-- rts.rb
+    |   +-- rts_file.rb
+    |   +-- rts_memory.rb
+    |   |
+    |   +-- ulog.rb
+    |   +-- ulog_file.rb
+    |   +-- ulog_memory.rb
+    |   |
+    |   +-- mds.rb
+    |   +-- mds_tt.rb
+    |   |
+    |   +-- storage.rb
+    |   +-- storage_dir.rb
     |
-    +-- comand/
+    +-- command/
+    |   |
+    |   +-- ctl.rb              Control tool
+    |   +-- cs.rb               CS main
+    |   +-- ds.rb               DS main
+    |   +-- gw.rb               GW main
+    |   +-- cli.rb              Command line client program
     |
-    +-- bus.rb                Declarations of slots of EventBus
+    +-- default.rb              Some constants like default port number
     |
-    +-- default.rb            Some constants like default port number
+    +-- log.rb
     |
-    +-- common.rb
+    +-- version.rb
 
 
 ## License

@@ -19,269 +19,302 @@ module SpreadOSD
 
 
 class GatewayService < Service
-	DATA_COLUMN = "data"
-
-	def initialize
-		super
-		@sc = StorageClientService.instance
-	end
-
 	def rpc_get(key)
+		rpc_gets(nil, key)
+	end
+
+	def rpc_get_data(key)
+		rpc_gets_data(nil, key)
+	end
+
+	def rpc_get_attrs(key)
+		rpc_gets_attrs(nil, key)
+	end
+
+
+	def rpc_gets(sid, key)
 		ar = MessagePack::RPC::AsyncResult.new
-
-		ebus_call(:mds_get, key) do |map|
-			if rsid = map[DATA_COLUMN]
-				rsid = rsid.to_i
-				get_data(rsid, key) do |data|
-					map[DATA_COLUMN] = data
-					ar.result(map)
-				end
-
-			else
-				ar.result(map)
-			end
-
-		end
-
-		ar
-	end
-
-	def get_data(rsid, key, &block)
-		@sc.get(rsid, key) do |data|
-			block.call(data)
-		end
-	rescue
-		$log.warn $!  # FIXME log
-		block.call(nil)
-	end
-
-	def rpc_set(key, map)
-		ar = MessagePack::RPC::AsyncResult.new
-
-		data = map[DATA_COLUMN]
-
-		ebus_call(:mds_get, key) do |current|
-			rsid_s = current[DATA_COLUMN]
-
-			if data
-				if rsid_s && !rsid_s.empty?
-					rsid = rsid_s.to_i
-				else
-					rsid = ebus_call(:choice_rsid)
-				end
-				map[DATA_COLUMN] = rsid.to_s
-				set_data_set_map(rsid, key, map, data) do |success|
-					ar.result(success)
-				end
-
-			elsif rsid_s
-				set_map_remove_data(rsid_s.to_i, key, map) do |success|
-					ar.result(success)
-				end
-
-			else
-				set_map(key, map) do |success|
-					ar.result(success)
-				end
-			end
-		end
-
-		ar
-	end
-
-	def set_data_set_map(rsid, key, map, data, &block)
-		@sc.set(rsid, key, data) do |success|
-			if success
-				begin
-					ebus_call(:mds_set, key, map, &block)
-				rescue
-					$log.warn $!  # FIXME log
-					block.call(false)
-				end
-			else
-				block.call(false)
-			end
-		end
-	rescue
-		$log.warn $!  # FIXME log
-		block.call(false)
-	end
-
-	def set_map_remove_data(rsid, key, map, &block)
-		ebus_call(:mds_set, key, map) do |success|
-			if success
-				begin
-					@sc.remove(rsid, key, &block)
-				rescue
-					# FIXME
-					$log.warn $!
-					block.call(false)
-				end
-			else
-				block.call(false)
-			end
-		end
-	rescue
-		$log.warn $!  # FIXME log
-		block.call(false)
-	end
-
-	def set_map(key, map, &block)
-		ebus_call(:mds_set, key, map, &block)
-	rescue
-		$log.warn $!  # FIXME log
-		block.call(false)
-	end
-
-=begin
-	def rpc_set(key, map)
-		ar = MessagePack::RPC::AsyncResult.new
-
-		if data = map[DATA_COLUMN]
-			#rsid = ebus_call(:choice_rsid)
-			#rsid_s = rsid.to_s
-			#map[DATA_COLUMN] = rsid_s
-			#
-			#modproc = Proc.new do |current|
-			#	if rsid_current = current[DATA_COLUMN]
-			#		rsid_s = map[DATA_COLUMN] = rsid_current
-			#	end
-			#	map
-			#end
-			#
-			#ebus_call(:atomic, key, modproc) do |success|
-			#	if success
-			#		rsid = rsid_s.to_i
-			#		set_data(rsid, key, map) do |success|
-			#			ar.rescue(success)
-			#		end
-			#	else
-			#		ar.result(false)
-			#	end
-			#end
-
-			rsid = ebus_call(:choice_rsid)
-			map[DATA_COLUMN] = rsid.to_s
-
-			ebus_call(:mds_add_or_get, key, map) do |current|
-				if current
-					update_mds_set_data(rsid, key, map, current, data) do |success|
-						ar.result(success)
+		MDSBus.get_okey_attrs(key, sid) {|(okey,attrs),error|
+			if error
+				$log.warn("failed to get a key or attributes from MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif okey
+				DataClientBus.get(okey) {|data,error|
+					if error
+						$log.warn(error)
+						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
-
-				else
-					set_data(rsid, key, data) do |success|
-						ar.result(success)
-					end
-				end
+					data ||= ""
+					ar.result([data,attrs], nil)
+				}
+			else
+				ar.result([nil,nil], nil)
 			end
-
-		else
-			# remove existent data?
-			ebus_call(:mds_set, key, map) do |success|
-				ar.result(success)
-			end
-		end
-
+		}
 		ar
 	end
 
-	def update_mds_set_data(rsid, key, map, current, data, &block)
-		if rsid_current = current[DATA_COLUMN]
-			rsid_s = map[DATA_COLUMN] = rsid_current
-			rsid = rsid_s.to_i
-		end
-		ebus_call(:mds_set, key, map) do |success|
-			if success
-				set_data(rsid, key, data, &block)
+	def rpc_gets_data(sid, key)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.get_okey(key, sid) {|okey,error|
+			if error
+				$log.warn("failed to get a key from MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif okey
+				DataClientBus.get(okey) {|data,error|
+					if error
+						$log.warn(error)
+						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+					end
+					data ||= ""
+					ar.result(data, nil)
+				}
 			else
-				block.call(false)
+				ar.result(nil)
 			end
-		end
-	rescue
-		# FIXME
-		$log.warn $!
-		block.call(false)
+		}
+		ar
 	end
-=end
 
-	def set_data(rsid, key, data, &block)
-		@sc.set(rsid, key, data) do |success|
-			block.call(success)
-		end
-	rescue
-		$log.warn $!  # FIXME log
-		block.call(false)
+	def rpc_gets_attrs(sid, key)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.get_attrs(key, sid) {|attrs,error|
+			if error
+				$log.warn("failed to get attributes from MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif attrs
+				ar.result(attrs)
+			else
+				ar.result(nil)
+			end
+		}
+		ar
 	end
+
+
+	def rpc_read(key, offset, size)
+		rpc_reads(nil, key, offset, size)
+	end
+
+	def rpc_reads(sid, key, offset, size)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.get_okey(key, sid) {|okey,error|
+			if error
+				$log.warn("failed to get a key from MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif okey
+				DataClientBus.read(okey, offset, size) {|data,error|
+					if error
+						$log.warn("failed to get data from DS: key=#{key.dump}: #{error} rsid=#{okey.rsid}")
+						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+					end
+					data ||= ""
+					ar.result(data, nil)
+				}
+			else
+				ar.result(nil)
+			end
+		}
+		ar
+	end
+
+
+	def rpc_getd_data(okey)
+		ar = MessagePack::RPC::AsyncResult.new
+		DataClientBus.get(okey) {|data,error|
+			if error
+				$log.warn("failed to get data from DS: okey=#{okey}: #{error} rsid=#{okey.rsid}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				ar.result(data, nil)
+			end
+		}
+		ar
+	end
+
+	def rpc_readd(okey, offset, size)
+		ar = MessagePack::RPC::AsyncResult.new
+		DataClientBus.read(okey, offset, size) {|data,error|
+			if error
+				$log.warn("failed to get data from DS: okey=#{okey}: #{error} rsid=#{okey.rsid}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				ar.result(data, nil)
+			end
+		}
+		ar
+	end
+
+
+	def rpc_set(key, data, attrs)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.set_okey_attrs(key, attrs) {|okey,error|
+			if error
+				$log.warn("failed to set a key or attributes to MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				DataClientBus.set(okey, data) {|_,error|
+					if error
+						ar.error(error.to_s)
+					else
+						ar.result(okey)
+					end
+				}
+			end
+		}
+		ar
+	end
+
+	def rpc_set_data(key, data)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.set_okey(key) {|okey,error|
+			if error
+				$log.warn("failed to set a key to MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				DataClientBus.set(okey, data) {|_,error|
+					if error
+						$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
+						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+						ar.error(error.to_s)
+					else
+						ar.result(okey)
+					end
+				}
+			end
+		}
+		ar
+	end
+
+	def rpc_set_attrs(key, attrs)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.set_okey_attrs(key, attrs) {|okey,error|
+			if error
+				$log.warn("failed to set a key or attributes to MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				ar.result(okey)
+			end
+		}
+		ar
+	end
+
+
+	def rpc_write(key, offset, data)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.set_okey(key) {|okey,error|
+			if error
+				$log.warn("failed to set a key to MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				DataClientBus.write(okey, offset, data) {|_,error|
+					if error
+						$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
+						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+						ar.error(error.to_s)
+					else
+						ar.result(okey)
+					end
+				}
+			end
+		}
+		ar
+	end
+
+	#def rpc_resize(key, size)
+	#	ar = MessagePack::RPC::AsyncResult.new
+	#	MDSBus.set_okey(key) {|okey,error|
+	#		if error
+	#			$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
+	#			$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+	#			ar.error(error.to_s)
+	#		else
+	#			DataClientBus.resize(okey, size) {|_,error|
+	#				if error
+	#					$log.warn("failed to resize a data on DS: key=#{key.dump} size=#{size}: #{error}")
+	#					$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+	#					ar.error(error.to_s)
+	#				else
+	#					ar.result(okey)
+	#				end
+	#			}
+	#		end
+	#	}
+	#	ar
+	#end
+
 
 	def rpc_remove(key)
 		ar = MessagePack::RPC::AsyncResult.new
-
-		ebus_call(:mds_remove, key) do |map|
-			if rsid = map[DATA_COLUMN]
-				rsid = rsid.to_i
-				remove_data(rsid, key) do |success|
-					ar.result(success)
-				end
-
-			else
+		MDSBus.remove(key) {|okey,error|
+			if error
+				$log.warn("failed remove a key from MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif okey
 				ar.result(true)
+			else
+				ar.result(false)
 			end
-
-		end
-
+		}
 		ar
 	end
 
-	def remove_data(rsid, key, &block)
-		@sc.remove(rsid, key) do |success|
-			block.call(success)
-		end
-	rescue
-		$log.warn $!  # FIXME log
-		block.call(false)
+
+	def rpc_select(cols, conds, order, order_col, limit, skip)
+		rpc_selects(nil, cols, conds, order, order_col, limit, skip)
 	end
 
-	def rpc_get_direct(key, rsid)
+	def rpc_selects(sid, cols, conds, order, order_col, limit, skip)
 		ar = MessagePack::RPC::AsyncResult.new
-
-		get_data(rsid, key) do |data|
-			ar.result(data)
-		end
-
+		MDSBus.select(cols, conds, order, order_col, limit, skip, reqdata, sid) {|array,error|
+			if error
+				$log.warn("failed select columns from MDS: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				ar.result(array)
+			end
+		}
 		ar
 	end
 
-	def rpc_set_direct(key, rsid, data)
-		ar = MessagePack::RPC::AsyncResult.new
 
-		set_data(rsid, key, data) do |success|
-			ar.result(success)
-		end
-
-		ar
-	end
-
-	def rpc_remove_direct(key, rsid)
-		ar = MessagePack::RPC::AsyncResult.new
-
-		remove_data(rsid, key) do |success|
-			ar.result(success)
-		end
-
-		ar
-	end
-
-	#def rpc_select(conds, columns, order, limit, skip)
+	#def rpc_purge(key)
 	#end
 
-	#def rpc_count(conds)
+	#def rpc_purges(sid, key)
 	#end
 
-	ebus_connect :rpc_get
-	ebus_connect :rpc_set
-	ebus_connect :rpc_remove
-	ebus_connect :rpc_get_direct
+
+	ebus_connect :GWRPCBus,
+		:get          => :rpc_get,
+		:get_data     => :rpc_get_data,
+		:get_attrs    => :rpc_get_attrs,
+		:gets         => :rpc_gets,
+		:gets_data    => :rpc_gets_data,
+		:gets_attrs   => :rpc_gets_attrs,
+		:read         => :rpc_read,
+		:reads        => :rpc_reads,
+		:getd_data    => :rpc_getd_data,
+		:readd        => :rpc_readd,
+		:set          => :rpc_set,
+		:set_data     => :rpc_set_data,
+		:set_attrs    => :rpc_set_attrs,
+		:write        => :rpc_write,
+		:remove       => :rpc_remove,
+		:select       => :rpc_select,
+		:selects      => :rpc_selects
 end
 
 

@@ -18,27 +18,26 @@
 module SpreadOSD
 
 
-class StorageBus < Bus
+class RelayTimeStampBus < Bus
+	call_slot :init
+
 	call_slot :open
-	call_slot :close
-
-	call_slot :get
-
-	call_slot :set
-
-	call_slot :read
-
-	call_slot :write
-
-	call_slot :remove
-
-	call_slot :copy
-
-	call_slot :get_items
 end
 
 
-class StorageSelector
+module RelayTimeStamp
+	#def close
+	#end
+
+	#def get
+	#end
+
+	#def set(pos, &block)
+	#end
+end
+
+
+class RelayTimeStampSelector
 	IMPLS = {}
 
 	def self.register(name, klass)
@@ -47,64 +46,43 @@ class StorageSelector
 	end
 
 	def self.select!(uri)
+		uri ||= "mem:"
+
 		if m = /^(\w{1,8})\:(.*)/.match(uri)
 			type = m[1].to_sym
 			expr = m[2]
 		else
-			type = :dir
+			type = :file
 			expr = uri
 		end
 
 		klass = IMPLS[type]
+
 		unless klass
-			raise "unknown Storage type: #{type}"
+			"unknown RelayTimeStamp type: #{type}"
 		end
 
 		klass.init
 
-		StorageBus.open(expr)
+		RelayTimeStampBus.init(expr)
 	end
 
 	def self.open!
-		select!(ConfigBus.get_storage_path)
+		select!(ConfigBus.get_rts_path)
 	end
 end
 
 
-class StorageService < Service
-	#def open(path)
+class RelayTimeStampService < Service
+	#def init(expr)
 	#end
 
-	#def close
+	#def open(nid)
 	#end
 
-	#def get(sid, key)
-	#end
-
-	#def set(sid, key, data)
-	#end
-
-	#def read(sid, key, offset, size)
-	#end
-
-	#def write(sid, key, offset, data)
-	#end
-
-	#def remove(sid, key)
-	#end
-
-	#def get_items
-	#end
-
-	ebus_connect :StorageBus,
-		:get,
-		:set,
-		:read,
-		:write,
-		:remove,
-		:get_items,
+	ebus_connect :RelayTimeStampBus,
 		:open,
-		:close
+		:init
 end
 
 

@@ -22,14 +22,21 @@ require 'pp'
 def usage
 	puts "Usage: #{File.basename($0)} <cs address[:port]> <command> [options]"
 	puts "command:"
-	puts "   set <key> <json>                 set a map"
-	puts "   get <key>                        get the map and show json"
-	puts "   remove <key>                     remove the map"
-	puts "   get_data <key>                   get the map and show map[\"data\"]"
-	puts "   set_data <key> <data>            set a map {\"data\":data}"
-	puts "   get_direct <rsid> <key>          get the data from the replication set directly"
-	puts "   set_direct <rsid> <key> <data>   set the data to the replication set directly"
-	puts "   remove_direct <rsid> <key>       remove the data from the replication set directly"
+	puts "   get_data <key>                     get data"
+	puts "   get_attrs <key>                    get attributes"
+	puts "   gets_data <sid> <key>              get data using the snapshot"
+	puts "   gets_attrs <sid> <key>             get attributes using the snapshot"
+	puts "   read <key> <offset> <size>         get data with the offset and the size"
+	puts "   reads <sid> <key> <offset> <size>  get data with the offset and the size"
+	puts "   set_data <key> <data>              set data"
+	puts "   set_attrs <key> <json>             set attributes"
+	puts "   write <key> <offset> <data>        set data with the offset and the size"
+	puts "   get <key>                          get data and attributes"
+	puts "   gets <sid> <key>                   get data and attributes using the snapshot"
+	puts "   set <key> <data> <json>            set data and attributes"
+	puts "   remove <key>                       remove the data"
+	puts "   select <expr> [cols...]            select attributes"
+	puts "   selects <sid> <expr> [cols...]     select attributes using the snapshot"
 	exit 1
 end
 
@@ -75,55 +82,178 @@ def call(klass, *args)
 	result
 end
 
+def select_argv
+	if ARGV.length < 1
+		usage
+	end
+
+	expr = ARGV.shift
+	cols = ARGV
+	cols = nil if cols.empty?
+
+	conds = []
+	order = nil
+	order_col = nil
+	limit = nil
+	skip = nil
+
+	expr.strip.split(/\s+/).each {|e|
+		if e =~ /order=(\w+)(,str-asc|,str-desc|,num-asc|,num-desc)?/
+			order = 1
+			order_col = $~[1]
+			case $~[2]
+			when nil, ',str-asc'
+				order = 1
+			when ',str-desc'
+				order = 2
+			when ',num-asc'
+				order = 3
+			when ',num-desc'
+				order = 4
+			end
+		elsif e =~ /limit=(\d+)/
+			limit = $~[1].to_i
+		elsif e =~ /skip=(\d+)/
+			skip = $~[1].to_i
+		elsif e =~ /(\w+)\=\=(\w+)/
+			rval = $~[2]
+			rval = rval.to_i if rval.to_i.to_s == rval
+			conds << [$~[1], 0, rval]
+		elsif e =~ /(\w+)\!\=(\w+)/
+			rval = $~[2]
+			rval = rval.to_i if rval.to_i.to_s == rval
+			conds << [$~[1], 1, rval]
+		elsif e =~ /(\w+)\<(\w+)/
+			rval = $~[2]
+			rval = rval.to_i if rval.to_i.to_s == rval
+			conds << [$~[1], 2, rval]
+		elsif e =~ /(\w+)\<\=(\w+)/
+			rval = $~[2]
+			rval = rval.to_i if rval.to_i.to_s == rval
+			conds << [$~[1], 3, rval]
+		elsif e =~ /(\w+)\>(\w+)/
+			rval = $~[2]
+			rval = rval.to_i if rval.to_i.to_s == rval
+			conds << [$~[1], 4, rval]
+		elsif e =~ /(\w+)\>\=(\w+)/
+			rval = $~[2]
+			rval = rval.to_i if rval.to_i.to_s == rval
+			conds << [$~[1], 5, rval]
+		else
+			raise "invalid expression: #{e.dump}"
+		end
+	}
+
+	$stderr.puts "select: cols=#{cols ? cols.join(',') : '*'}"
+	$stderr.puts "  conds: #{conds.inspect}"
+	$stderr.puts "  skip: #{skip}"
+	$stderr.puts "  limit: #{limit}"
+	$stderr.puts "  order: #{order_col} #{order}"
+
+	return cols, conds, order, order_col, limit, skip
+end
+
 case cmd
 when 'get'
 	key = cmd_args(1)
-	map = call(nil, :get, key)
-	if map
-		puts map.to_json
+	data, attrs = call(nil, :get, key)
+	if data
+		puts attrs.to_json
+		$stdout.write data
+	else
+		$stderr.puts "nil"
+	end
+
+when 'gets'
+	sid, key = cmd_args(2)
+	data, attrs = call(nil, :gets, sid.to_i, key)
+	if data
+		puts attrs.to_json
+		$stdout.write data
+	else
+		$stderr.puts "nil"
+	end
+
+when 'get_data'
+	key = cmd_args(1)
+	data = call(nil, :get_data, key)
+	if data
+		$stderr.puts "#{data.size} bytes"
+		$stdout.write data
+	else
+		$stderr.puts "nil"
+	end
+
+when 'gets_data'
+	sid, key = cmd_args(2)
+	data = call(nil, :gets_data, sid.to_i, key)
+	if data
+		$stderr.puts "#{data.size} bytes"
+		$stdout.write data
+	else
+		$stderr.puts "nil"
+	end
+
+when 'get_attrs'
+	key = cmd_args(1)
+	attrs = call(nil, :get_attrs, key)
+	if attrs
+		puts attrs.to_json
 	else
 		puts "nil"
 	end
 
+when 'gets_attrs'
+	sid, key = cmd_args(2)
+	attrs = call(nil, :gets_attrs, sid.to_i, key)
+	if attrs
+		puts attrs.to_json
+	else
+		puts "nil"
+	end
+
+when 'read'
+	key, offset, size = cmd_args(3)
+	data = call(nil, :read, key, offset.to_i, size.to_i)
+	$stderr.puts "#{data.size} bytes"
+	$stdout.write data
+
+when 'reads'
+	sid, key, offset, size = cmd_args(4)
+	data = call(nil, :reads, sid.to_i, key, offset.to_i, size.to_i)
+	$stderr.puts "#{data.size} bytes"
+	$stdout.write data
+
 when 'set'
+	key, data, json = cmd_args(3)
+	attrs = JSON.parse(json)
+	pp call(nil, :set, key, data, attrs)
+
+when 'set_data'
+	key, data = cmd_args(2)
+	pp call(nil, :set_data, key, data)
+
+when 'set_attrs'
 	key, json = cmd_args(2)
-	map = JSON.parse(json)
-	pp call(nil, :set, key, map)
+	attrs = JSON.parse(json)
+	pp call(nil, :set_attrs, key, attrs)
+
+when 'write'
+	key, offset, data = cmd_args(3)
+	pp call(nil, :write, key, offset, data)
 
 when 'remove'
 	key = cmd_args(1)
 	pp call(nil, :remove, key)
 
-when 'get_data'
-	key = cmd_args(1)
-	map = call(nil, :get, key)
-	if map
-		data = map["data"]
-		size = (data || "").size
-		puts "#{size} bytes"
-	else
-		pp nil
-	end
+when 'select'
+	args = select_argv
+	pp call(nil, :select, *args)
 
-when 'set_data'
-	key, data = cmd_args(2)
-	pp call(nil, :set, key, {"data"=>data})
-
-when 'get_direct'
-	rsid, key = cmd_args(2)
-	rsid = rsid.to_i
-	data = call(nil, :get_direct, key, rsid)
-	pp data
-
-when 'set_direct'
-	rsid, key, data = cmd_args(3)
-	rsid = rsid.to_i
-	pp call(nil, :set_direct, key, rsid, data)
-
-when 'remove_direct'
-	rsid, key = cmd_args(2)
-	rsid = rsid.to_i
-	pp call(nil, :remove_direct, key, rsid)
+when 'selects'
+	sid = ARGV.shift.to_i
+	args = select_argv
+	pp call(nil, :selects, sid, *args)
 
 else
 	$stderr.puts "unknown command #{cmd}"

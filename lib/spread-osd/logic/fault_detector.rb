@@ -18,11 +18,11 @@
 module SpreadOSD
 
 
-class FaultList
+class FaultList < TSVData
 	def initialize
 		@path = nil
 		@fault_nids = []
-		update_hash
+		super()
 	end
 
 	def update(nids)
@@ -33,10 +33,6 @@ class FaultList
 
 	def include?(nid)
 		@fault_nids.include?(nid)
-	end
-
-	def get_hash
-		@hash
 	end
 
 	def get_list
@@ -53,83 +49,41 @@ class FaultList
 		self
 	end
 
-	def open(path)
-		@path = path
-		read
-	end
-
-	def close
-		# FIXME
-	end
-
-	private
+	protected
 	def read
 		return unless @path
 
 		begin
 			fault_nids = []
 
-			tsv_read(@path) do |row|
+			tsv_read do |row|
 				fault_nids << row[0].to_i
 			end
 
 			@fault_nids = fault_nids
-
 		rescue
 			$log.debug $!
 		end
 
 		update_hash
+
+	rescue
+		$log.debug $!
+		raise
 	end
 
 	def write
 		return unless @path
 
-		tmp_path = "#{@path}.tmp"
-
-		tsv_write(tmp_path) do |writer|
+		tsv_write do |writer|
 			@fault_nids.each {|nid|
 				writer << [nid.to_s]
 			}
 		end
 
-		File.rename(tmp_path, @path)
-	end
-
-	def on_change
-		update_hash
-		write
-	end
-
-	def update_hash
-		@hash = Digest::SHA1.digest(to_msgpack)
-	end
-
-
-	if RUBY_VERSION >= "1.9"
-		def tsv_read(path, &block)
-			CSV.open(path, "r", :col_sep => "\t") do |csv|
-				csv.each {|row|
-					yield row
-				}
-			end
-		end
-		def tsv_write(path, &block)
-			CSV.open(path, "w", :col_sep => "\t") do |csv|
-				yield csv
-			end
-		end
-	else
-		def tsv_read(path, &block)
-			CSV.open(path, "r", "\t") do |row|
-				yield row
-			end
-		end
-		def tsv_write(path, &block)
-			CSV.open(path, "w", "\t") do |writer|
-				yield writer
-			end
-		end
+	rescue
+		$log.error $!
+		raise
 	end
 end
 

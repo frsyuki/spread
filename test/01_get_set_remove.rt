@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << File.dirname(__FILE__)
+require 'common'
+
+LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
+SIZE   = (ARGV[1] || 10).to_i
+NUM    = (ARGV[2] || 50).to_i
+
+mds = start_mds
+cs = start_cs
+ds0 = start_ds(0, 0)
+ds1 = start_ds(1, 0)
+ds2 = start_ds(2, 1)
+ds3 = start_ds(3, 1)
+
+cs.show_nodes
+cs.show_version
+
+gw = start_gw
+
+pid = Process.pid
+keyf = "#{pid}-key%d"
+data = "@"*SIZE
+
+test "run normally" do
+	c = gw.client
+
+	LOOP.times {|o|
+		NUM.times do |i|
+			key = keyf % i
+			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'set' do
+				c.call(:set, key, data, attrs)
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'get' do
+				data_, attrs_ = c.call(:get, key)
+
+				test_equals data, data_, 'get data_ == data'
+				test_equals attrs, attrs_, 'get attrs_ == attrs'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test "remove" do
+				removed = c.call(:remove, key)
+
+				test_equals true, removed, 'removed == true'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'get' do
+				data_, attrs_ = c.call(:get, key)
+
+				test_equals nil, data_, 'get data_ is removed'
+				test_equals nil, attrs_, 'get attrs_ is removed'
+			end
+		end
+	}
+end
+
+cs.show_items
+cs.show_stat
+
+term_all(ds0, ds1, ds2, ds3, gw, mds, cs)
+

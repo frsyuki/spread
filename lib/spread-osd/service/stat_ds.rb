@@ -18,36 +18,22 @@
 module SpreadOSD
 
 
-class ConfigBus < Bus
-	call_slot :self_nid
-	call_slot :self_name
-	call_slot :self_address
-	call_slot :self_rsids
-	call_slot :self_node
-	call_slot :get_storage_path
-	call_slot :get_ulog_path
-	call_slot :get_rts_path
-	call_slot :get_fault_path
-	call_slot :get_membership_path
-	call_slot :get_snapshot_path
+class DSStatService < GWStatService
+	def stat_db_items
+		StatBus.db_items
+	end
 
-	call_slot :get_mds_uri
+	def stat_cmd_read
+		StatBus.cmd_read
+	end
 
-	call_slot :get_cs_address
-	call_slot :read_only_sid
-	call_slot :http_gateway_address
-end
+	def stat_cmd_write
+		StatBus.cmd_write
+	end
 
-
-class ConfigService < Service
-	attr_accessor :fault_path
-	attr_accessor :membership_path
-	attr_accessor :snapshot_path
-
-	ebus_connect :ConfigBus,
-		:get_fault_path      => :fault_path,
-		:get_membership_path => :membership_path,
-		:get_snapshot_path   => :snapshot_path
+	def stat_cmd_remove
+		StatBus.cmd_remove
+	end
 end
 
 

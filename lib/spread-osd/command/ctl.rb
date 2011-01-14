@@ -23,10 +23,13 @@ def usage
 	puts "command:"
 	puts "   nodes                        show list of nodes"
 	puts "   replset                      show list of replication sets"
-	puts "   stat                         show status of nodes"
+	puts "   stat                         show statistics of nodes"
 	puts "   items                        show stored number of items"
 	puts "   remove_node <nid>            remove a node from the cluster"
 	puts "   set_weight <rsid> <weight>   set distribution weight"
+	puts "   snapshot                     show snapshot list"
+	puts "   add_snapshot <name>          add a snapshot"
+	puts "   version                      show software version of nodes"
 	exit 1
 end
 
@@ -91,8 +94,8 @@ def call(klass, *args)
 	result
 end
 
-def get_node
-	call(nil,'status','nodes').map {|nid,address,name,rsids|
+def get_nodes
+	call(nil, :stat, 'nodes').map {|nid,address,name,rsids|
 		address = MessagePack::RPC::Address.load(address)
 		[nid, address, name, rsids]
 	}.sort_by {|nid,address,name,rsids|
@@ -102,7 +105,7 @@ end
 
 def get_node_map
 	map = {}
-	call(nil,'status','nodes').each {|nid,address,name,rsids|
+	call(nil, :stat, 'nodes').each {|nid,address,name,rsids|
 		address = MessagePack::RPC::Address.load(address)
 		map[nid] = [address, name, rsids]
 	}
@@ -110,11 +113,10 @@ def get_node_map
 end
 
 def each_node(&block)
-	result = []
-	get_node.each {|nid,address,name,rsids|
-		result << yield($net.get_session(address), nid, address, name, rsids)
+	get_nodes.map {|nid,address,name,rsids|
+		result = yield($net.get_session(address), nid, address, name, rsids)
+		[nid, address, name, rsids, result]
 	}
-	result
 end
 
 case cmd
@@ -133,12 +135,12 @@ when 'set_weight'
 when 'nodes'
 	cmd_args(0)
 
-	fault_nids = call(nil,'status','fault')
+	fault_nids = call(nil, :stat, 'fault')
 
-	NODES_FORMAT = "%3s %15s %23s   %7s %10s"
+	NODES_FORMAT = "%3s %15s %23s    %7s %10s"
 	puts NODES_FORMAT % %w[nid name address replset state]
 
-	get_node.each {|nid,address,name,rsids|
+	each_node {|s,nid,address,name,rsids|
 		rsids = rsids.sort.join(',')
 		state = fault_nids.include?(nid) ? 'FAULT' : 'active'
 		puts NODES_FORMAT % [nid, name, address, rsids, state]
@@ -150,55 +152,94 @@ when 'remove_node'
 	if nid.to_s != nid_s
 		raise "invalid nid: #{nid}"
 	end
-	pp call(nil,'remove_node',nid)
+	pp call(nil, :remove_node, nid)
 
 when 'replset'
 	cmd_args(0)
-	REPLSET_FORMAT = "%7s %8s %10s  %s"
+	REPLSET_FORMAT = "%7s %8s %10s   %s"
 	puts REPLSET_FORMAT % %w[replset weight nids names]
 	node_map = get_node_map
-	call(nil,'status','replset').each {|rsid,(nids,weight)|
+	call(nil, :stat, 'replset').each {|rsid,(nids,weight)|
 		names = nids.map {|nid| node_map[nid][1] }.join(',')
 		nids = nids.sort.join(',')
 		puts REPLSET_FORMAT % [rsid, weight, nids, names]
 	}
 
+when 'snapshot'
+	cmd_args(0)
+
+	slist = call(nil, :stat, 'snapshot')
+
+	SLIST_FORMAT = "%3s %15s %30s"
+	puts SLIST_FORMAT % %w[sid name time]
+
+	slist.each {|sid,name,time|
+		time = Time.at(time).localtime
+		puts SLIST_FORMAT % [sid, name, time]
+	}
+
+when 'add_snapshot'
+	name = cmd_args(1)
+
+	sid = call(nil, :add_snapshot, name)
+	pp sid
+
 when 'stat', 'status'
-	STAT_FORMAT = "%4s %15s %10s %10s %10s %10s"
-	puts STAT_FORMAT % %w[nid name uptime #get #set #remove]
+	STAT_FORMAT = "%4s %15s %10s %10s %10s %10s %30s"
+	puts STAT_FORMAT % %w[nid name uptime #read #write #remove time]
 	each_node {|s,nid,address,name,rsids|
-		uptime     = s.call(:status, 'uptime')     rescue nil
-		cmd_get    = s.call(:status, 'cmd_get')    rescue nil
-		cmd_set    = s.call(:status, 'cmd_set')    rescue nil
-		cmd_remove = s.call(:status, 'cmd_remove') rescue nil
-		puts STAT_FORMAT % [nid, name, uptime, cmd_get, cmd_set, cmd_remove]
+		f_uptime = s.call_async(:stat, 'uptime')     rescue nil
+		f_read   = s.call_async(:stat, 'cmd_read')   rescue nil
+		f_write  = s.call_async(:stat, 'cmd_write')  rescue nil
+		f_remove = s.call_async(:stat, 'cmd_remove') rescue nil
+		f_time   = s.call_async(:stat, 'time')       rescue nil
+		[f_uptime, f_read, f_write, f_remove, f_time]
+	}.each {|nid,address,name,rsid,(f_uptime,f_read,f_write,f_remove,f_time)|
+		uptime = f_uptime.get rescue nil
+		read   = f_read.get   rescue nil
+		write  = f_write.get  rescue nil
+		remove = f_remove.get rescue nil
+		time   = f_time.get   rescue nil
+		time &&= Time.at(time).localtime
+		puts STAT_FORMAT % [nid, name, uptime, read, write, remove, time]
 	}
 
 when 'items'
 	ITEMS_FORMAT = "%4s %15s %10s %10s"
 	puts ITEMS_FORMAT % %w[nid name rsid #items]
+
 	map = {}
 	each_node {|s,nid,address,name,rsids|
-		items = s.call(:status, 'db_items') rescue nil
+		f_items = s.call_async(:stat, 'db_items')
+		[f_items]
+	}.each {|nid,address,name,rsids,(f_items)|
+		items = f_items.get rescue nil
 		puts ITEMS_FORMAT % [nid, name, rsids.join(','), items]
-		if items
-			rsids.each {|rsid|
-				if !map[rsid] || map[rsid] < items
-					map[rsid] = items
-				end
-			}
-		end
+
+		items ||= 0
+		rsids.each {|rsid|
+			if !map[rsid] || map[rsid] < items
+				map[rsid] = items
+			end
+		}
 	}
+
 	total = map.values.inject(0) {|r,n| r + n }
 	puts "total: #{total}"
 
-when 'pid'
-	# all
-	# FIXME
-
 when 'version'
-	# all
-	# FIXME
+	VERSION_FORMAT = "%4s %15s %10s %10s"
+	puts VERSION_FORMAT % %w[nid name pid version]
+
+	each_node {|s,nid,address,name,rsids|
+		f_pid = s.call_async(:stat, 'pid')
+		f_version = s.call_async(:stat, 'version')
+		[f_pid, f_version]
+	}.each {|nid,address,name,rsids,(f_pid,f_version)|
+		pid = f_pid.get rescue nil
+		version = f_version.get rescue nil
+		puts VERSION_FORMAT % [nid, name, pid, version]
+	}
 
 else
 	puts "unknown command #{cmd}"

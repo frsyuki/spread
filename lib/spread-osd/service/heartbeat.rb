@@ -20,8 +20,15 @@ module SpreadOSD
 
 CONFIG_SYNC_MEMBERSHIP     = 0
 CONFIG_SYNC_FAULT_LIST     = 1
-CONFIG_SYNC_MDS_ADDRESS    = 2
-CONFIG_SYNC_REPLSET_WEIGHT = 3
+CONFIG_SYNC_SNAPSHOT       = 2
+CONFIG_SYNC_MDS_ADDRESS    = 3
+CONFIG_SYNC_REPLSET_WEIGHT = 4
+
+
+class HeartbeatBus < Bus
+	call_slot :register_sync_config
+	call_slot :update_sync_config
+end
 
 
 class HeartbeatResponse
@@ -62,16 +69,16 @@ class HeartbeatServerService < Service
 		@syncs = []
 	end
 
-	def update_config_sync(id, data, hash)
+	def update_sync_config(id, data, hash)
 		@syncs[id] = Entry.new(data, hash)
 		nil
 	end
 
-	def rpc_heartbeat(nid=nil, sync_request)
+	def rpc_heartbeat(nid, sync_request)
 		hbres = HeartbeatResponse.new
 
 		if nid
-			hbres.term = ebus_call(:reset_fault_detector, nid)
+			hbres.term = MembershipBus.reset_fault_detector(nid)
 		end
 
 		sync_request.each_with_index {|hash,id|
@@ -85,8 +92,11 @@ class HeartbeatServerService < Service
 		hbres
 	end
 
-	ebus_connect :update_config_sync
-	ebus_connect :rpc_heartbeat
+	ebus_connect :HeartbeatBus,
+		:update_sync_config
+
+	ebus_connect :CSRPCBus,
+		:heartbeat => :rpc_heartbeat
 end
 
 
@@ -101,23 +111,26 @@ class HeartbeatClientService < Service
 	end
 
 	def initialize
-		super
 		@syncs_hash = []
 		@syncs_callback = []
 		@heartbeat_nid = nil
 	end
 
-	def config_sync_register(id, initial_hash, &block)
+	def register_sync_config(id, initial_hash, &block)
 		@syncs_hash[id] = initial_hash
 		@syncs_callback[id] = block
 		nil
 	end
 
 	def get_cs_session
-		ebus_call(:get_session, ebus_call(:get_cs_address))
+		ProcessBus.get_session(ConfigBus.get_cs_address)
 	end
 
 	def on_timer
+		do_heartbeat
+	end
+
+	def do_heartbeat
 		get_cs_session.callback(:heartbeat, @heartbeat_nid, @syncs_hash) do |future|
 			begin
 				hbres = HeartbeatResponse.new.from_msgpack(future.get)
@@ -143,15 +156,22 @@ class HeartbeatClientService < Service
 		#end
 	end
 
-	ebus_connect :config_sync_register
-	ebus_connect :on_timer
+	def heartbeat_blocking!
+		do_heartbeat.join
+	end
+
+	ebus_connect :HeartbeatBus,
+		:register_sync_config
+
+	ebus_connect :ProcessBus,
+		:on_timer
 end
 
 
 class HeartbeatMemberService < HeartbeatClientService
 	def initialize
 		super
-		@heartbeat_nid = ebus_call(:self_nid)
+		@heartbeat_nid = ConfigBus.self_nid
 	end
 
 	def ack_heartbeat(hbres)
@@ -164,7 +184,7 @@ class HeartbeatMemberService < HeartbeatClientService
 			#register_self
 		end
 
-		ebus_call(:try_register_node)
+		MembershipBus.try_register_node
 	end
 end
 

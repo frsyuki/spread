@@ -18,36 +18,27 @@
 module SpreadOSD
 
 
-class ConfigBus < Bus
-	call_slot :self_nid
-	call_slot :self_name
-	call_slot :self_address
-	call_slot :self_rsids
-	call_slot :self_node
-	call_slot :get_storage_path
-	call_slot :get_ulog_path
-	call_slot :get_rts_path
-	call_slot :get_fault_path
-	call_slot :get_membership_path
-	call_slot :get_snapshot_path
+class ObjectKey
+	def initialize(key=nil, sid=nil, rsid=nil)
+		@sid = sid.to_i
+		@key = key
+		@rsid = rsid.to_i
+	end
 
-	call_slot :get_mds_uri
+	attr_reader :key
+	attr_reader :sid
+	attr_reader :rsid
 
-	call_slot :get_cs_address
-	call_slot :read_only_sid
-	call_slot :http_gateway_address
-end
+	def to_msgpack(out = '')
+		[@key, @sid, @rsid].to_msgpack(out)
+	end
 
-
-class ConfigService < Service
-	attr_accessor :fault_path
-	attr_accessor :membership_path
-	attr_accessor :snapshot_path
-
-	ebus_connect :ConfigBus,
-		:get_fault_path      => :fault_path,
-		:get_membership_path => :membership_path,
-		:get_snapshot_path   => :snapshot_path
+	def from_msgpack(obj)
+		@key = obj[0]
+		@sid = obj[1].to_i
+		@rsid = obj[2].to_i
+		self
+	end
 end
 
 

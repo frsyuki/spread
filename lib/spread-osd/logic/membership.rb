@@ -18,19 +18,11 @@
 module SpreadOSD
 
 
-class NodeList
+class NodeList < TSVData
 	def initialize
 		@path = nil
 		@map = {}  # {nid => Node}
-		update_hash
-	end
-
-	def open(path)
-		@path = path
-		read
-	end
-
-	def close
+		super()
 	end
 
 	def get(nid)
@@ -79,10 +71,6 @@ class NodeList
 		@map.each_value(&block)
 	end
 
-	def get_hash
-		@hash
-	end
-
 	def get_all_nids
 		@map.map {|nid,node| nid }
 	end
@@ -102,20 +90,14 @@ class NodeList
 		self
 	end
 
-	if RUBY_VERSION >= "1.9"
-		CSV_OPEN_OPTION = {:col_sep => "\t"}
-	else
-		CSV_OPEN_OPTION = "\t"
-	end
-
-	private
+	protected
 	def read
-		return nil unless @path
+		return unless @path
 
 		begin
 			map = {}
 
-			tsv_read(@path) do |row|
+			tsv_read do |row|
 				nid = row[0].to_i
 
 				name = row[1]
@@ -131,19 +113,21 @@ class NodeList
 			end
 
 			@map = map
-
 		rescue
 			$log.debug $!
 		end
 
 		update_hash
+
+	rescue
+		$log.debug $!
+		raise
 	end
 
 	def write
-		return nil unless @path
+		return unless @path
 
-		map = {}
-		tsv_write(@path) do |writer|
+		tsv_write do |writer|
 			@map.each_value {|node|
 				row = []
 				row[0] = node.nid.to_s
@@ -155,46 +139,8 @@ class NodeList
 		end
 
 	rescue
-		p $!
-		pp $!.backtrace
+		$log.error $!
 		raise
-	end
-
-	def on_change
-		update_hash
-		write
-	end
-
-	def update_hash
-		@hash = Digest::SHA1.digest(to_msgpack)
-		write
-	end
-
-
-	if RUBY_VERSION >= "1.9"
-		def tsv_read(path, &block)
-			CSV.open(path, "r", :col_sep => "\t") do |csv|
-				csv.each {|row|
-					yield row
-				}
-			end
-		end
-		def tsv_write(path, &block)
-			CSV.open(path, "w", :col_sep => "\t") do |csv|
-				yield csv
-			end
-		end
-	else
-		def tsv_read(path, &block)
-			CSV.open(path, "r", "\t") do |row|
-				yield row
-			end
-		end
-		def tsv_write(path, &block)
-			CSV.open(path, "w", "\t") do |writer|
-				yield writer
-			end
-		end
 	end
 end
 
@@ -235,6 +181,10 @@ class Membership
 
 	def update_node_info(nid, address, name, rsids)
 		node = get_node(nid)
+		if node.address == address && node.name == name &&
+				node.rsids == rsids
+			return false
+		end
 		old_rsids = node.rsids
 		@nodes.update(nid, address, name, rsids)
 		if rsids

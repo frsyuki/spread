@@ -18,36 +18,33 @@
 module SpreadOSD
 
 
-class ConfigBus < Bus
-	call_slot :self_nid
-	call_slot :self_name
-	call_slot :self_address
-	call_slot :self_rsids
-	call_slot :self_node
-	call_slot :get_storage_path
-	call_slot :get_ulog_path
-	call_slot :get_rts_path
-	call_slot :get_fault_path
-	call_slot :get_membership_path
-	call_slot :get_snapshot_path
+class DSConfigService < GWConfigService
+	def run
+		@self_node = Node.new(@self_nid, @self_address, @self_name, @self_rsids)
+	end
 
-	call_slot :get_mds_uri
+	attr_accessor :self_nid
+	attr_accessor :self_name
+	attr_accessor :self_address
+	attr_accessor :self_rsids
+	attr_accessor :storage_path
+	attr_accessor :ulog_path
+	attr_accessor :rts_path
 
-	call_slot :get_cs_address
-	call_slot :read_only_sid
-	call_slot :http_gateway_address
-end
-
-
-class ConfigService < Service
-	attr_accessor :fault_path
-	attr_accessor :membership_path
-	attr_accessor :snapshot_path
+	attr_reader :self_node
 
 	ebus_connect :ConfigBus,
-		:get_fault_path      => :fault_path,
-		:get_membership_path => :membership_path,
-		:get_snapshot_path   => :snapshot_path
+		:self_nid,
+		:self_name,
+		:self_address,
+		:self_rsids,
+		:self_node,
+		:get_storage_path    => :storage_path,
+		:get_ulog_path       => :ulog_path,
+		:get_rts_path        => :rts_path
+
+	ebus_connect :ProcessBus,
+		:run
 end
 
 

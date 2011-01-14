@@ -1,19 +1,24 @@
 #
-#  CCLog
-#  Copyright (C) 2010  FURUHASHI Sadayuki
+# CCLog
+# Copyright (c) 2010 FURUHASHI Sadayuki
 #
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as
-#  published by the Free Software Foundation, either version 3 of the
-#  License, or (at your option) any later version.
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 #
 
 class CCLog
@@ -71,6 +76,11 @@ class CCLog
 	attr_accessor :out
 	attr_accessor :level
 
+	def on_trace(&block)
+		return if @level > LEVEL_TRACE
+		block.call if block
+	end
+
 	def trace(*args, &block)
 		return if @level > LEVEL_TRACE
 		args << block.call if block
@@ -78,6 +88,11 @@ class CCLog
 		puts "#{@color_trace}#{caller_line(1,true)}: #{msg}#{@color_reset}"
 	end
 	alias TRACE trace
+
+	def on_debug(&block)
+		return if @level > LEVEL_DEBUG
+		block.call if block
+	end
 
 	def debug(*args, &block)
 		return if @level > LEVEL_DEBUG
@@ -87,6 +102,19 @@ class CCLog
 	end
 	alias DEBUG debug
 
+	def debug_backtrace(backtrace=$!.backtrace)
+		return if @level > LEVEL_DEBUG
+		backtrace.each {|msg|
+			puts "#{@color_debug}#{caller_line(4,true)}: #{msg}#{@color_reset}"
+		}
+		nil
+	end
+
+	def on_info(&block)
+		return if @level > LEVEL_INFO
+		block.call if block
+	end
+
 	def info(*args, &block)
 		return if @level > LEVEL_INFO
 		args << block.call if block
@@ -94,6 +122,19 @@ class CCLog
 		puts "#{@color_info}#{caller_line(1,true)}: #{msg}#{@color_reset}"
 	end
 	alias INFO info
+
+	def info_backtrace(backtrace=$!.backtrace)
+		return if @level > LEVEL_INFO
+		backtrace.each {|msg|
+			puts "#{@color_info}#{caller_line(4,true)}: #{msg}#{@color_reset}"
+		}
+		nil
+	end
+
+	def on_warn(&block)
+		return if @level > LEVEL_WARN
+		block.call if block
+	end
 
 	def warn(*args, &block)
 		return if @level > LEVEL_WARN
@@ -103,6 +144,19 @@ class CCLog
 	end
 	alias WARN warn
 
+	def warn_backtrace(backtrace=$!.backtrace)
+		return if @level > LEVEL_WARN
+		backtrace.each {|msg|
+			puts "#{@color_warn}#{caller_line(4)}: #{msg}#{@color_reset}"
+		}
+		nil
+	end
+
+	def on_error(&block)
+		return if @level > LEVEL_ERROR
+		block.call if block
+	end
+
 	def error(*args, &block)
 		return if @level > LEVEL_ERROR
 		args << block.call if block
@@ -110,6 +164,19 @@ class CCLog
 		puts "#{@color_error}#{caller_line(1)}: #{msg}#{@color_reset}"
 	end
 	alias ERROR error
+
+	def error_backtrace(backtrace=$!.backtrace)
+		return if @level > LEVEL_ERROR
+		backtrace.each {|msg|
+			puts "#{@color_error}#{caller_line(4)}: #{msg}#{@color_reset}"
+		}
+		nil
+	end
+
+	def on_fatal(&block)
+		return if @level > LEVEL_FATAL
+		block.call if block
+	end
 
 	def fatal(*args, &block)
 		return if @level > LEVEL_FATAL
@@ -119,10 +186,21 @@ class CCLog
 	end
 	alias FATAL fatal
 
+	def fatal_backtrace(backtrace=$!.backtrace)
+		return if @level > LEVEL_FATAL
+		backtrace.each {|msg|
+			puts "#{@color_fatal}#{caller_line(4)}: #{msg}#{@color_reset}"
+		}
+		nil
+	end
+
 	def puts(msg)
 		@out.puts(msg)
 		@out.flush
 		msg
+	rescue
+		# FIXME
+		nil
 	end
 
 	private

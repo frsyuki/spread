@@ -18,36 +18,58 @@
 module SpreadOSD
 
 
-class ConfigBus < Bus
-	call_slot :self_nid
-	call_slot :self_name
-	call_slot :self_address
-	call_slot :self_rsids
-	call_slot :self_node
-	call_slot :get_storage_path
-	call_slot :get_ulog_path
-	call_slot :get_rts_path
-	call_slot :get_fault_path
-	call_slot :get_membership_path
-	call_slot :get_snapshot_path
+class FileRelayTimeStampService < RelayTimeStampService
+	RelayTimeStampSelector.register(:file, self)
 
-	call_slot :get_mds_uri
+	def init(expr)
+		@dir = expr
+	end
 
-	call_slot :get_cs_address
-	call_slot :read_only_sid
-	call_slot :http_gateway_address
-end
+	class Stamp
+		include RelayTimeStamp
 
+		def initialize(path)
+			@path = path
+			@tmp_path = "#{@path}.tmp"
+			@file = nil
+		end
 
-class ConfigService < Service
-	attr_accessor :fault_path
-	attr_accessor :membership_path
-	attr_accessor :snapshot_path
+		def close
+			if @file
+				@file.close
+				@file = nil
+			end
+			nil
+		end
 
-	ebus_connect :ConfigBus,
-		:get_fault_path      => :fault_path,
-		:get_membership_path => :membership_path,
-		:get_snapshot_path   => :snapshot_path
+		def get
+			unless @file
+				@file = File.open(@path)
+			end
+			@file.pos = 0
+			@file.read.to_i
+		rescue
+			0
+		end
+
+		def set(pos, &block)
+			close
+
+			File.open(@tmp_path, "w") {|f|
+				f.write(pos.to_s)
+			}
+
+			block.call if block
+
+			File.rename(@tmp_path, @path)
+
+			nil
+		end
+	end
+
+	def open(nid)
+		Stamp.new("#{@dir}/rts-#{nid}")
+	end
 end
 
 

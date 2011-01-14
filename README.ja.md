@@ -50,6 +50,7 @@ SpreadOSDは、次の4種類のサーバから構成されます：
   - [ruby](http://www.ruby-lang.org/) >= 1.9.1
   - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) >= 0.4.3
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) >= 1.13
+  - [rack gem](http://rubygems.org/gems/rack) >= 1.2.1
 
 ./configure && make install のいつもの方法でインストールしてください：
 
@@ -73,6 +74,8 @@ rake と gem を使ってインストールすることもできます。
 
 
 ### フルインストールガイド
+
+このガイドでは、システム全体を/opt/local/spreadディレクトリにインストールします。
 
 まず以下のパッケージをインストールしてください。
 
@@ -102,6 +105,7 @@ rake と gem を使ってインストールすることもできます。
     # 必要なgemをインストール
     $ sudo /opt/local/spread/bin/gem install msgpack-rpc
     $ sudo /opt/local/spread/bin/gem install tokyotyrant
+    $ sudo /opt/local/spread/bin/gem install rack
     
     # SpreadOSDをインストール
     $ git clone http://github.com/frsyuki/spread.git
@@ -126,18 +130,18 @@ rake と gem を使ってインストールすることもできます。
     
     # レプリケーション･セット0のDSを起動
     [on node03]$ spread-ds --cs node03 --address node03 --nid 0 --rsid 0 \
-                           --name mynode03 --storage /var/spread
+                           --name mynode03 --store /var/spread
     [on node04]$ spread-ds --cs node04 --address node04 --nid 1 --rsid 0 \
-                           --name mynode04 --storage /var/spread
+                           --name mynode04 --store /var/spread
     
     # レプリケーション･セット1のDSを起動
     [on node05]$ spread-ds --cs node05 --address node05 --nid 2 --rsid 1 \
-                           --name mynode05 --storage /var/spread
+                           --name mynode05 --store /var/spread
     [on node06]$ spread-ds --cs node06 --address node06 --nid 3 --rsid 1 \
-                           --name mynode06 --storage /var/spread
+                           --name mynode06 --store /var/spread
     
     # アプリケーションサーバ上でGWを起動
-    [on client]$ spread-gw --cs node01 --port 18800
+    [on client]$ spread-gw --cs node01 --port 18800 --http 18080
 
 *spreadctl*コマンドを使って、クラスタの状態を確認してください。
 
@@ -151,11 +155,11 @@ rake と gem を使ってインストールすることもできます。
 これでクラスタが使えるようになりました。*spredcli*コマンドを使ってset/getしてみてください。
 
     # localhostでGWが動作している
-    [on client]$ spreadcli 127.0.0.1 set "key1" '{"type":"png","data":"..."}'
-    true
+    [on client]$ spreadcli 127.0.0.1 set "key1" 'val1' '{"type":"png"}'
     
     [on client]$ spreadcli 127.0.0.1 get "key1"
-    {"type":"png","data":"..."}
+    {"type":"png"}
+    val1
 
 
 ### 1台のホスト上で動かす
@@ -165,15 +169,13 @@ rake と gem を使ってインストールすることもできます。
     [localhost]$ ttserver mds.tct
     [localhost]$ spread-cs --mds 127.0.0.1 -s ./data-cs
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18900 --nid 0 --rsid 0 \
-                           --name ds0 --storage ./data-ds0
+                           --name ds0 --store ./data-ds0
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18901 --nid 1 --rsid 0 \
-                           --name ds1 --storage ./data-ds1
+                           --name ds1 --store ./data-ds1
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18902 --nid 2 --rsid 1 \
-                           --name ds2 --storage ./data-ds2
+                           --name ds2 --store ./data-ds2
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18903 --nid 3 --rsid 1 \
-                           --name ds3 --storage ./data-ds3
-    [localhost]$ spread-gw --cs 127.0.0.1
-
+                           --name ds3 --store ./data-ds3 --http 18080
 
 
 ## クラスタの管理
@@ -264,7 +266,7 @@ rake と gem を使ってインストールすることもできます。
 次に、同じレプリケーション･セット内の別のDSからデータをコピーしてください。例えばrsyncを次のように実行します：
 
     # node03から現在のリレー状態ログをコピーする
-    [on node07]$ scp node03:/var/spread/rlog-* /var/spread/
+    [on node07]$ scp node03:/var/spread/rts-* /var/spread/
     
     # node03からリレー状態ログと更新ログ以外のデータをコピーする
     # rsyncのオプション:
@@ -274,7 +276,7 @@ rake と gem を使ってインストールすることもできます。
     #       arcfour128アルゴリズムは高速ですが、強度が低いことに注意してください。
     #       安全なネットワーク以外では、"blowfish"を使ってください。
     #   --bwlimit 帯域をKB/s単位で制限する
-    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" --exclude "rlog-*" \
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --exclude "ulog-*" --exclude "rts-*" \
                        --bwlimit 32768 node03:/var/spread/ /var/spread/
     
     # 更新ログは削除しておく
@@ -322,7 +324,7 @@ rake と gem を使ってインストールすることもできます。
 
 CSは単に再起動してください。
 
-CSは、クラスタの状態を"$storage_path/membership"ファイルと"$storage_path/fault"ファイルに保存しています。
+CSは、クラスタの状態を"$store_path/membership"ファイルと"$store_path/fault"ファイルに保存しています。
 
 もしmembershipファイルが失われた場合は、状態が**FAULT**であるサーバは切り離されます。
 もしfaultファイルが失われた場合は、状態が**FAULT**であるサーバは**active**になり、タイムアウト時間が経過した後で**FAULT**に戻ります。
@@ -336,46 +338,121 @@ GWはステートレスなサーバです。単に再起動してください。
 
 
 
-## プロトコル
+## Application interface
 
-SpreadOSDは、クライアントプロトコルに[MessagePack-RPC](http://msgpack.org/)を使います。
+SpreadOSD uses [MessagePack-RPC](http://msgpack.org/) and HTTP as a client protocol.
 
-クライアントアプリケーションは以下のコマンドを利用することができます：
-
-### get(key:Raw) -> map:Map<Raw,Raw>
-mapを取得します。
-
-成功した場合は見つかったmapを返します。そうでなければ空のmapを返します。
+### MessagePack-RPC
 
 
-### set(key:Raw, map:Map<Raw,Raw>) -> success:Boolean
-mapを保存します。"data"という名前のカラムはDSに保存されます。それ以外のカラムはMDSに保存されます。
+#### get(key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+Gets data and attributes from the storage.
 
-成功した場合はtrueを返します。そうでなければfalseを返します。
-
-
-### remove(key:Raw) -> success:Boolean
-mapを削除します。
-
-成功した場合はtrueを返します。そうでなければfalseを返します。
+Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
 
 
-### get_direct(key:Raw, rsid:Integer) -> data:Raw or nil
-データを取得します。このコマンドはMDSにアクセスしません。
+#### get_data(key:Raw) -> data:Raw
+Gets data from the storage.
 
-成功した場合は見つかったデータを返します。そうでなければfalseを返します。
-
-
-### set_direct(key:Raw, data:Raw, rsid:Integer) -> success:Boolean
-データを保存します。このコマンドはMDSにアクセスしません。
-
-成功した場合はtrueを返します。そうでなければfalseを返します。
+Returns the found data if it success. Otherwise, it returns nil.
 
 
-### remove_direct(key:Raw, rsid:Integer) -> succeeded:Boolean
-データを削除します。このコマンドはMDSにアクセスしません。
+#### get_attrs(key:Raw) -> attributes:Map<Raw,Raw>
+Gets attributes from the storage.
 
-成功した場合はtrueを返します。そうでなければfalseを返します。
+Returns the found attributes if it success. Otherwise, it returns nil.
+
+
+#### gets(sid:Integer, key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+Gets data and attributes from the storage using the snapshot.
+
+Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
+
+
+#### gets_data(sid:Integer, key:Raw) -> data:Raw
+Gets data from the storage using the snapshot.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### gets_attrs(sid:Integer, key:Raw) -> attributes:Map<Raw,Raw>
+Gets attributes from the storage using the snapshot.
+
+Returns the found attributes if it success. Otherwise, it returns nil.
+
+
+#### read(key:Raw, offset:Integer, size:Integer) -> data:Raw
+Reads part of data from the storage.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### reads(sid:Integer, key:Raw, offset:Integer, size:Integer) -> data:Raw
+Reads part of data from the storage using the snapshot.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### getd_data(objectKey:Object) -> data:Raw
+Gets data from DS directly.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### readd(objectKey:Object, offset:Integer, size:Integer) -> data:Raw
+Reads part of data from DS directly.
+
+Returns the found data if it success. Otherwise, it returns nil.
+
+
+#### set(key:Raw, data:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+Sets data and attributes to the storage.
+The data is stored on DS, and the attributes are stored on MDS.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### set_data(key:Raw, data:Raw) -> objectKey:Object
+Sets data to the storage. The data is stored on DS.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### set_attrs(key:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+Sets attributes to the storage. The attributes is stored on MDS.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### write(key:Raw, offset:Integer, data:Raw) -> objectKey:Object
+Writes part of data to the storage.
+
+Returns object key of the stored object if it succeeded. Otherwise, it returns false.
+
+
+#### remove(key:Raw)
+Removes data and attributes from the storage.
+
+Returns true if the object is removed. Otherwise, it returns false.
+
+
+#### select(cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+
+    cols:Array<String> or nil
+    conds:Array<Condition>
+    order:Integer or nil
+    order_col:Raw or nil
+    limit:Integer or nil
+    skip:Integer or nil
+
+
+#### selects(sid, cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+
+
+
+### HTTP
+
+TODO
 
 
 
@@ -383,63 +460,95 @@ mapを削除します。
 
 ### spreadctl
 
+**spreadctl** はクラスタの管理コマンドです。
+
     Usage: spreadctl <cs address[:port]> <command> [options]
     command:
-       nodes                        ノード一覧表を表示
-       replset                      レプリケーション･セットの一覧表を表示
-       stat                         統計情報を表示
-       items                        保存されているデータの数を表示
+       nodes                        ノードの一覧を表示する
+       replset                      レプリケーション･セットの一覧を表示する
+       stat                         統計情報を表示する
+       items                        保存されているデータの数を表示する
        remove_node <nid>            ノードをクラスタから取り除く
-       set_weight <rsid> <weight>   負荷分散の重みを指定
+       set_weight <rsid> <weight>   負荷分散の重みを指定する
+       snapshot                     スナップショットの一覧を表示する
+       add_snapshot <name>          新しいスナップショットを追加する
+       version                      各ノードのソフトウェアのバージョンを表示する
 
 
 ### spreadcli
 
-    Usage: spreadcli <cs address[:port]> <command> [options]
+**spreadcli** はコマンドラインのクライアントプログラムです。
+
+    Usage: cli.rb <cs address[:port]> <command> [options]
     command:
-       set <key> <json>                 mapを保存する
-       get <key>                        mapを取得してJSON形式で表示する
-       remove <key>                     mapを削除する
-       get_data <key>                   mapを取得してmap["data"]を表示する
-       set_data <key> <data>            {"data":data}を保存する
-       get_direct <rsid> <key>          データを指定したレプリケーション･セットから直接取得する
-       set_direct <rsid> <key> <data>   データを指定したレプリケーション･セットに直接保存する
-       remove_direct <rsid> <key>       データを指定したレプリケーション･セットから直接削除する
+       get_data <key>                     get data
+       get_attrs <key>                    get attributes
+       gets_data <sid> <key>              get data using the snapshot
+       gets_attrs <sid> <key>             get attributes using the snapshot
+       read <key> <offset> <size>         get data with the offset and the size
+       reads <sid> <key> <offset> <size>  get data with the offset and the size
+       set_data <key> <data>              set data
+       set_attrs <key> <json>             set attributes
+       write <key> <offset> <data>        set data with the offset and the size
+       get <key>                          get data and attributes
+       gets <sid> <key>                   get data and attributes using the snapshot
+       set <key> <data> <json>            set data and attributes
+       remove <key>                       remove the data
+       select <expr> [cols...]            select attributes
+       selects <sid> <expr> [cols...]     select attributes using the snapshot
 
 
 ### spread-cs
 
     Usage: spread-cs [options]
-        -p, --port PORT                  ポート番号
-        -s, --storage PATH               規定のディレクトリ
-        -f, --fault_path PATH            落ちたノードを記録するファイルのパス
-        -b, --membership PATH            ノード一覧表を記録するファイルのパス
-        -t, --mds ADDRESS                メタデータサーバのアドレス
+        -p, --port PORT                  listen port
+        -m, --mds ADDRESS                address of metadata server
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --snapshot_store PATH        path to snapshot status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
 ### spread-ds
 
     Usage: spread-ds [options]
-        -i, --nid ID                     一意なノードID
-        -n, --name NAME                  ノードの名前
-        -a, --address ADDRESS            このサーバのアドレス
-        -g, --rsid IDs                   レプリケーション･セットのID
-        -s, --storage PATH               ストレージのディレクトリ
-        -u, --ulog PATH                  更新ログを保存するディレクトリ
-        -r, --rlog PATH                  リレー状態ログを保存するディレクトリ
-        -m, --cs ADDRESS                 config serverのアドレス
-        -f, --fault_path PATH            落ちたノードを記録するファイルのパス
-        -b, --membership PATH            ノード一覧表を記録するファイルのパス
+        -i, --nid ID                     unieque node id
+        -n, --name NAME                  node name
+        -a, --address ADDRESS            listen address
+        -g, --rsid IDs                   replication set IDs
+        -s, --store PATH                 path to storage directory
+        -u, --ulog PATH                  path to update log directory
+        -r, --rts PATH                   path to relay timestamp directory
+        -t, --http                       http listen port
+        -R, --read-only                  read-only mode
+        -S, --snapshot SID               read-only mode using the snapshot
+        -c, --cs ADDRESS                 address of config server
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --snapshot_store PATH        path to snapshot status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
 ### spread-gw
 
     Usage: spread-gw [options]
-        -p, --port PORT                  ポート番号
-        -m, --cs ADDRESS                 config serverのアドレス
-        -s, --storage PATH               規定のディレクトリ
-        -f, --fault_path PATH            落ちたノードを記録するファイルのパス
-        -b, --membership PATH            ノード一覧表を記録するファイルのパス
+        -p, --port PORT                  listen port
+        -t, --http PORT                  http listen port
+        -c, --cs ADDRESS                 address of config server
+        -R, --read-only                  read-only mode
+        -S, --snapshot SID               read-only mode using the snapshot
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --snapshot_store PATH        path to snapshot status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
 
@@ -451,82 +560,81 @@ SpreadOSDはオープンソフトウェアです。ソースコードを改変�
 
     lib/spread-osd
     |
-    +-- mds/                  メタデータサーバのクライアントの実装
+    +-- lib/                    基本的なライブラリ群
     |   |
-    |   +-- base.rb
-    |   +-- tokyotyrant.rb    Tokyo Tyrantのクライアント実装
-    |   +-- astt.rb           Tokyo Tyrantのクライアント実装の非同期版
-    |
-    +-- storage/              データサーバのストレージ実装
-    |   |
-    |   +-- base.rb
-    |   +-- hash.rb           Hashベースのオンメモリのストレージ
-    |   +-- file.rb           ファイルベースのストレージ
-    |
-    +-- rlog/                 データサーバのリレー状態ログの実装
-    |   |
-    |   +-- base.rb
-    |   +-- memory.rb         オンメモリのリレー状態ログ
-    |   +-- file.rb           ファイルベースのリレー状態ログ
-    |
-    +-- ulog/                 データサーバの更新ログの実装
-    |   |
-    |   +-- base.rb
-    |   +-- array.rb          Arrayベースのオンメモリの更新ログ
-    |   +-- file.rb           ファイルベースの更新ログ
-    |
-    +-- lib/                  基本的なライブラリ群
-    |   |
-    |   +-- ebus.rb           EventBus
-    |   +-- cclog.rb          ログ
-    |   +-- vbcode.rb         Variable byte code
+    |   +-- ebus.rb             EventBus
+    |   +-- cclog.rb            ログライブラリ
+    |   +-- vbcode.rb           Variable byte code
     |
     +-- logic/
     |   |
-    |   +-- node.rb                     Nodeクラスの実装
-    |   +-- fault_detector.rb           障害検出
-    |   +-- membership.rb               ノード一覧表とレプリケーション･セットの一覧表
-    |   +-- weight.rb                   負荷分散
-    |   +-- storage_manager.rb          ストレージインタフェース
-    |   +-- master_storage_manager.rb   スレーブサーバ用のストレージインタフェース
-    |   +-- slave_storage_manager.rb    マスタサーバ用のストレージインタフェース
+    |   +-- node.rb             Nodeクラスの実装
+    |   +-- tsv_data.rb         Tab separated dataを扱う基底クラス
+    |   +-- fault_detector.rb   障害検出
+    |   +-- membership.rb       ノード一覧表とレプリケーション･セットの一覧表
+    |   +-- weight.rb           負荷分散
+    |   +-- snapshot.rb         スナップショットの一覧表
     |
     +-- service/
     |   |
     |   +-- base.rb
-    |   +-- net.rb
-    |   +-- timer.rb
+    |   +-- bus.rb
     |   |
-    |   +-- mds.rb
-    |   |
-    |   +-- storage.rb
-    |   +-- storage_client.rb
-    |   |
-    |   +-- gateway.rb
+    |   +-- process.rb
     |   +-- heartbeat.rb
     |   +-- membership.rb
+    |   +-- snapshot.rb
     |   |
-    |   +-- status.rb
-    |   +-- cs_status.rb
-    |   +-- ds_status.rb
-    |   +-- gw_status.rb
+    |   +-- data_server.rb
+    |   +-- data_client.rb
+    |   +-- slave.rb
+    |   |
+    |   +-- gateway.rb
+    |   +-- gateway_ro.rb
+    |   +-- gw_http.rb
     |   |
     |   +-- config.rb
-    |   +-- cs_config.rb
-    |   +-- ds_config.rb
-    |   +-- gw_config.rb
+    |   +-- config_cs.rb
+    |   +-- config_ds.rb
+    |   +-- config_gw.rb
     |   |
-    |   +-- cs_rpc.rb
-    |   +-- ds_rpc.rb
-    |   +-- gw_rpc.rb
+    |   +-- stat.rb
+    |   +-- stat_cs.rb
+    |   +-- stat_ds.rb
+    |   +-- stat_gw.rb
+    |   |
+    |   +-- rpc.rb
+    |   +-- rpc_cs.rb
+    |   +-- rpc_ds.rb
+    |   +-- rpc_gw.rb
+    |   |
+    |   +-- rts.rb
+    |   +-- rts_file.rb
+    |   +-- rts_memory.rb
+    |   |
+    |   +-- ulog.rb
+    |   +-- ulog_file.rb
+    |   +-- ulog_memory.rb
+    |   |
+    |   +-- mds.rb
+    |   +-- mds_tt.rb
+    |   |
+    |   +-- storage.rb
+    |   +-- storage_dir.rb
     |
-    +-- comand/
+    +-- command/
+    |   |
+    |   +-- ctl.rb              管理ツール
+    |   +-- cs.rb               CS main
+    |   +-- ds.rb               DS main
+    |   +-- gw.rb               GW main
+    |   +-- cli.rb              コマンドラインのクライアントプログラム
     |
-    +-- bus.rb                EventBusのスロットの宣言
+    +-- default.rb              デフォルトのポート番号などの定数
     |
-    +-- default.rb            デフォルトのポート番号などの定数
+    +-- log.rb
     |
-    +-- common.rb
+    +-- version.rb
 
 
 ## License
