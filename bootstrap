@@ -114,7 +114,7 @@ if test x"$1" = x"--clean"; then
 else
 	$LIBTOOLIZE
 	$ACLOCAL
-	$AUTOHEADER
+	#$AUTOHEADER
 	$AUTOMAKE
 	$AUTOCONF
 fi

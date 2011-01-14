@@ -1,6 +1,6 @@
-AC_INIT(lib/spread-osd/bus.rb)
+AC_INIT(lib/spread-osd/logic/membership.rb)
 AC_CONFIG_AUX_DIR(ac)
-AM_INIT_AUTOMAKE(spread-osd, 0.0.1)
+AM_INIT_AUTOMAKE(spread-osd, 0.2.0)
 
 AC_CHECK_PROG(RUBY, ruby, ruby)
 if test "x$RUBY" = x; then
@@ -44,6 +44,18 @@ if test $? != 0; then
 Install or upgrade 'tokyotyrant' gem as follows:
 
   $ sudo $gem_path install tokyotyrant
+])
+fi
+AC_MSG_RESULT([yes])
+
+AC_MSG_CHECKING([for rack gem >= 1.2.1])
+$RUBY -e "gem 'rack', '>= 1.2.1'"
+if test $? != 0; then
+	AC_MSG_ERROR([rack gem >= 1.2.1 is not found.
+
+Install or upgrade 'rack' gem as follows:
+
+  $ sudo $gem_path install rack
 ])
 fi
 AC_MSG_RESULT([yes])
