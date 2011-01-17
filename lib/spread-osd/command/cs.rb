@@ -40,6 +40,9 @@ require 'spread-osd/service/config'
 require 'spread-osd/service/config_cs'
 require 'spread-osd/service/heartbeat'
 require 'spread-osd/service/membership'
+require 'spread-osd/service/weight'
+require 'spread-osd/service/balance'
+require 'spread-osd/service/master_select'
 require 'spread-osd/service/snapshot'
 require 'spread-osd/default'
 require 'spread-osd/version'
@@ -60,7 +63,7 @@ op = OptionParser.new
 	end
 end
 
-storage_path = nil
+store_path = nil
 
 listen_host = '0.0.0.0'
 listen_port = CS_DEFAULT_PORT
@@ -75,12 +78,24 @@ op.on('-p', '--port PORT', "listen port") do |addr|
 	end
 end
 
+op.on('-l', '--listen HOST', "listen address") do |addr|
+	if addr.include?(':')
+		host, port = addr.split(':',2)
+		port = port.to_i
+		port = CS_DEFAULT_PORT if port == 0
+		listen_host = host
+		listen_port = port
+	else
+		listen_host = addr
+	end
+end
+
 op.on('-m', '--mds ADDRESS', "address of metadata server") do |addrs|
 	conf.mds_uri = addrs
 end
 
 op.on('-s', '--store PATH', "path to base directory") do |path|
-	storage_path = path
+	store_path = path
 end
 
 op.on('--fault_store PATH', "path to fault status file") do |path|
@@ -89,6 +104,10 @@ end
 
 op.on('--membership_store PATH', "path to membership status file") do |path|
 	conf.membership_path = path
+end
+
+op.on('--weight_store PATH', "path to weight status file") do |path|
+	conf.weight_path = path
 end
 
 op.on('--snapshot_store PATH', "path to snapshot status file") do |path|
@@ -119,16 +138,20 @@ begin
 		raise "--mds option is required"
 	end
 
-	if !conf.fault_path && storage_path
-		conf.fault_path = File.join(storage_path, "fault")
+	if !conf.fault_path && store_path
+		conf.fault_path = File.join(store_path, "fault")
 	end
 
-	if !conf.membership_path && storage_path
-		conf.membership_path = File.join(storage_path, "membership")
+	if !conf.membership_path && store_path
+		conf.membership_path = File.join(store_path, "membership")
 	end
 
-	if !conf.snapshot_path && storage_path
-		conf.snapshot_path = File.join(storage_path, "snapshot")
+	if !conf.weight_path && store_path
+		conf.weight_path = File.join(store_path, "weight")
+	end
+
+	if !conf.snapshot_path && store_path
+		conf.snapshot_path = File.join(store_path, "snapshot")
 	end
 
 rescue
@@ -139,19 +162,18 @@ end
 ProcessService.init
 HeartbeatServerService.init
 MembershipManagerService.init
+WeightManagerService.init
 SnapshotManagerService.init
 CSStatService.init
 
-
 log_event_bus
-
-net = ProcessBus.serve_rpc(CSRPCService.instance)
 
 ProcessBus.run
 
+net = ProcessBus.serve_rpc(CSRPCService.instance)
 net.listen(listen_host, listen_port)
 
-puts "start on #{listen_host}:#{listen_port}"
+$log.info "start on #{listen_host}:#{listen_port}"
 
 net.run
 

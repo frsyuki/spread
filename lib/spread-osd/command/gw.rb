@@ -46,6 +46,9 @@ require 'spread-osd/service/gateway'
 require 'spread-osd/service/gateway_ro'
 require 'spread-osd/service/gw_http'
 require 'spread-osd/service/heartbeat'
+require 'spread-osd/service/weight'
+require 'spread-osd/service/balance'
+require 'spread-osd/service/master_select'
 require 'spread-osd/service/membership'
 require 'spread-osd/service/snapshot'
 require 'spread-osd/default'
@@ -67,7 +70,7 @@ op = OptionParser.new
 	end
 end
 
-storage_path = nil
+store_path = nil
 
 listen_host = '0.0.0.0'
 listen_port = GW_DEFAULT_PORT
@@ -81,6 +84,18 @@ op.on('-p', '--port PORT', "listen port") do |addr|
 		listen_port = GW_DEFAULT_PORT if listen_port == 0
 	else
 		listen_port = addr.to_i
+	end
+end
+
+op.on('-l', '--listen HOST', "listen address") do |addr|
+	if addr.include?(':')
+		host, port = addr.split(':',2)
+		port = port.to_i
+		port = GW_DEFAULT_PORT if port == 0
+		listen_host = host
+		listen_port = port
+	else
+		listen_host = addr
 	end
 end
 
@@ -111,8 +126,12 @@ op.on('-S', '--snapshot SID', "read-only mode using the snapshot", Integer) do |
 	conf.read_only_sid = i
 end
 
+op.on('-L', '--location STRING', "enable location-aware master selection") do |str|
+	conf.self_location = str
+end
+
 op.on('-s', '--store PATH', "path to base directory") do |path|
-	storage_path = path
+	store_path = path
 end
 
 op.on('--fault_store PATH', "path to fault status file") do |path|
@@ -121,6 +140,10 @@ end
 
 op.on('--membership_store PATH', "path to membership status file") do |path|
 	conf.membership_path = path
+end
+
+op.on('--weight_store PATH', "path to weight status file") do |path|
+	conf.weight_path = path
 end
 
 op.on('--snapshot_store PATH', "path to snapshot status file") do |path|
@@ -151,12 +174,20 @@ begin
 		raise "--cs option is required"
 	end
 
-	if !conf.fault_path && storage_path
-		conf.fault_path = File.join(storage_path, "fault")
+	if !conf.fault_path && store_path
+		conf.fault_path = File.join(store_path, "fault")
 	end
 
-	if !conf.membership_path && storage_path
-		conf.membership_path = File.join(storage_path, "membership")
+	if !conf.membership_path && store_path
+		conf.membership_path = File.join(store_path, "membership")
+	end
+
+	if !conf.weight_path && store_path
+		conf.weight_path = File.join(store_path, "weight")
+	end
+
+	if !conf.snapshot_path && store_path
+		conf.snapshot_path = File.join(store_path, "snapshot")
 	end
 
 rescue
@@ -166,6 +197,13 @@ end
 
 ProcessService.init
 HeartbeatClientService.init
+RoutRobinWeightBalanceService.init
+WeightMemberService.init
+if conf.self_location
+	LocationAwareMasterSelectService.init
+else
+	FlatMasterSelectService.init
+end
 MembershipClientService.init
 DataClientService.init
 if read_only_gw
@@ -180,18 +218,16 @@ SnapshotMemberService.init
 GWStatService.init
 MDSSelector.open!
 
-HeartbeatClientService.instance.heartbeat_blocking! rescue nil
-
-
 log_event_bus
-
-net = ProcessBus.serve_rpc(GWRPCService.instance)
 
 ProcessBus.run
 
+HeartbeatClientService.instance.heartbeat_blocking! rescue nil
+
+net = ProcessBus.serve_rpc(GWRPCService.instance)
 net.listen(listen_host, listen_port)
 
-puts "start on #{listen_host}:#{listen_port}"
+$log.info "start on #{listen_host}:#{listen_port}"
 
 net.run
 

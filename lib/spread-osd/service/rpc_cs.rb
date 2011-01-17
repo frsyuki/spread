@@ -26,6 +26,7 @@ class CSRPCBus < Bus
 	call_slot :update_node_info
 	call_slot :recover_node
 	call_slot :set_replset_weight
+	call_slot :reset_replset_weight
 	call_slot :add_snapshot
 end
 
@@ -39,9 +40,9 @@ class CSRPCService < RPCService
 		dispatch(CSRPCBus, :heartbeat, nid, sync_request)
 	end
 
-	def add_node(nid, address, name, rsids)
+	def add_node(nid, address, name, rsids, self_location)
 		address = Address.load(address)
-		dispatch(CSRPCBus, :add_node, nid, address, name, rsids)
+		dispatch(CSRPCBus, :add_node, nid, address, name, rsids, self_location)
 	end
 
 	def remove_node(nid)
@@ -59,6 +60,10 @@ class CSRPCService < RPCService
 
 	def set_replset_weight(rsid, weight)
 		dispatch(CSRPCBus, :set_replset_weight, rsid, weight)
+	end
+
+	def reset_replset_weight(rsid)
+		dispatch(CSRPCBus, :reset_replset_weight, rsid)
 	end
 
 	def add_snapshot(name)

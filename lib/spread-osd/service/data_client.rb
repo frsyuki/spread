@@ -41,6 +41,8 @@ end
 
 
 class DataClientService < Service
+	# TODO localhost optimization if DataServer is connected
+
 	def get(okey, &cb)
 		call_rsid(okey, :get_direct, okey, &cb)
 	end
@@ -69,25 +71,16 @@ class DataClientService < Service
 
 	private
 	def call_rsid(okey, *args, &cb)
-		nids = MembershipBus.get_replset_nids(okey.rsid)
-		target_nids = select_master(nids, okey.key)
-		target_nids.reject! {|nid|
+		nids = MasterSelectBus.select_master(okey.rsid, okey.key)
+		target_nids = nids.reject {|nid|
 			MembershipBus.is_fault(nid)
 		}
 		if target_nids.empty?
-			# FIXME
-			target_nids = nids.dup
+			target_nids = nids
 		end
 		ha_call(target_nids, args, &cb)
 	rescue
 		cb.call(nil, $!)
-	end
-
-	def select_master(nids, key)
-		digest = Digest::MD5.digest(key)
-		i = digest.unpack('C')[0]
-		n = i % nids.size
-		return nids[-n,n] + nids[0, nids.size-n]
 	end
 
 	def ha_call(nids, args, &cb)

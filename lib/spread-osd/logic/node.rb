@@ -21,17 +21,19 @@ module SpreadOSD
 Address = MessagePack::RPC::Address
 
 class Node
-	def initialize(nid=0, address=nil, name=nil, rsids=[])
+	def initialize(nid=0, address=nil, name=nil, rsids=[], location=nil)
 		@nid = nid
 		@address = address
 		@name = name
 		@rsids = rsids
+		@location = location
 	end
 
 	attr_reader :nid
 	attr_accessor :address
 	attr_accessor :name
 	attr_accessor :rsids
+	attr_accessor :location
 
 	def session
 		$net.get_session(*@address)
@@ -48,13 +50,14 @@ class Node
 
 	public
 	def to_msgpack(out = '')
-		[@nid, @address.dump, @name, @rsids].to_msgpack(out)
+		[@nid, @address.dump, @name, @rsids, @location].to_msgpack(out)
 	end
 	def from_msgpack(obj)
-		@nid =  obj[0]
+		@nid = obj[0]
 		@address = Address.load(obj[1])
-		@name  = obj[2]
+		@name = obj[2]
 		@rsids = obj[3]
+		@location = obj[4]
 		self
 	end
 end

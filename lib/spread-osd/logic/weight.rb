@@ -35,28 +35,28 @@ class WeightInfo
 	end
 
 	def set_weight(rsid, weight)
+		if @map[rsid] == weight
+			return nil
+		end
 		@map[rsid] = weight
 		on_change
 		true
 	end
 
-	def unset_weight(rsid)
-		unless @map.has_key?(rsid)
+	def reset_weight(rsid)
+		unless @map.delete(rsid)
 			return nil
 		end
-		@map.delete(rsid)
 		on_change
 		true
 	end
 
-	def set_default(rsids)
+	def set_defaults(rsids)
 		#@map.reject! {|rsid,weight|
 		#	!rsids.include?(rsid)
 		#}
 		rsids.each {|rsid|
-			unless @map.has_key?(rsid)
-				@map[rsid] = DEFAULT_WEIGHT
-			end
+			@map[rsid] ||= DEFAULT_WEIGHT
 		}
 		on_change
 		true
@@ -66,7 +66,11 @@ class WeightInfo
 		@map[rsid] || DEFAULT_WEIGHT
 	end
 
-	def get_all
+	def get_registered_rsids
+		@map.keys
+	end
+
+	def get_registered_weights
 		@map.dup
 	end
 
@@ -114,6 +118,7 @@ class WeightInfo
 end
 
 
+=begin
 class WeightBalancer < WeightInfo
 	def initialize
 		super
@@ -155,6 +160,7 @@ class WeightBalancer < WeightInfo
 		@array = array.shuffle
 	end
 end
+=end
 
 
 end

@@ -19,12 +19,14 @@ module SpreadOSD
 
 
 class GWConfigService < ConfigService
+	attr_accessor :self_location
 	attr_accessor :cs_address
 
 	attr_accessor :read_only_sid
 	attr_accessor :http_gateway_address
 
 	ebus_connect :ConfigBus,
+		:self_location,
 		:read_only_sid,
 		:http_gateway_address,
 		:get_cs_address => :cs_address

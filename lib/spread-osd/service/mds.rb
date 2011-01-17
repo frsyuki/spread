@@ -153,7 +153,8 @@ class MDSService < Service
 		:shutdown
 
 	protected
-	def new_okey(key, sid=get_current_sid, rsid=MembershipBus.select_next_rsid)
+	def new_okey(key, sid=get_current_sid, rsid=nil)
+		rsid ||= BalanceBus.select_next_rsid(key)
 		ObjectKey.new(key, sid, rsid)
 	end
 

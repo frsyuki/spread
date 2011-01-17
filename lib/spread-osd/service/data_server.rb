@@ -123,14 +123,16 @@ class DataServerService < Service
 		nids = []
 		@self_rsids.each {|rsid|
 			begin
-				nids.concat MembershipBus.get_replset_nids(rsid)
+				nids.concat MasterSelectBus.select_master_static(rsid)
 			rescue
 			end
 		}
-		nids.uniq.each {|nid|
-			if nid != @self_nid && !MembershipBus.is_fault(nid)
+		done = [@self_nid]
+		nids.each {|nid|
+			if !done.include?(nid) && !MembershipBus.is_fault(nid)
 				session = MembershipBus.get_session_nid(nid)
 				SlaveBus.try_replicate(nid, session)
+				done << nid
 			end
 		}
 	end

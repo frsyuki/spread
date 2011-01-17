@@ -21,12 +21,11 @@ module SpreadOSD
 class MembershipBus < Bus
 	call_slot :get_session_nid
 	call_slot :get_node
-	call_slot :get_replset_nids
+	call_slot :get_all_nodes
+	call_slot :get_active_rsids
 	call_slot :is_fault
 
 	call_slot :reset_fault_detector
-
-	call_slot :select_next_rsid
 
 	call_slot :try_register_node
 end
@@ -43,6 +42,8 @@ class MembershipService < Service
 		@membership_path = ConfigBus.get_membership_path
 		@fault_list.open(@fault_path) if @fault_path
 		@membership.open(@membership_path) if @membership_path
+		on_membership_change
+		on_fault_list_change
 	end
 
 	def shutdown
@@ -54,8 +55,12 @@ class MembershipService < Service
 		@membership.get_node(nid)
 	end
 
-	def get_replset_nids(rsid)
-		@membership.get_replset_nids(rsid)
+	def get_all_nodes
+		@membership.get_all_nodes
+	end
+
+	def get_active_rsids
+		@membership.get_active_rsids
 	end
 
 	def is_fault(nid)
@@ -70,21 +75,36 @@ class MembershipService < Service
 		@membership
 	end
 
-	def stat_replest_info
-		result = {}
-		@membership.get_all_rsids.each {|rsid|
-			begin
-				nids = @membership.get_replset_nids(rsid)
-				w = @weight.get_weight(rsid)
-				result[rsid] = [nids, w]
-			rescue
-			end
-		}
-		result
-	end
-
 	def stat_fault_info
 		@fault_list
+	end
+
+	def on_membership_change
+		BalanceBus.update_weight
+		MasterSelectBus.update_nodes
+	end
+
+	def on_fault_list_change
+		# TODO update balance bus?
+	end
+
+	def stat_replset_info
+		rsid_nids = {}
+		MembershipBus.get_all_nodes.each {|node|
+			(rsid_nids[node.rsid] ||= []) << node.nid
+		}
+
+		rsids = @winfo.get_registered_keys + MembershipBus.get_active_rsids
+		rsids.uniq!
+
+		result = {}
+		rsids.each {|rsid|
+			weight = @winfo.get_weight(rsid)
+			nids = rsid_nids[rsid] || []
+			result[rsid] = [nids, weight]
+		}
+
+		result
 	end
 
 	ebus_connect :ProcessBus,
@@ -93,14 +113,15 @@ class MembershipService < Service
 
 	ebus_connect :MembershipBus,
 		:get_node,
-		:get_replset_nids,
+		:get_all_nodes,
+		:get_active_rsids,
 		:is_fault,
 		:get_session_nid
 
 	ebus_connect :StatBus,
 		:membership_info => :stat_membership_info,
-		:replset_info => :stat_replest_info,
-		:fault_info => :stat_fault_info
+		:fault_info => :stat_fault_info,
+		:replset_info => :stat_replset_info
 end
 
 
@@ -108,7 +129,6 @@ class MembershipManagerService < MembershipService
 	def initialize
 		super
 		@fault_detector = FaultDetector.new
-		@weight = WeightInfo.new
 	end
 
 	def run
@@ -116,22 +136,22 @@ class MembershipManagerService < MembershipService
 		@fault_detector.set_init(
 			@membership.get_all_nids,
 			@fault_list.get_list)
-		update_membership
-		update_fault_list
+		on_membership_change
+		on_fault_detector_change
 	end
 
-	def rpc_add_node(nid, address, name, rsids)
+	def rpc_add_node(nid, address, name, rsids, location)
 		if @membership.include?(nid)
-			if @membership.update_node_info(nid, address, name, rsids)
+			if @membership.update_node_info(nid, address, name, rsids, location)
 				$log.info "update node: nid=#{nid} name=#{name.dump} address=#{address} rsids=#{rsids.join(',')}"
 			end
 		else
-			@membership.add_node(nid, address, name, rsids)
+			@membership.add_node(nid, address, name, rsids, location)
 			$log.info "add node: nid=#{nid} name=#{name.dump} address=#{address} rsids=#{rsids.join(',')}"
 		end
 		@fault_detector.set_nid(nid)
-		update_membership
-		update_fault_list
+		on_membership_change
+		on_fault_detector_change
 		true
 	end
 
@@ -139,32 +159,24 @@ class MembershipManagerService < MembershipService
 		$log.info "remove node: nid=#{nid}"
 		@membership.remove_node(nid)
 		@fault_detector.delete_nid(nid)
-		update_membership
-		update_fault_list
+		on_membership_change
+		on_fault_detector_change
 		true
 	end
 
 	def rpc_update_node_info(nid, address, name, rsids)
 		@membership.update_node_info(nid, address, name, rsids)
-		update_membership
+		on_membership_change
 		true
 	end
 
 	def rpc_recover_node(nid)
 		if @fault_detector.reset(nid)
-			update_fault_list
+			on_fault_detector_change
 			true
 		else
 			nil
 		end
-	end
-
-	def rpc_set_replset_weight(rsid, weight)
-		unless @weight.set_weight(rsid, weight)
-			raise "no such rsid: #{rsid}"
-		end
-		update_weight
-		true
 	end
 
 	def reset_fault_detector(nid)
@@ -176,7 +188,7 @@ class MembershipManagerService < MembershipService
 		fault_nids = @fault_detector.forward_timer
 		if !fault_nids.empty?
 			$log.info "fault detected: #{fault_nids.join(', ')}"
-			update_fault_list
+			on_fault_detector_change
 		end
 	end
 
@@ -191,26 +203,23 @@ class MembershipManagerService < MembershipService
 		:add_node => :rpc_add_node,
 		:remove_node => :rpc_remove_node,
 		:update_node_info => :rpc_update_node_info,
-		:recover_node => :rpc_recover_node,
-		:set_replset_weight => :rpc_set_replset_weight
+		:recover_node => :rpc_recover_node
 
-	private
-	def update_membership
-		@weight.set_default(@membership.get_all_rsids)
+	def on_membership_change
 		HeartbeatBus.update_sync_config(CONFIG_SYNC_MEMBERSHIP,
 							@membership, @membership.get_hash)
-		update_weight
+		super
 	end
 
-	def update_weight
-		HeartbeatBus.update_sync_config(CONFIG_SYNC_REPLSET_WEIGHT,
-							@weight, @weight.get_hash)
-	end
-
-	def update_fault_list
+	def on_fault_detector_change
 		@fault_list.update(@fault_detector.get_fault_nids)
+		on_fault_list_change
+	end
+
+	def on_fault_list_change
 		HeartbeatBus.update_sync_config(CONFIG_SYNC_FAULT_LIST,
 							@fault_list, @fault_list.get_hash)
+		super
 	end
 end
 
@@ -218,40 +227,25 @@ end
 class MembershipClientService < MembershipService
 	def initialize
 		super
-		@weight = WeightBalancer.new
-	end
-
-	def select_next_rsid
-		@weight.select_next_rsid
 	end
 
 	def run
 		super
 
-		@weight.set_rsids(@membership.get_all_rsids)
-
 		HeartbeatBus.register_sync_config(CONFIG_SYNC_MEMBERSHIP,
 							@membership.get_hash) do |obj|
 			@membership.from_msgpack(obj)
-			@weight.set_rsids(@membership.get_all_rsids)
+			on_membership_change
 			@membership.get_hash
 		end
 
 		HeartbeatBus.register_sync_config(CONFIG_SYNC_FAULT_LIST,
 							@fault_list.get_hash) do |obj|
 			@fault_list.from_msgpack(obj)
+			on_fault_list_change
 			@fault_list.get_hash
 		end
-
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_REPLSET_WEIGHT,
-							@weight.get_hash) do |obj|
-			@weight.from_msgpack(obj)
-			@weight.get_hash
-		end
 	end
-
-	ebus_connect :MembershipBus,
-		:select_next_rsid
 end
 
 
@@ -262,24 +256,7 @@ class MembershipMemberService < MembershipClientService
 		@self_address = ConfigBus.self_address
 		@self_name = ConfigBus.self_name
 		@self_rsids = ConfigBus.self_rsids
-	end
-
-	def run
-		super
-
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_MEMBERSHIP,
-							@membership.get_hash) do |obj|
-			@membership.from_msgpack(obj)
-			try_register_node
-			@membership.get_hash
-		end
-
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_FAULT_LIST,
-							@fault_list.get_hash) do |obj|
-			@fault_list.from_msgpack(obj)
-			try_register_node
-			@fault_list.get_hash
-		end
+		@self_location = ConfigBus.self_location
 	end
 
 	def try_register_node
@@ -298,6 +275,10 @@ class MembershipMemberService < MembershipClientService
 		end
 
 		if node.rsids != @self_rsids
+			return register_self
+		end
+
+		if node.location != @self_location
 			return register_self
 		end
 
@@ -321,7 +302,7 @@ class MembershipMemberService < MembershipClientService
 	end
 
 	def do_register_self
-		get_cs_session.callback(:add_node, @self_nid, @self_address, @self_name, @self_rsids) do |future|
+		get_cs_session.callback(:add_node, @self_nid, @self_address, @self_name, @self_rsids, @self_location) do |future|
 			ack_register_self(future)
 		end
 	end

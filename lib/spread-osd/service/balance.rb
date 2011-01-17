@@ -18,33 +18,44 @@
 module SpreadOSD
 
 
-class DSConfigService < GWConfigService
-	def run
-		@self_node = Node.new(@self_nid, @self_address, @self_name, @self_rsids, @self_location)
+class BalanceBus < Bus
+	call_slot :select_next_rsid
+	signal_slot :update_weight
+end
+
+
+class RoutRobinWeightBalanceService < Service
+	def initialize
+		@array = []
+		#@random = Random.new
+		@rr = 0
 	end
 
-	attr_accessor :self_nid
-	attr_accessor :self_name
-	attr_accessor :self_address
-	attr_accessor :self_rsids
-	attr_accessor :storage_path
-	attr_accessor :ulog_path
-	attr_accessor :rts_path
+	def update_weight(active_rsids=nil)
+		active_rsids ||= MembershipBus.get_active_rsids
+		array = []
+		active_rsids.each {|rsid|
+			w = WeightBus.get_weight(rsid)
+			w.times {
+				array << rsid
+			}
+		}
+		#@array = array.sort_by {|rsid| @random.rand }
+		@array = array.sort_by {|rsid| rand }
+	end
 
-	attr_reader :self_node
+	def select_next_rsid(key)
+		if @array.empty?
+			raise "no replication set is registered"
+		end
+		@rr += 1
+		@rr = 0 if @rr >= @array.size
+		@array[@rr]
+	end
 
-	ebus_connect :ConfigBus,
-		:self_nid,
-		:self_name,
-		:self_address,
-		:self_rsids,
-		:self_node,
-		:get_storage_path    => :storage_path,
-		:get_ulog_path       => :ulog_path,
-		:get_rts_path        => :rts_path
-
-	ebus_connect :ProcessBus,
-		:run
+	ebus_connect :BalanceBus,
+		:select_next_rsid,
+		:update_weight
 end
 
 

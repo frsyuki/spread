@@ -17,7 +17,13 @@ GW_PORT = (ENV["GW_PORT"] || 49800).to_i
 MDS_PORT = (ENV["MDS_PORT"] || 49600).to_i
 GW_HTTP_PORT = (ENV["GW_HTTP_PORT"] || 49500).to_i
 
-OPT = ENV["OPT"] || "--trace --color-log"
+if ENV["NO_TRACE"]
+	OPT = ENV["OPT"] || "--color-log"
+	TTOPT = ENV["TTOPT"] || ""
+else
+	OPT = ENV["OPT"] || "--trace --color-log"
+	TTOPT = ENV["TTOPT"] || "-ld"
+end
 
 begin
 require 'rubygems'
@@ -49,7 +55,7 @@ class MDSProcess < ServerProcess
 		@port = MDS_PORT
 
 		ddir = init_data_dir("mds")
-		super("#{TTSERVER} -port #{@port} -ld #{ddir}/mds.tct #{args.join(' ')}")
+		super("#{TTSERVER} -port #{@port} #{TTOPT} #{args.join(' ')} #{ddir}/mds.tct")
 	end
 
 	attr_reader :port
@@ -90,8 +96,8 @@ class CSProcess < ServerProcess
 		CtlProcess.new(host, port, "nodes").join
 	end
 
-	def show_replset
-		CtlProcess.new(host, port, "replset").join
+	def show_weight
+		CtlProcess.new(host, port, "weight").join
 	end
 
 	def show_version

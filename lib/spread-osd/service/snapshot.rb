@@ -32,6 +32,7 @@ class SnapshotService < Service
 	def run
 		@snapshot_path = ConfigBus.get_snapshot_path
 		@slist.open(@snapshot_path) if @snapshot_path
+		on_change
 	end
 
 	def shutdown
@@ -48,6 +49,9 @@ class SnapshotService < Service
 
 	def stat_snapshot_info
 		@slist
+	end
+
+	def on_change
 	end
 
 	ebus_connect :SnapshotBus,
@@ -68,14 +72,9 @@ class SnapshotManagerService < SnapshotService
 		super
 	end
 
-	def run
-		super
-		update_snapshot
-	end
-
 	def add_snapshot(name)
 		ss = @slist.add(name)
-		update_snapshot
+		on_change
 		ss
 	end
 
@@ -84,14 +83,14 @@ class SnapshotManagerService < SnapshotService
 		ss.sid
 	end
 
-	ebus_connect :CSRPCBus,
-		:add_snapshot => :rpc_add_snapshot
-
-	private
-	def update_snapshot
+	def on_change
 		HeartbeatBus.update_sync_config(CONFIG_SYNC_SNAPSHOT,
 							@slist, @slist.get_hash)
+		super
 	end
+
+	ebus_connect :CSRPCBus,
+		:add_snapshot => :rpc_add_snapshot
 end
 
 
@@ -106,6 +105,7 @@ class SnapshotMemberService < SnapshotService
 		HeartbeatBus.register_sync_config(CONFIG_SYNC_SNAPSHOT,
 							@slist.get_hash) do |obj|
 			@slist.from_msgpack(obj)
+			on_change
 			@slist.get_hash
 		end
 	end

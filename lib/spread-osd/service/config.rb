@@ -23,12 +23,14 @@ class ConfigBus < Bus
 	call_slot :self_name
 	call_slot :self_address
 	call_slot :self_rsids
+	call_slot :self_location
 	call_slot :self_node
 	call_slot :get_storage_path
 	call_slot :get_ulog_path
 	call_slot :get_rts_path
 	call_slot :get_fault_path
 	call_slot :get_membership_path
+	call_slot :get_weight_path
 	call_slot :get_snapshot_path
 
 	call_slot :get_mds_uri
@@ -42,11 +44,13 @@ end
 class ConfigService < Service
 	attr_accessor :fault_path
 	attr_accessor :membership_path
+	attr_accessor :weight_path
 	attr_accessor :snapshot_path
 
 	ebus_connect :ConfigBus,
 		:get_fault_path      => :fault_path,
 		:get_membership_path => :membership_path,
+		:get_weight_path     => :weight_path,
 		:get_snapshot_path   => :snapshot_path
 end
 

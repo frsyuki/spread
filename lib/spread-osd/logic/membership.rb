@@ -71,6 +71,10 @@ class NodeList < TSVData
 		@map.each_value(&block)
 	end
 
+	def get_all_nodes
+		@map.values
+	end
+
 	def get_all_nids
 		@map.map {|nid,node| nid }
 	end
@@ -109,7 +113,9 @@ class NodeList < TSVData
 
 				rsids = row[3].split(',').map {|id| id.to_i }
 
-				map[nid] = Node.new(nid, address, name, rsids)
+				location = row[4]
+
+				map[nid] = Node.new(nid, address, name, rsids, location)
 			end
 
 			@map = map
@@ -148,25 +154,25 @@ end
 class Membership
 	def initialize
 		@nodes = NodeList.new
-		@replset = {}  # #{rsid => [nid]}
+		@active_rsids = []
 	end
 
 	def open(path)
 		@nodes.open(path)
-		reset_replset
+		update_active_rsids
 	end
 
 	def close
 		@nodes.close
 	end
 
-	def add_node(nid, address, name, rsids)
-		node = Node.new(nid, address, name, rsids)
+	def add_node(nid, address, name, rsids, location)
+		node = Node.new(nid, address, name, rsids, location)
 		if @nodes.get(nid)
 			raise "nid already exist: #{nid}"
 		end
 		@nodes.add(node)
-		add_replset(nid, rsids)
+		update_active_rsids
 		node
 	end
 
@@ -175,22 +181,18 @@ class Membership
 		unless node
 			raise "nid not exist: #{nid}"
 		end
-		remove_replset(nid, node.rsids)
+		update_active_rsids
 		true
 	end
 
-	def update_node_info(nid, address, name, rsids)
+	def update_node_info(nid, address, name, rsids, location)
 		node = get_node(nid)
 		if node.address == address && node.name == name &&
-				node.rsids == rsids
+				node.rsids == rsids && node.location == location
 			return false
 		end
-		old_rsids = node.rsids
-		@nodes.update(nid, address, name, rsids)
-		if rsids
-			remove_replset(nid, old_rsids)
-			add_replset(nid, rsids)
-		end
+		@nodes.update(nid, address, name, rsids, location)
+		update_active_rsids
 		true
 	end
 
@@ -202,20 +204,16 @@ class Membership
 		node
 	end
 
-	def get_replset_nids(rsid)
-		nids = @replset[rsid]
-		if !nids || nids.empty?
-			raise "no such rsid: #{rsid.inspect}"
-		end
-		nids
+	def get_all_nodes
+		@nodes.get_all_nodes
 	end
 
 	def get_all_nids
 		@nodes.get_all_nids
 	end
 
-	def get_all_rsids
-		@replset.keys
+	def get_active_rsids
+		@active_rsids
 	end
 
 	def include?(nid)
@@ -232,44 +230,19 @@ class Membership
 
 	def from_msgpack(obj)
 		@nodes.from_msgpack(obj)
-		reset_replset
+		update_active_rsids
 		self
 	end
 
 	private
-	def reset_replset
-		replset = {}
-		@nodes.each {|node|
-			nid = node.nid
+	def update_active_rsids
+		map = {}
+		@nodes.get_all_nodes.each {|node|
 			node.rsids.each {|rsid|
-				if ids = replset[rsid]
-					ids << nid
-				else
-					replset[rsid] = [nid]
-				end
+				map[rsid] = nil
 			}
 		}
-		@replset = replset
-	end
-
-	def add_replset(nid, rsids)
-		rsids.each {|rsid|
-			if ids = @replset[rsid]
-				ids << nid unless ids.include?(nid)
-			else
-				@replset[rsid] = [nid]
-			end
-		}
-		true
-	end
-
-	def remove_replset(nid, rsids)
-		rsids.reject! {|rsid|
-			if ids = @replset[rsid]
-				ids.delete(nid)
-				ids.empty?
-			end
-		}
+		@active_rsids = map.keys.sort
 	end
 end
 

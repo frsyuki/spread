@@ -49,8 +49,6 @@ test "run normally" do
 		data_3_20 = data_over[3,20]
 
 		okeys.each {|okey|
-			p okey
-
 			test 'getd_data' do
 				data_ = c.call(:getd_data, okey)
 

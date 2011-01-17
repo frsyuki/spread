@@ -50,6 +50,9 @@ require 'spread-osd/service/gateway'
 require 'spread-osd/service/gateway_ro'
 require 'spread-osd/service/gw_http'
 require 'spread-osd/service/heartbeat'
+require 'spread-osd/service/weight'
+require 'spread-osd/service/balance'
+require 'spread-osd/service/master_select'
 require 'spread-osd/service/membership'
 require 'spread-osd/service/snapshot'
 require 'spread-osd/service/rts'
@@ -81,7 +84,7 @@ op = OptionParser.new
 	end
 end
 
-listen_host = nil
+listen_host = '0.0.0.0'
 listen_port = nil
 
 read_only_gw = false
@@ -94,17 +97,36 @@ op.on('-n', '--name NAME', "node name") do |name|
 	conf.self_name = name
 end
 
-op.on('-a', '--address ADDRESS', "listen address") do |addr|
+op.on('-a', '--address ADDRESS[:PORT]', "address of this node") do |addr|
 	host, port = addr.split(':',2)
 	port = port.to_i
-	port = DS_DEFAULT_PORT if port == 0
+	if port != 0
+		listen_port = port
+	else
+		port = DS_DEFAULT_PORT
+	end
 	conf.self_address = Address.new(host, port)
-	listen_host = host
-	listen_port = port
+end
+
+op.on('-l', '--listen HOST[:PORT]', "listen address") do |addr|
+	if addr.include?(':')
+		host, port = addr.split(':',2)
+		port = port.to_i
+		if port != 0
+			listen_port = port
+		end
+		listen_host = host
+	else
+		listen_host = addr
+	end
 end
 
 op.on('-g', '--rsid IDs', "replication set IDs") do |ids|
 	conf.self_rsids = ids.split(',').map {|id| id.to_i }
+end
+
+op.on('-L', '--location STRING', "location of this node") do |str|
+	conf.self_location = str
 end
 
 op.on('-s', '--store PATH', "path to storage directory") do |path|
@@ -194,6 +216,16 @@ begin
 		raise "--rsid option is required"
 	end
 
+	unless conf.self_location
+		a = conf.self_address.host
+		if a.include?('.')
+			s = a.split('.')[0,3].map{|v4| "%03d" % v4.to_i }.join('.')
+		else
+			s = a.split(':')[0,4].map{|v6| "%04x" % v6.to_i(16) }.join(':')
+		end
+		conf.self_location = "subnet-#{s}"
+	end
+
 	unless conf.cs_address
 		raise "--cs option is required"
 	end
@@ -220,9 +252,15 @@ begin
 		conf.membership_path = File.join(conf.storage_path, "membership")
 	end
 
+	unless conf.weight_path
+		conf.weight_path = File.join(conf.storage_path, "weight")
+	end
+
 	unless conf.snapshot_path
 		conf.snapshot_path = File.join(conf.storage_path, "snapshot")
 	end
+
+	listen_port ||= DS_DEFAULT_PORT
 
 rescue
 	usage $!.to_s
@@ -231,6 +269,13 @@ end
 
 ProcessService.init
 HeartbeatMemberService.init
+RoutRobinWeightBalanceService.init
+WeightMemberService.init
+if conf.self_location.empty?
+	FlatMasterSelectService.init
+else
+	LocationAwareMasterSelectService.init
+end
 MembershipMemberService.init
 DataClientService.init
 if read_only_gw
@@ -249,19 +294,17 @@ SlaveService.init
 DataServerService.init
 DSStatService.init
 
-MembershipMemberService.instance.register_self_blocking! rescue nil
-HeartbeatMemberService.instance.heartbeat_blocking! rescue nil
-
-
 log_event_bus
-
-net = ProcessBus.serve_rpc(DSRPCService.instance)
 
 ProcessBus.run
 
+MembershipMemberService.instance.register_self_blocking! rescue nil
+HeartbeatMemberService.instance.heartbeat_blocking! rescue nil
+
+net = ProcessBus.serve_rpc(DSRPCService.instance)
 net.listen(listen_host, listen_port)
 
-puts "start on #{listen_host}:#{listen_port}"
+$log.info "start on #{listen_host}:#{listen_port}"
 
 net.run
 
