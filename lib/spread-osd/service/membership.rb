@@ -91,15 +91,17 @@ class MembershipService < Service
 	def stat_replset_info
 		rsid_nids = {}
 		MembershipBus.get_all_nodes.each {|node|
-			(rsid_nids[node.rsid] ||= []) << node.nid
+			node.rsids.each {|rsid|
+				(rsid_nids[rsid] ||= []) << node.nid
+			}
 		}
 
-		rsids = @winfo.get_registered_keys + MembershipBus.get_active_rsids
+		rsids = WeightBus.get_registered_rsids + MembershipBus.get_active_rsids
 		rsids.uniq!
 
 		result = {}
 		rsids.each {|rsid|
-			weight = @winfo.get_weight(rsid)
+			weight = WeightBus.get_weight(rsid)
 			nids = rsid_nids[rsid] || []
 			result[rsid] = [nids, weight]
 		}

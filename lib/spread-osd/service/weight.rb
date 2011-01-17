@@ -20,7 +20,7 @@ module SpreadOSD
 
 class WeightBus < Bus
 	call_slot :get_weight
-	call_slot :get_registered_weights
+	call_slot :get_registered_rsids
 
 	call_slot :set_weight
 
@@ -48,8 +48,8 @@ class WeightService < Service
 		@winfo.get_weight(rsid)
 	end
 
-	def get_registered_weights
-		@winfo.get_registered_weights
+	def get_registered_rsids
+		@winfo.get_registered_rsids
 	end
 
 	def on_change
@@ -58,7 +58,7 @@ class WeightService < Service
 
 	ebus_connect :WeightBus,
 		:get_weight,
-		:get_registered_weights
+		:get_registered_rsids
 
 	ebus_connect :ProcessBus,
 		:run,
@@ -93,8 +93,8 @@ class WeightManagerService < WeightService
 		set_weight(rsid, weight)
 	end
 
-	def rpc_reset_replset_weight(rsid, weight)
-		reset_weight(rsid, weight)
+	def rpc_reset_replset_weight(rsid)
+		reset_weight(rsid)
 	end
 
 	ebus_connect :WeightBus,

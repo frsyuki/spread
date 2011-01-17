@@ -46,25 +46,6 @@ $addr = [host,port]#Address.new(host, port)
 
 cmd = ARGV.shift
 
-module TArray
-	class Template < Array
-		def initialize
-			super()
-		end
-		def from_msgpack(obj)
-			obj.each {|v|
-				push self.class::CLASS.new.from_msgpack(v)
-			}
-			self
-		end
-	end
-	def self.new(klass)
-		Class.new(Template) do
-			const_set(:CLASS, klass)
-		end
-	end
-end
-
 def cmd_args(n)
 	if n < 0
 		return ARGV
@@ -150,7 +131,10 @@ when 'weight'
 	puts REPLSET_FORMAT % %w[rsid weight nids names]
 	node_map = get_node_map
 	rsid_replset = call(nil, :stat, 'replset').sort_by {|rsid,(nids,weight)|
-		[nids.empty?, rsid]
+		if nids.empty?
+			rsid += (2<<16)
+		end
+		rsid
 	}
 	rsid_replset.each {|rsid,(nids,weight)|
 		names = nids.map {|nid| node_map[nid][1] }.join(',')
