@@ -89,6 +89,13 @@ listen_port = nil
 
 read_only_gw = false
 
+op.on('-c', '--cs ADDRESS', "address of config server") do |addr|
+	host, port = addr.split(':',2)
+	port = port.to_i
+	port = CS_DEFAULT_PORT if port == 0
+	conf.cs_address = Address.new(host, port)
+end
+
 op.on('-i', '--nid ID', Integer, "unieque node id") do |nid|
 	conf.self_nid = nid
 end
@@ -159,13 +166,6 @@ end
 op.on('-S', '--snapshot SID', "read-only mode using the snapshot", Integer) do |i|
 	read_only_gw = true
 	conf.read_only_sid = i
-end
-
-op.on('-c', '--cs ADDRESS', "address of config server") do |addr|
-	host, port = addr.split(':',2)
-	port = port.to_i
-	port = CS_DEFAULT_PORT if port == 0
-	conf.cs_address = Address.new(host, port)
 end
 
 op.on('--fault_store PATH', "path to fault status file") do |path|

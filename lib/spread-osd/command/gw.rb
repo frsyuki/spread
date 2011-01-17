@@ -77,6 +77,13 @@ listen_port = GW_DEFAULT_PORT
 
 read_only_gw = false
 
+op.on('-c', '--cs ADDRESS', "address of config server") do |addr|
+	host, port = addr.split(':',2)
+	port = port.to_i
+	port = CS_DEFAULT_PORT if port == 0
+	conf.cs_address = Address.new(host, port)
+end
+
 op.on('-p', '--port PORT', "listen port") do |addr|
 	if addr.include?(':')
 		listen_host, listen_port = addr.split(':',2)
@@ -108,13 +115,6 @@ op.on('-t', '--http PORT', "http listen port") do |addr|
 		port = addr.to_i
 	end
 	conf.http_gateway_address = Address.new(host, port)
-end
-
-op.on('-c', '--cs ADDRESS', "address of config server") do |addr|
-	host, port = addr.split(':',2)
-	port = port.to_i
-	port = CS_DEFAULT_PORT if port == 0
-	conf.cs_address = Address.new(host, port)
 end
 
 op.on('-R', '--read-only', "read-only mode", TrueClass) do |b|
