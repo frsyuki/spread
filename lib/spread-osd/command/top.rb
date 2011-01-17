@@ -59,9 +59,29 @@ rescue
 end
 
 
-TITLES  = %w[nid name address location replset #Read #Write Read/s Write/s QPS items time]
-#FORMAT_SMALL = %[%1$22s%2$9s%3$9s%4$9s%9$10s %10$19s %12$8s\n                      %5$9s%6$9s%7$9s%8$10s %11$19s]
-FORMAT_LARGE = %[%3s %12s %23s %23s %8s %8s %8s %7s %7s %7s %10s %20s]
+TITLES =
+#      1    2       3        4       5     6      7      8       9  10    11   12
+	%w[nid name address location replset #Read #Write Read/s Write/s QPS items time]
+
+FORMAT_LARGE =
+	%[%1$3s %2$12s %3$23s %4$23s %5$8s %6$8s %7$8s %8$7s %9$7s %10$7s %11$10s %12$20s]
+
+FORMAT_LARGE_SIMPLE =
+	%[%1$3s %2$12s%4$22s %5$8s %8$7s %9$7s %10$7s %11$10s]
+
+
+FORMAT_SMALL =
+#       1    2       5    6    7    11     4
+	%[%1$3s%2$13s  %5$7s%6$9s%7$9s%11$9s%4$21s] +
+	%[\n  %3$23s%8$9s%9$9s%10$9s%12$21s]
+#            3    8    9   10      12
+
+FORMAT_SMALL_SIMPLE =
+#       1    2       5    6    7    11     4
+	%[%1$3s%2$13s  %5$7s%6$9s%7$9s%11$9s%4$21s] +
+	%[\n                         %8$9s%9$9s%10$9s]
+#                                  8    9   10
+
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -162,6 +182,15 @@ class Top
 		@nodes = {}  # { nid => TargetNode }
 		@nodes_sorted = []  # [TargetNode]
 		update_nodes
+		@simple = false
+	end
+
+	def toggle_simple
+		if @simple
+			@simple = false
+		else
+			@simple = true
+		end
 	end
 
 	def update_nodes
@@ -183,11 +212,19 @@ class Top
 
 	def refresh
 		Curses.clear
-		#if Curses.stdscr.maxx - 1 >= 129
-		format = FORMAT_LARGE
-		#else
-		#	format = FORMAT_SMALL
-		#end
+		if @simple
+			if Curses.stdscr.maxx >= 82
+				format = FORMAT_LARGE_SIMPLE
+			else
+				format = FORMAT_SMALL_SIMPLE
+			end
+		else
+			if Curses.stdscr.maxx >= 147
+				format = FORMAT_LARGE
+			else
+				format = FORMAT_SMALL
+			end
+		end
 
 		Curses.setpos(0, 0)
 		title_line = format % TITLES
@@ -239,11 +276,13 @@ begin
 
 	while true
 		ch = Curses.getch
-		if ch == ?q
+		case ch
+		when ?s
+			top.toggle_simple
+		when ?q
 			break
-		else
-			#top.refresh
 		end
+		#top.refresh
 	end
 
 ensure
