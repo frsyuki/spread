@@ -108,8 +108,8 @@ when 'nodes'
 
 	fault_nids = call(nil, :stat, 'fault')
 
-	NODES_FORMAT = "%3s %15s %23s %23s    %7s %10s"
-	puts NODES_FORMAT % %w[nid name address location replset state]
+	NODES_FORMAT = "%3s %15s %23s %23s %7s %10s"
+	puts NODES_FORMAT % %w[nid name address location rsid state]
 
 	each_node {|s,node|
 		rsids = node.rsids.sort.join(',')

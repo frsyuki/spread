@@ -63,6 +63,17 @@ class DataClientService < Service
 	#	call_rsid(okey, :resize_direct, okey, size)
 	#end
 
+	def locate(okey)
+		nids = MasterSelectBus.select_master(okey.rsid, okey.key)
+		faults = nids.reject! {|nid|
+			MembershipBus.is_fault(nid)
+		}
+		nids.concat(faults) if faults
+		nids.map {|nid|
+			MembershipBus.get_node(nid).address
+		}
+	end
+
 	ebus_connect :DataClientBus,
 		:get,
 		:read,

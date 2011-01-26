@@ -297,6 +297,28 @@ class GatewayService < Service
 	#end
 
 
+	def rpc_locate(key)
+		rpc_locates(nil, key)
+	end
+
+	def rpc_locates(sid, key)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.get_okey(key, sid) {|okey,error|
+			if error
+				$log.warn("failed to get a key from MDS: key=#{key.dump}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif okey
+				addrs = DataClientBus.locate(okey)
+				ar.result([okey, addrs])
+			else
+				ar.result([nil, nil])
+			end
+		}
+		ar
+	end
+
+
 	ebus_connect :GWRPCBus,
 		:get          => :rpc_get,
 		:get_data     => :rpc_get_data,
@@ -314,7 +336,9 @@ class GatewayService < Service
 		:write        => :rpc_write,
 		:remove       => :rpc_remove,
 		:select       => :rpc_select,
-		:selects      => :rpc_selects
+		:selects      => :rpc_selects,
+		:locate       => :rpc_locate,
+		:locates      => :rpc_locates
 end
 
 

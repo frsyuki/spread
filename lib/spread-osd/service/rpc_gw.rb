@@ -36,6 +36,8 @@ class GWRPCBus < Bus
 	call_slot :remove
 	call_slot :select
 	call_slot :selects
+	call_slot :locate
+	call_slot :locates
 end
 
 
@@ -131,6 +133,15 @@ class GWRPCService < RPCService
 
 	def selects(sid, cols, conds, order, order_col, limit, skip)
 		dispatch(GWRPCBus, :selects, sid, cols, conds, order, order_col, limit, skip)
+	end
+
+
+	def locate(key)
+		dispatch(GWRPCBus, :locate, key)
+	end
+
+	def locates(sid, key)
+		dispatch(GWRPCBus, :locates, sid, key)
 	end
 
 

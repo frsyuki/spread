@@ -45,7 +45,7 @@ class RelayTimeStampSelector
 		nil
 	end
 
-	def self.select!(uri)
+	def self.select_class(uri)
 		uri ||= "mem:"
 
 		if m = /^(\w{1,8})\:(.*)/.match(uri)
@@ -62,6 +62,11 @@ class RelayTimeStampSelector
 			"unknown RelayTimeStamp type: #{type}"
 		end
 
+		return klass, expr
+	end
+
+	def self.select!(uri)
+		klass, expr = select_class(uri)
 		klass.init
 
 		RelayTimeStampBus.init(expr)

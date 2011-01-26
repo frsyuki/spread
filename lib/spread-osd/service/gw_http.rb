@@ -40,9 +40,11 @@ class HTTPGatewayService < Service
 		ins = self
 
 		app = ::Rack::URLMap.new({
-			'/data'  => Proc.new {|env| ins.call_data(env) },
-			'/attrs' => Proc.new {|env| ins.call_attrs(env) },
-			'/rpc'   => Proc.new {|env| ins.call_rpc(env) },
+			'/data'     => Proc.new {|env| ins.call_data(env)     },
+			'/attrs'    => Proc.new {|env| ins.call_attrs(env)    },
+			'/rpc'      => Proc.new {|env| ins.call_rpc(env)      },
+			'/direct'   => Proc.new {|env| ins.call_direct(env)   },
+			'/redirect' => Proc.new {|env| ins.call_redirect(env) },
 		})
 
 		@server.mount("/", ::Rack::Handler::WEBrick, app)
@@ -51,7 +53,7 @@ class HTTPGatewayService < Service
 		end
 	end
 
-	# data/
+	# data/<key>
 	#    sid=i              get=>gets, read=>reads
 	#    offset=i           get=>read, set=write
 	#    offset=i&size=i    get=>read
@@ -91,15 +93,15 @@ class HTTPGatewayService < Service
 
 		if offset
 			if sid
-				data = submit(:reads, sid, key, offset, size)
+				data = submit(GWRPCBus, :reads, sid, key, offset, size)
 			else
-				data = submit(:read, key, offset, size)
+				data = submit(GWRPCBus, :read, key, offset, size)
 			end
 		else
 			if sid
-				data = submit(:gets_data, sid, key)
+				data = submit(GWRPCBus, :gets_data, sid, key)
 			else
-				data = submit(:get_data, key)
+				data = submit(GWRPCBus, :get_data, key)
 			end
 		end
 
@@ -124,7 +126,7 @@ class HTTPGatewayService < Service
 		data = env['rack.input'].read
 
 		# TODO
-		okey = submit(:set_data, key, data)
+		okey = submit(GWRPCBus, :set_data, key, data)
 
 		# FIXME return okey?
 		body = ["<html><head></head><body><h1>202 Accepted</h1></body></html>"]
@@ -134,7 +136,7 @@ class HTTPGatewayService < Service
 	def http_data_delete(env)
 		key = get_key_path_info(env)
 
-		removed = submit(:remove, key)
+		removed = submit(GWRPCBus, :remove, key)
 		# TODO
 
 		if removed
@@ -146,7 +148,58 @@ class HTTPGatewayService < Service
 		end
 	end
 
-	# attrs/
+
+	# redirect/<key>
+	#    sid=i              get=>gets, read=>reads
+	#    offset=i           get=>read
+	#    offset=i&size=i    get=>read
+	#  get(data/key)                          => redirect
+	def call_redirect(env)
+		case env['REQUEST_METHOD']
+		when 'GET'
+			http_redirect_get(env)
+		else
+			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
+			[405, {'Content-Type'=>'text/html'}, body]
+		end
+	end
+
+	def http_redirect_get(env)
+		request = ::Rack::Request.new(env)
+		key = get_key_path_info(env)
+		sid    = optional_int(request, 'sid')
+		offset = optional_int(request, 'offset')
+		if offset
+			size = require_int(request, 'size')
+		else
+			size = optional_int(request, 'size')
+			if size
+				offset = 0
+			end
+		end
+
+		if sid
+			okey, addrs = submit(GWRPCBus, :locates, sid, key)
+		else
+			okey, addrs = submit(GWRPCBus, :locate, key)
+		end
+
+		if !okey || addrs.empty?
+			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
+			return [404, {'Content-Type'=>'text/html'}, body]
+		end
+
+		url = format_redirect_address(addrs.first, key, offset, size)
+
+		[200, {'Content-Type'=>'application/octet-stream'}, data]
+	end
+
+	def format_redirect_address(addr, key, offset)
+		# TODO REDIRECT_FORMAT
+	end
+
+
+	# attrs/<key>
 	#    sid=i
 	#    attrs=
 	#    format=json        json, tsv, msgpack
@@ -172,9 +225,9 @@ class HTTPGatewayService < Service
 		format ||= 'json'
 
 		if sid
-			attrs = submit(:gets_attrs, sid, key)
+			attrs = submit(GWRPCBus, :gets_attrs, sid, key)
 		else
-			attrs = submit(:get_attrs, key)
+			attrs = submit(GWRPCBus, :get_attrs, key)
 		end
 
 		# TODO
@@ -198,7 +251,7 @@ class HTTPGatewayService < Service
 
 		attrs = parse_attrs(attrs, format)
 
-		okey = submit(:set_attrs, key, attrs)
+		okey = submit(GWRPCBus, :set_attrs, key, attrs)
 
 		# TODO
 
@@ -212,7 +265,8 @@ class HTTPGatewayService < Service
 		end
 	end
 
-	# rpc/
+
+	# rpc/<cmd>
 	#  get(rpc/cmd?k=v)
 	# post(rpc/cmd?k=v)
 	#    cmd:
@@ -269,10 +323,10 @@ class HTTPGatewayService < Service
 
 		if sid
 			# FIXME
-			data, attrs = submit(:gets, sid, key)
+			data, attrs = submit(GWRPCBus, :gets, sid, key)
 		else
 			# FIXME
-			data, attrs = submit(:get, key)
+			data, attrs = submit(GWRPCBus, :get, key)
 		end
 
 		# TODO
@@ -303,18 +357,18 @@ class HTTPGatewayService < Service
 		if offset
 			if sid
 				# FIXME
-				data = submit(:reads, sid, key, offset, size)
+				data = submit(GWRPCBus, :reads, sid, key, offset, size)
 			else
 				# FIXME
-				data = submit(:read, key, offset, size)
+				data = submit(GWRPCBus, :read, key, offset, size)
 			end
 		else
 			if sid
 				# FIXME
-				data = submit(:gets_data, sid, key)
+				data = submit(GWRPCBus, :gets_data, sid, key)
 			else
 				# FIXME
-				data = submit(:get_data, key)
+				data = submit(GWRPCBus, :get_data, key)
 			end
 		end
 
@@ -337,9 +391,9 @@ class HTTPGatewayService < Service
 		attrs = parse_attrs(attrs, format)
 
 		if sid
-			attrs = submit(:gets_attrs, sid, key, attrs)
+			attrs = submit(GWRPCBus, :gets_attrs, sid, key, attrs)
 		else
-			attrs = submit(:get_attrs, key, attrs)
+			attrs = submit(GWRPCBus, :get_attrs, key, attrs)
 		end
 
 		# TODO
@@ -368,12 +422,12 @@ class HTTPGatewayService < Service
 		if attrs
 			attrs = parse_attrs(attrs, format)
 			if data
-				okey = submit(:set, key, data, attrs)
+				okey = submit(GWRPCBus, :set, key, data, attrs)
 			else
-				okey = submit(:set_attrs, key, attrs)
+				okey = submit(GWRPCBus, :set_attrs, key, attrs)
 			end
 		else
-			okey = submit(:set_data, key, data)
+			okey = submit(GWRPCBus, :set_data, key, data)
 		end
 
 		# TODO okey
@@ -385,7 +439,7 @@ class HTTPGatewayService < Service
 		request = ::Rack::Request.new(env)
 		key    = require_str(request, 'key')
 
-		removed = submit(:remove, key)
+		removed = submit(GWRPCBus, :remove, key)
 
 		if removed
 			body = ["<html><head></head><body><h1>200 OK</h1></body></html>"]
@@ -411,6 +465,54 @@ class HTTPGatewayService < Service
 
 		# TODO
 	end
+
+
+	# direct/<rsid>/<sid>/<key>
+	#    offset=i           get=>read
+	#    offset=i&size=i    get=>read
+	#  get(data/key)                          => direct get/gets/read/reads
+	def call_direct(env)
+		case env['REQUEST_METHOD']
+		when 'GET'
+			http_direct_get(env)
+		else
+			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
+			[405, {'Content-Type'=>'text/html'}, body]
+		end
+	end
+
+	def http_direct_get(env)
+		request = ::Rack::Request.new(env)
+		path = get_key_path_info(env)
+		rsid_s, sid_s, key = path.split('/', 3)
+		rsid = rsid_s.to_i
+		sid = rsid.to_i
+		okey = [key, sid, rsid]
+
+		offset = optional_int(request, 'offset')
+		if offset
+			size = require_int(request, 'size')
+		else
+			size = optional_int(request, 'size')
+			if size
+				offset = 0
+			end
+		end
+
+		if offset
+			data = submit(DSRPCBus, :read_direct, okey, offset, size)
+		else
+			data = submit(DSRPCBus, :get_direct, okey)
+		end
+
+		if data
+			[200, {'Content-Type'=>'application/octet-stream'}, data]
+		else
+			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
+			[404, {'Content-Type'=>'text/html'}, body]
+		end
+	end
+
 
 	private
 	def require_str(request, k)
@@ -526,13 +628,13 @@ class HTTPGatewayService < Service
 		end
 	end
 
-	def submit(name, *args)
+	def submit(bus, name, *args)
 		$log.warn { "http rpc: #{name} #{args}" }
 
 		r = Responder.new
 
 		ProcessBus.submit {
-			dispatch(name, args, r)
+			dispatch(bus, name, args, r)
 		}
 
 		r.wait
@@ -547,8 +649,8 @@ class HTTPGatewayService < Service
 		raise
 	end
 
-	def dispatch(name, args, r)
-		result = GWRPCBus.__send__(name, *args)
+	def dispatch(bus, name, args, r)
+		result = bus.__send__(name, *args)
 		if result.is_a?(MessagePack::RPC::AsyncResult)
 			result.set_responder(r)
 		else

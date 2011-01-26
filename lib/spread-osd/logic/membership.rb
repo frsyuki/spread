@@ -48,7 +48,7 @@ class NodeList < TSVData
 		@map.has_key?(nid)
 	end
 
-	def update(nid, address, name, rsids)
+	def update(nid, address, name, rsids, location)
 		node = @map[nid]
 		if node
 			if address
@@ -59,6 +59,9 @@ class NodeList < TSVData
 			end
 			if rsids
 				node.rsids = rsids
+			end
+			if location
+				node.location = location
 			end
 			false
 		else

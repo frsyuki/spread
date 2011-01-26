@@ -84,7 +84,6 @@ class TokyoTyrantMDSService < MDSService
 	COL_MIN  = '_min'
 	COL_MAX  = '_max'
 	COL_RSID = '_rsid'
-	COL_DATA = '_data'
 
 	COLS_RESERVED = [COL_PK, COL_KEY, COL_MIN, COL_MAX, COL_RSID]
 	COLS_RESERVED_NOKEY = [COL_PK, COL_MIN, COL_MAX, COL_RSID]
@@ -120,7 +119,7 @@ class TokyoTyrantMDSService < MDSService
 	end
 
 	def try_reopen
-		if @FATAL_ERROR.include?(@rdb.ecode)
+		if FATAL_ERROR.include?(@rdb.ecode)
 			@rdb.close rescue nil
 			@rdb.open(@host, @port)
 		end

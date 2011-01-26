@@ -26,6 +26,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/logic/snapshot.rb \
 	lib/spread-osd/logic/tsv_data.rb \
 	lib/spread-osd/logic/weight.rb \
+	lib/spread-osd/service/balance.rb \
 	lib/spread-osd/service/base.rb \
 	lib/spread-osd/service/bus.rb \
 	lib/spread-osd/service/config.rb \
@@ -38,6 +39,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/gateway_ro.rb \
 	lib/spread-osd/service/gw_http.rb \
 	lib/spread-osd/service/heartbeat.rb \
+	lib/spread-osd/service/master_select.rb \
 	lib/spread-osd/service/mds.rb \
 	lib/spread-osd/service/mds_tt.rb \
 	lib/spread-osd/service/membership.rb \
@@ -60,6 +62,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/ulog.rb \
 	lib/spread-osd/service/ulog_file.rb \
 	lib/spread-osd/service/ulog_memory.rb \
+	lib/spread-osd/service/weight.rb \
 	lib/spread-osd/version.rb \
 	test/01_get_set_remove.rt \
 	test/02_get_set_attrs_data.rt \

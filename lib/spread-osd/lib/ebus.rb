@@ -53,6 +53,11 @@ class EventBus
 			@bus
 		end
 
+		def disconnect!
+			@method = nil
+			@bus
+		end
+
 		def call(*args, &block)
 			unless @method
 				raise ::EventBus::SlotError.new("slot not connected", @name)
@@ -87,6 +92,11 @@ class EventBus
 			unless @methods.include?(method)
 				@methods << method
 			end
+			@bus
+		end
+
+		def disconnect!
+			@methods.clear
 			@bus
 		end
 
@@ -202,6 +212,16 @@ class EventBus
 				end
 			}
 			slots
+		end
+
+		def ebus_disconnect!
+			constants.each {|const|
+				if const.to_s =~ /^EBUS_SLOT_.*/
+					slot = const_get(const)
+					slot.disconnect!
+				end
+			}
+			nil
 		end
 
 		private

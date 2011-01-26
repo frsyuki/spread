@@ -61,7 +61,7 @@ module MDSSelector
 		nil
 	end
 
-	def self.select!(uri)
+	def self.select_class(uri)
 		if m = /^(\w{1,8})\:(.*)/.match(uri)
 			type = m[1].to_sym
 			expr = m[2]
@@ -75,6 +75,19 @@ module MDSSelector
 			raise "unknown MDS type: #{type}"
 		end
 
+		return klass, expr
+	end
+
+	def self.select!(uri)
+		klass, expr = select_class(uri)
+		klass.bind!
+
+		MDSBus.open(expr)
+	end
+
+	def self.reselect!(uri)
+		klass, expr = select_class(uri)
+		MDSBus.ebus_disconnect!
 		klass.bind!
 
 		MDSBus.open(expr)

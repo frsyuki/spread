@@ -46,7 +46,7 @@ class StorageSelector
 		nil
 	end
 
-	def self.select!(uri)
+	def self.select_class(uri)
 		if m = /^(\w{1,8})\:(.*)/.match(uri)
 			type = m[1].to_sym
 			expr = m[2]
@@ -60,6 +60,11 @@ class StorageSelector
 			raise "unknown Storage type: #{type}"
 		end
 
+		return klass, expr
+	end
+
+	def self.select!(uri)
+		klass, expr = select_class(uri)
 		klass.init
 
 		StorageBus.open(expr)

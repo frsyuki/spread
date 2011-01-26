@@ -17,7 +17,7 @@ SpreadOSD consists of 4 kind of servers:
 
   - **DS (data server)** stores and replicates contents on the disk.
   - **MDS (metadata server)** stores metadata of the contents. It includes the information that shows which DS stores the content. [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) is used for MDS.
-  - **GW (gateway)** receives requests from applications and relays it to appropriate DS. You can use DS as a GW.
+  - **GW (gateway)** receives requests from applications and relays it to appropriate DS. You can use DS as a GW because DS has features of GW.
   - **CS (config server)** manages cluster configuration. It also watches status of DSs and detaches crashed DSs automatically.
 
 Multiple DSs composes a group that each member stores same data. The group is called **replication-set**.
@@ -25,7 +25,7 @@ Multiple DSs composes a group that each member stores same data. The group is ca
 
                         App     App     App
                          |       |       |  MessagePack-RPC protocol
-            ----------- GW      GW      GW
+            ----------- GW      GW      GW or DS
            /            /
     +-------------+    |  GW relays requests from apps to DSs
     | TokyoTyrant |    |
@@ -52,17 +52,21 @@ Following softwares are required to run SpreadOSD:
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) >= 1.13
   - [rack gem](http://rubygems.org/gems/rack) >= 1.2.1
 
-Configure and install in the usual way:
+There are 2 way to install SpreadOSD.
+
+One way is to use ./configure && make install:
 
     $ ./bootstrap  # if needed
     $ ./configure
     $ make
     $ sudo make install
 
-Or you can install using rake and gem.
+The other way is to use rake and gem:
 
     $ rake
     $ gem install pkg/spread-osd-<version>.gem
+
+If your site uses Ruby widely, the latter way will be good choice to manage multiple versions.
 
 Following commands will be installed:
 
@@ -77,7 +81,7 @@ Following commands will be installed:
 
 In this guide, you will install all systems on /opt/local/spread directory.
 
-Install folowing packages first to compile binaries:
+First, install folowing packages using the package management system.
 
   - gcc-g++ >= 4.1
   - openssl-devel (or libssl-dev) to build ruby
@@ -86,7 +90,7 @@ Install folowing packages first to compile binaries:
 
 Following guide installs SpreadOSD on /opt/local/spread.
 
-    # Install Tokyo Tyrant
+    # Installs Tokyo Tyrant into /opt/local/spread
     $ wget http://fallabs.com/tokyotyrant/tokyotyrant-1.1.41.tar.gz
     $ tar zxvf tokyotyrant-1.1.41.tar.gz
     $ cd tokyotyrant-1.1.41
@@ -94,7 +98,7 @@ Following guide installs SpreadOSD on /opt/local/spread.
     $ make
     $ sudo make install
     
-    # Install ruby-1.9
+    # Installs ruby-1.9 into /opt/local/spread
     $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p0.tar.bz2
     $ tar jxvf ruby-1.9.2-p0.tar.bz2
     $ cd ruby-1.9.2
@@ -102,12 +106,12 @@ Following guide installs SpreadOSD on /opt/local/spread.
     $ make
     $ sudo make install
     
-    # Install gems
+    # Installs required gems
     $ sudo /opt/local/spread/bin/gem install msgpack-rpc
     $ sudo /opt/local/spread/bin/gem install tokyotyrant
     $ sudo /opt/local/spread/bin/gem install rack
     
-    # Install SpreadOSD
+    # Installs SpreadOSD
     $ git clone http://github.com/frsyuki/spread.git
     $ cd spread
     $ ./configure RUBY=/opt/local/spread/bin/ruby --prefix=/opt/local/spread
@@ -126,7 +130,7 @@ Following example runs SpreadOSD on 6-node cluster:
                           -mhost node01 -rts /var/spread/sid2.rts
     
     # Runs a CS.
-    [on node01]$ spread-cs --mds node01,node02 -s /var/spread
+    [on node01]$ spread-cs --mds node01 -s /var/spread
     
     # Runs DSs for repliset-set 0.
     [on node03]$ spread-ds --cs node03 --address node03 --nid 0 --rsid 0 \
@@ -146,11 +150,12 @@ Following example runs SpreadOSD on 6-node cluster:
 Confirm status of the cluster using *spreadctl* command.
 
     $ spreadctl node01 nodes
-    nid            name                 address   replset      state
-      0        mynode03      192.168.0.13:18900         0     active
-      1        mynode04      192.168.0.14:18900         0     active
-      2        mynode05      192.168.0.15:18900         1     active
-      3        mynode06      192.168.0.16:18900         1     active
+    nid            name                 address                location    rsid      state
+      0        mynode03      192.168.0.13:18900      subnet-127.000.000       0     active
+      1        mynode04      192.168.0.14:18900      subnet-127.000.000       0     active
+      2        mynode05      192.168.0.15:18900      subnet-127.000.000       1     active
+      3        mynode06      192.168.0.16:18900      subnet-127.000.000       1     active
+
 
 Now the cluster is active. Try to set and get using *spreadcli* command.
 
@@ -185,24 +190,23 @@ You can test SpreadOSD on single host as follows:
 First, confirm the status of the cluster using *spreadctl* command.
 
     $ spreadctl csaddr nodes
-    nid            name                 address   replset      state
-      0        mynode03      192.168.0.13:18900         0     active
-      1        mynode04      192.168.0.14:18900         0     active
-      2        mynode05      192.168.0.15:18900         1     active
-      3        mynode06      192.168.0.16:18900         1     active
+    nid            name                 address                location    rsid      state
+      0        mynode03      192.168.0.13:18900      subnet-127.000.000       0     active
+      1        mynode04      192.168.0.14:18900      subnet-127.000.000       0     active
+      2        mynode05      192.168.0.15:18900      subnet-127.000.000       1     active
+      3        mynode06      192.168.0.16:18900      subnet-127.000.000       1     active
 
 Next, run new servers.
 
 Then confirm the status.
 
-    $ spreadctl csaddr nodes
-    nid            name                 address   replset      state
-      0        mynode03      192.168.0.13:18900         0     active
-      1        mynode04      192.168.0.14:18900         0     active
-      2        mynode05      192.168.0.15:18900         1     active
-      3        mynode06      192.168.0.16:18900         1     active
-      4        mynode07      192.168.0.17:18900         2     active
-      5        mynode08      192.168.0.18:18900         2     active
+    nid            name                 address                location    rsid      state
+      0        mynode03      192.168.0.13:18900      subnet-127.000.000       0     active
+      1        mynode04      192.168.0.14:18900      subnet-127.000.000       0     active
+      2        mynode05      192.168.0.15:18900      subnet-127.000.000       1     active
+      3        mynode06      192.168.0.16:18900      subnet-127.000.000       1     active
+      2        mynode07      192.168.0.17:18900      subnet-127.000.000       2     active
+      3        mynode08      192.168.0.18:18900      subnet-127.000.000       2     active
 
 You may want to decrease the *weight* of the old replication sets.
 
@@ -217,20 +221,23 @@ If the weight is 0, new data will never be stored on the replication-set.
 
 You can change the weight using *spreadctl* command.
 
-    $ spreadctl csaddr replset
-    replset   weight       nids  names
-          0       10        0,1  mynode03,mynode04
-          1       10        2,3  mynode03,mynode06
-          2       10        4,5  mynode07,mynode08
+    $ spreadctl csaddr weight
+    rsid   weight       nids   names
+       0       10        0,1   mynode03,mynode04
+       1       10        2,3   mynode05,mynode06
+       2       10        4,5   mynode07,mynode08
 
+    # Set 5 to weight of replication set 0
     $ spreadctl csaddr set_weight 0 5
+
+    # Set 5 to weight of replication set 1
     $ spreadctl csaddr set_weight 1 5
 
-    $ spreadctl csaddr replset
-    replset   weight       nids  names
-          0        5        0,1  mynode03,mynode04
-          1        5        2,3  mynode03,mynode06
-          2       10        4,5  mynode07,mynode08
+    $ spreadctl csaddr weight
+    rsid   weight       nids   names
+       0        5        0,1   mynode03,mynode04
+       1        5        2,3   mynode05,mynode06
+       2       10        4,5   mynode07,mynode08
 
 
 ### Recovering crashed DSs

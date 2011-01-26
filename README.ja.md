@@ -17,7 +17,7 @@ SpreadOSDは、次の4種類のサーバから構成されます：
 
   - **DS (data server)** は、コンテンツをディスク上に保存したりレプリケーションしたりします。
   - **MDS (metadata server)** は、コンテンツのメタデータを保存します。メタデータにはコンテンツがどのDSに保存されているかを示す情報も含まれています。MDSには[Tokyo Tyrant](http://fallabs.com/tokyotyrant/)を使います。
-  - **GW (gateway)** は、アプリケーションからの要求を受け取り、適切なDSに中継します。
+  - **GW (gateway)** は、アプリケーションからの要求を受け取り、適切なDSに中継します。DSはGWの機能も併せ持っているため、DSをGWとして使うこともできます。
   - **CS (config server)** は、クラスタの設定情報を管理します。また、DSの状態を監視し、故障したDSを自動的に切り離します。
 
 **レプリケーション･セット**は、複数のDSで構成されるグループです。同じレプリケーション･セットに属するDSは、同じデータをレプリケーションして保存しています。
@@ -25,7 +25,7 @@ SpreadOSDは、次の4種類のサーバから構成されます：
 
                         App     App     App
                          |       |       |  MessagePack-RPC
-            ----------- GW      GW      GW
+            ----------- GW      GW      GW or DS
            /            /
     +-------------+    |  GWはアプリケーションからDSにリクエストを中継
     | TokyoTyrant |    |
@@ -44,7 +44,7 @@ SpreadOSDは、次の4種類のサーバから構成されます：
 
 ## インストール
 
-以下のソフトウェアが必要です：
+SpreadOSDを実行するには次のソフトウェアが必要です：
 
   - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) >= 1.1.40
   - [ruby](http://www.ruby-lang.org/) >= 1.9.1
@@ -52,17 +52,21 @@ SpreadOSDは、次の4種類のサーバから構成されます：
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) >= 1.13
   - [rack gem](http://rubygems.org/gems/rack) >= 1.2.1
 
-./configure && make install のいつもの方法でインストールしてください：
+SpreadOSDをインストールする方法は2つあります。
+
+1つは./configure && make install の方法でインストールする方法です：
 
     $ ./bootstrap  # 必要な場合
     $ ./configure
     $ make
     $ sudo make install
 
-rake と gem を使ってインストールすることもできます。
+もうひとつは rake と gem を使ってインストールする方法です：
 
     $ rake
     $ gem install pkg/spread-osd-<version>.gem
+
+Rubyを広く活用しているサイトでは、後者の方がバージョンの管理をしやすいでしょう。
 
 次のコマンドがインストールされます：
 
@@ -77,7 +81,7 @@ rake と gem を使ってインストールすることもできます。
 
 このガイドでは、システム全体を/opt/local/spreadディレクトリにインストールします。
 
-まず以下のパッケージをインストールしてください。
+まず以下のパッケージをOSのパッケージ管理システムを利用してインストールしてください。
 
   - gcc-g++ >= 4.1
   - openssl-devel (or libssl-dev) to build ruby
@@ -86,7 +90,7 @@ rake と gem を使ってインストールすることもできます。
 
 以下の手順でSpreadOSDを/opt/local/spreadにインストールできます。
 
-    # Tokyo Tyrantをインストール
+    # Tokyo Tyrantを /opt/local/spred へインストール
     $ wget http://fallabs.com/tokyotyrant/tokyotyrant-1.1.41.tar.gz
     $ tar zxvf tokyotyrant-1.1.41.tar.gz
     $ cd tokyotyrant-1.1.41
@@ -94,7 +98,7 @@ rake と gem を使ってインストールすることもできます。
     $ make
     $ sudo make install
     
-    # ruby-1.9をインストール
+    # ruby-1.9を /opt/local/spread へインストール
     $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p0.tar.bz2
     $ tar jxvf ruby-1.9.2-p0.tar.bz2
     $ cd ruby-1.9.2
@@ -126,7 +130,7 @@ rake と gem を使ってインストールすることもできます。
                           -mhost node01 -rts /var/spread/sid2.rts
     
     # CSを起動
-    [on node01]$ spread-cs --mds node01,node02 -s /var/spread
+    [on node01]$ spread-cs --mds node01 -s /var/spread
     
     # レプリケーション･セット0のDSを起動
     [on node03]$ spread-ds --cs node03 --address node03 --nid 0 --rsid 0 \
@@ -146,11 +150,12 @@ rake と gem を使ってインストールすることもできます。
 *spreadctl*コマンドを使って、クラスタの状態を確認してください。
 
     $ spreadctl node01 nodes
-    nid            name                 address   replset      state
-      0        mynode03      192.168.0.13:18900         0     active
-      1        mynode04      192.168.0.14:18900         0     active
-      2        mynode05      192.168.0.15:18900         1     active
-      3        mynode06      192.168.0.16:18900         1     active
+    nid            name                 address                location    rsid      state
+      0        mynode03      192.168.0.13:18900      subnet-127.000.000       0     active
+      1        mynode04      192.168.0.14:18900      subnet-127.000.000       0     active
+      2        mynode05      192.168.0.15:18900      subnet-127.000.000       1     active
+      3        mynode06      192.168.0.16:18900      subnet-127.000.000       1     active
+
 
 これでクラスタが使えるようになりました。*spredcli*コマンドを使ってset/getしてみてください。
 
@@ -185,24 +190,23 @@ rake と gem を使ってインストールすることもできます。
 まず*spreadct*コマンドを使って、クラスタの状態を確認してください。
 
     $ spreadctl csaddr nodes
-    nid            name                 address   replset      state
-      0        mynode03      192.168.0.13:18900         0     active
-      1        mynode04      192.168.0.14:18900         0     active
-      2        mynode05      192.168.0.15:18900         1     active
-      3        mynode06      192.168.0.16:18900         1     active
+    nid            name                 address                location    rsid      state
+      0        mynode03      192.168.0.13:18900      subnet-127.000.000       0     active
+      1        mynode04      192.168.0.14:18900      subnet-127.000.000       0     active
+      2        mynode05      192.168.0.15:18900      subnet-127.000.000       1     active
+      3        mynode06      192.168.0.16:18900      subnet-127.000.000       1     active
 
 次に新しいサーバを起動してください。
 
 最後にクラスタの状態を確認してください。
 
-    $ spreadctl csaddr nodes
-    nid            name                 address   replset      state
-      0        mynode03      192.168.0.13:18900         0     active
-      1        mynode04      192.168.0.14:18900         0     active
-      2        mynode05      192.168.0.15:18900         1     active
-      3        mynode06      192.168.0.16:18900         1     active
-      4        mynode07      192.168.0.17:18900         2     active
-      5        mynode08      192.168.0.18:18900         2     active
+    nid            name                 address                location    rsid      state
+      0        mynode03      192.168.0.13:18900      subnet-127.000.000       0     active
+      1        mynode04      192.168.0.14:18900      subnet-127.000.000       0     active
+      2        mynode05      192.168.0.15:18900      subnet-127.000.000       1     active
+      3        mynode06      192.168.0.16:18900      subnet-127.000.000       1     active
+      2        mynode07      192.168.0.17:18900      subnet-127.000.000       2     active
+      3        mynode08      192.168.0.18:18900      subnet-127.000.000       2     active
 
 必要に応じて負荷分散の**重み**を設定してください。
 
@@ -217,20 +221,23 @@ rake と gem を使ってインストールすることもできます。
 
 重みを変更するには、*spreadctl*コマンドを使います。
 
-    $ spreadctl csaddr replset
-    replset   weight       nids  names
-          0       10        0,1  mynode03,mynode04
-          1       10        2,3  mynode03,mynode06
-          2       10        4,5  mynode07,mynode08
+    $ spreadctl csaddr weight
+    rsid   weight       nids   names
+       0       10        0,1   mynode03,mynode04
+       1       10        2,3   mynode05,mynode06
+       2       10        4,5   mynode07,mynode08
 
+    # レプリケーション･セット0の重みを5にする
     $ spreadctl csaddr set_weight 0 5
+
+    # レプリケーション･セット1の重みを5にする
     $ spreadctl csaddr set_weight 1 5
 
-    $ spreadctl csaddr replset
-    replset   weight       nids  names
-          0        5        0,1  mynode03,mynode04
-          1        5        2,3  mynode03,mynode06
-          2       10        4,5  mynode07,mynode08
+    $ spreadctl csaddr weight
+    rsid   weight       nids   names
+       0        5        0,1   mynode03,mynode04
+       1        5        2,3   mynode05,mynode06
+       2       10        4,5   mynode07,mynode08
 
 
 ### 故障したDSを復旧する
