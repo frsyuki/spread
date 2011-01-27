@@ -132,6 +132,7 @@ class DSProcess < ServerProcess
 	end
 
 	attr_reader :port
+	attr_reader :http_port
 	attr_reader :nid
 	attr_reader :rsid
 
@@ -151,6 +152,7 @@ class GWProcess < ServerProcess
 	end
 
 	attr_reader :port
+	attr_reader :http_port
 
 	def join_started
 		stdout_join('start on')
