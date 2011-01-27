@@ -22,9 +22,12 @@ class HTTPGatewayService < Service
 	def self.open!
 		require 'rack'
 		require 'webrick'
+		require 'json'
 		require 'thread'
 		instance.init(ConfigBus.http_gateway_address)
 	end
+
+	DEFAULT_FORMAT = 'json'
 
 	def initialize
 		@thread = nil
@@ -37,14 +40,14 @@ class HTTPGatewayService < Service
 			:Port => addr.port,
 		}
 		@server = ::WEBrick::HTTPServer.new(opt)
-		ins = self
+		me = self
 
 		app = ::Rack::URLMap.new({
-			'/data'     => Proc.new {|env| ins.call_data(env)     },
-			'/attrs'    => Proc.new {|env| ins.call_attrs(env)    },
-			'/rpc'      => Proc.new {|env| ins.call_rpc(env)      },
-			'/direct'   => Proc.new {|env| ins.call_direct(env)   },
-			'/redirect' => Proc.new {|env| ins.call_redirect(env) },
+			'/data'     => Proc.new {|env| me.call_data(env)     },
+			'/attrs'    => Proc.new {|env| me.call_attrs(env)    },
+			'/rpc'      => Proc.new {|env| me.call_rpc(env)      },
+			'/direct'   => Proc.new {|env| me.call_direct(env)   },
+			'/redirect' => Proc.new {|env| me.call_redirect(env) },
 		})
 
 		@server.mount("/", ::Rack::Handler::WEBrick, app)
@@ -54,12 +57,10 @@ class HTTPGatewayService < Service
 	end
 
 	# data/<key>
-	#    sid=i              get=>gets, read=>reads
-	#    offset=i           get=>read, set=write
-	#    offset=i&size=i    get=>read
-	#  get(data/key)                          => get/gets/read/reads_data
-	#  put(data/key, data)                    => set/write_data
-	# post(data/key, data)                    => set/write_data
+	#    sid=i              get=>gets
+	#  get(data/key)                          => get/gets
+	#  put(data/key, data)                    => set
+	# post(data/key, data)                    => set
 	# delete(data/key)                        => remove_data
 	def call_data(env)
 		case env['REQUEST_METHOD']
@@ -72,130 +73,107 @@ class HTTPGatewayService < Service
 		when 'DELETE'
 			http_data_delete(env)
 		else
-			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
-			[405, {'Content-Type'=>'text/html'}, body]
+			return html_response(405, 'Method Not Allowed')
 		end
 	end
 
 	def http_data_get(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		sid    = optional_int(request, 'sid')
-		offset = optional_int(request, 'offset')
-		if offset
-			size = require_int(request, 'size')
-		else
-			size = optional_int(request, 'size')
-			if size
-				offset = 0
-			end
-		end
+		sid = optional_int(request, 'sid')
+		check_request(request, %w[sid])
 
-		if offset
-			if sid
-				data = submit(GWRPCBus, :reads, sid, key, offset, size)
-			else
-				data = submit(GWRPCBus, :read, key, offset, size)
-			end
+		if sid
+			data = submit(GWRPCBus, :gets_data, sid, key)
 		else
-			if sid
-				data = submit(GWRPCBus, :gets_data, sid, key)
-			else
-				data = submit(GWRPCBus, :get_data, key)
-			end
+			data = submit(GWRPCBus, :get_data, key)
 		end
 
 		if data
 			[200, {'Content-Type'=>'application/octet-stream'}, data]
 		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
 	end
 
 	def http_data_put(env)
 		key = get_key_path_info(env)
 
-		# TODO
-
 		if env['HTTP_EXPECT'] == '100-continue'
-			body = ["<html><head></head><body><h1>417 Exception Failed</h1></body></html>"]
-			return [417, {'Content-Type'=>'text/html'}, body]
+			return html_response(417, 'Exception Failed')
 		end
+
+		# FIXME check_request
 
 		data = env['rack.input'].read
 
-		# TODO
 		okey = submit(GWRPCBus, :set_data, key, data)
 
 		# FIXME return okey?
-		body = ["<html><head></head><body><h1>202 Accepted</h1></body></html>"]
-		[202, {'Content-Type'=>'text/html'}, body]
+		return html_response(202, 'Accepted')
 	end
 
 	def http_data_delete(env)
 		key = get_key_path_info(env)
 
+		# FIXME check_request
+
 		removed = submit(GWRPCBus, :remove, key)
-		# TODO
 
 		if removed
-			body = ["<html><head></head><body><h1>200 OK</h1></body></html>"]
-			[200, {'Content-Type'=>'text/html'}, body]
+			return html_response(200, 'OK')
 		else
-			body = ["<html><head></head><body><h1>204 No Content</h1></body></html>"]
-			[204, {'Content-Type'=>'text/html'}, body]
+			return html_response(204, 'No Content')
 		end
 	end
 
 
 	# redirect/<key>
-	#    sid=i              get=>gets, read=>reads
-	#    offset=i           get=>read
-	#    offset=i&size=i    get=>read
+	#    sid=i              get=>gets
 	#  get(data/key)                          => redirect
 	def call_redirect(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
 			http_redirect_get(env)
 		else
-			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
-			[405, {'Content-Type'=>'text/html'}, body]
+			return html_response(405, 'Method Not Allowed')
 		end
 	end
 
 	def http_redirect_get(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		sid    = optional_int(request, 'sid')
-		offset = optional_int(request, 'offset')
-		if offset
-			size = require_int(request, 'size')
+		sid = optional_int(request, 'sid')
+		check_request(request, %w[sid])
+
+		if sid
+			url = submit(GWRPCBus, :urls, sid, key)
 		else
-			size = optional_int(request, 'size')
-			if size
-				offset = 0
+			url = submit(GWRPCBus, :url, key)
+		end
+
+		unless url
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
 			end
 		end
 
-		if sid
-			okey, addrs = submit(GWRPCBus, :locates, sid, key)
+		if url
+			body = ["302 Found"]
+			return [302, {'Content-Type'=>'text/plain', 'Location'=>url}, body]
 		else
-			okey, addrs = submit(GWRPCBus, :locate, key)
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
-
-		if !okey || addrs.empty?
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			return [404, {'Content-Type'=>'text/html'}, body]
-		end
-
-		url = format_redirect_address(addrs.first, key, offset, size)
-
-		[200, {'Content-Type'=>'application/octet-stream'}, data]
-	end
-
-	def format_redirect_address(addr, key, offset)
-		# TODO REDIRECT_FORMAT
 	end
 
 
@@ -212,8 +190,7 @@ class HTTPGatewayService < Service
 		when 'POST'
 			http_attrs_get(env)
 		else
-			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
-			[405, {'Content-Type'=>'text/html'}, body]
+			return html_response(405, 'Method Not Allowed')
 		end
 	end
 
@@ -222,7 +199,8 @@ class HTTPGatewayService < Service
 		key = get_key_path_info(env)
 		sid    = optional_int(request, 'sid')
 		format = require_str(request, 'format')
-		format ||= 'json'
+		format ||= DEFAULT_FORMAT
+		check_request(request, %w[sid format])
 
 		if sid
 			attrs = submit(GWRPCBus, :gets_attrs, sid, key)
@@ -230,15 +208,19 @@ class HTTPGatewayService < Service
 			attrs = submit(GWRPCBus, :get_attrs, key)
 		end
 
-		# TODO
-
 		if attrs
 			attrs, ct = format_attrs(attrs, format)
+			unless attrs
+				return html_response(400, 'Bad Request', "unknown format `#{format}'")
+			end
 			body = [attrs]
 			[200, {'Content-Type'=>ct}, body]
 		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
 	end
 
@@ -247,21 +229,26 @@ class HTTPGatewayService < Service
 		key = get_key_path_info(env)
 		attrs  = require_str(request, 'attrs')
 		format = require_str(request, 'format')
-		format ||= 'json'
+		format ||= DEFAULT_FORMAT
+		check_request(request, %w[attrs sid format])
 
 		attrs = parse_attrs(attrs, format)
 
 		okey = submit(GWRPCBus, :set_attrs, key, attrs)
 
-		# TODO
-
 		if attrs
 			attrs, ct = format_attrs(attrs, format)
+			unless attrs
+				return html_response(400, 'Bad Request', "unknown format `#{format}'")
+			end
 			body = [attrs]
 			[200, {'Content-Type'=>ct}, body]
 		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
 	end
 
@@ -270,123 +257,73 @@ class HTTPGatewayService < Service
 	#  get(rpc/cmd?k=v)
 	# post(rpc/cmd?k=v)
 	#    cmd:
-	#      get           [sid=] key= format=
 	#      get_data      [sid=] key=
 	#      get_attrs     [sid=] key= format=
-	#      read          [sid=] key= offset= size=
 	#      set           key= [data=] [attrs= [format=]]
 	#      set_data      key= data=
 	#      set_attrs     key= attrs= format=
-	#      write         key= offset= data=
 	#      remove        key=
+	#      url           [sid=] key=
 	#      select        conds= [cols=] [order=] [order_col=] [limit=] [skip=] [sid=]
 	#
 	def call_rpc(env)
 		m = env['REQUEST_METHOD']
 		if m != 'GET' && m != 'POST'
-			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
-			return [405, {'Content-Type'=>'text/html'}, body]
+			return html_response(405, 'Method Not Allowed')
 		end
-		# TODO
 		case get_cmd_path_info(env)
-		when 'get'
-			http_rpc_get(env)
 		when 'get_data'
 			http_rpc_get_data(env)
 		when 'get_attrs'
 			http_rpc_get_attrs(env)
-		when 'read'
-			http_rpc_get_data(env)
 		when 'set'
 			http_rpc_set(env)
 		when 'set_data'
 			http_rpc_set(env)
 		when 'set_attrs'
 			http_rpc_set(env)
-		when 'write'
-			http_rpc_set(env)
 		when 'remove'
 			http_rpc_remove(env)
+		when 'url'
+			http_rpc_url(env)
 		when 'select'
 			http_rpc_select(env)
 		else
-			# FIXME
-		end
-	end
-
-	def http_rpc_get(env)
-		request = ::Rack::Request.new(env)
-		key    = require_str(request, 'key')
-		sid    = optional_int(request, 'sid')
-		format = optional_str(request, 'format')
-		format ||= 'json'
-
-		if sid
-			# FIXME
-			data, attrs = submit(GWRPCBus, :gets, sid, key)
-		else
-			# FIXME
-			data, attrs = submit(GWRPCBus, :get, key)
-		end
-
-		# TODO
-
-		if data
-			attrs, ct = format_attrs(attrs, format)
-			# FIXME
-		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			return html_response(406, 'Not Acceptable Method')
 		end
 	end
 
 	def http_rpc_get_data(env)
 		request = ::Rack::Request.new(env)
-		key    = require_str(request, 'key')
-		sid    = optional_int(request, 'sid')
-		offset = optional_int(request, 'offset')
-		if offset
-			size = require_int(request, 'size')
+		key = require_str(request, 'key')
+		sid = optional_int(request, 'sid')
+		check_request(request, %w[key sid])
+
+		if sid
+			data = submit(GWRPCBus, :gets_data, sid, key)
 		else
-			size = optional_int(request, 'size')
-			if size
-				offset = 0
-			end
+			data = submit(GWRPCBus, :get_data, key)
 		end
 
-		if offset
-			if sid
-				# FIXME
-				data = submit(GWRPCBus, :reads, sid, key, offset, size)
-			else
-				# FIXME
-				data = submit(GWRPCBus, :read, key, offset, size)
-			end
-		else
-			if sid
-				# FIXME
-				data = submit(GWRPCBus, :gets_data, sid, key)
-			else
-				# FIXME
-				data = submit(GWRPCBus, :get_data, key)
-			end
-		end
-
-		# TODO
 		if data
-			[200, {'Content-Type'=>'application/octet-stream'}, data]
+			body = [data]
+			[200, {'Content-Type'=>'application/octet-stream'}, body]
 		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
 	end
 
 	def http_rpc_get_attrs(env)
 		request = ::Rack::Request.new(env)
-		key    = require_str(request, 'key')
-		sid    = optional_int(request, 'sid')
+		key = require_str(request, 'key')
+		sid = optional_int(request, 'sid')
 		format = optional_str(request, 'format')
-		format ||= 'json'
+		format ||= DEFAULT_FORMAT
+		check_request(request, %w[key sid format])
 
 		attrs = parse_attrs(attrs, format)
 
@@ -396,27 +333,33 @@ class HTTPGatewayService < Service
 			attrs = submit(GWRPCBus, :get_attrs, key, attrs)
 		end
 
-		# TODO
-
 		if attrs
 			attrs, ct = format_attrs(attrs, format)
+			unless attrs
+				return html_response(400, 'Bad Request', "unknown format `#{format}'")
+			end
 			body = [attrs]
 			[200, {'Content-Type'=>ct}, body]
 		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
 	end
 
 	def http_rpc_set(env)
 		request = ::Rack::Request.new(env)
-		key    = require_str(request, 'key')
-		attrs  = require_str(request, 'attrs')
+		key = require_str(request, 'key')
+		attrs = require_str(request, 'attrs')
 		if attrs
 			format = optional_str(request, 'format')
-			format ||= 'json'
+			format ||= DEFAULT_FORMAT
+			check_request(request, %w[key attrs format])
 		else
 			data   = require_str(request, 'data')
+			check_request(request, %w[key data])
 		end
 
 		if attrs
@@ -431,22 +374,44 @@ class HTTPGatewayService < Service
 		end
 
 		# TODO okey
-		body = ["<html><head></head><body><h1>200 OK</h1></body></html>"]
-		[200, {'Content-Type'=>'text/html'}, body]
+		return html_response(200, 'OK')
 	end
 
 	def http_rpc_remove(env)
 		request = ::Rack::Request.new(env)
-		key    = require_str(request, 'key')
+		key = require_str(request, 'key')
+		check_request(request, %w[key])
 
 		removed = submit(GWRPCBus, :remove, key)
 
 		if removed
-			body = ["<html><head></head><body><h1>200 OK</h1></body></html>"]
-			[200, {'Content-Type'=>'text/html'}, body]
+			return html_response(200, 'OK')
 		else
-			body = ["<html><head></head><body><h1>204 No Content</h1></body></html>"]
-			[204, {'Content-Type'=>'text/html'}, body]
+			return html_response(204, 'No Content')
+		end
+	end
+
+	def http_rpc_url(env)
+		request = ::Rack::Request.new(env)
+		key = require_str(request, 'key')
+		sid = optional_int(request, 'sid')
+		check_request(request, %w[key sid])
+
+		if sid
+			url = submit(GWRPCBus, :urls, sid, key)
+		else
+			url = submit(GWRPCBus, :url, key)
+		end
+
+		if url
+			body = [url]
+			[200, {'Content-Type'=>'application/text-plain'}, body]
+		else
+			if sid
+				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
 		end
 	end
 
@@ -459,25 +424,24 @@ class HTTPGatewayService < Service
 		order_col  = optional_str(request, 'order_col')
 		limit  = optional_int(request, 'limit')
 		skip   = optional_int(request, 'skip')
+		check_request(request, %w[sid conds cols order order_col limit skip])
 
 		# FIXME order
 		# FIXME conds
 
 		# TODO
+		html_response(501, 'Not Implemented')
 	end
 
 
 	# direct/<rsid>/<sid>/<key>
-	#    offset=i           get=>read
-	#    offset=i&size=i    get=>read
 	#  get(data/key)                          => direct get/gets/read/reads
 	def call_direct(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
 			http_direct_get(env)
 		else
-			body = ["<html><head></head><body><h1>405 Method Not Allowed</h1></body></html>"]
-			[405, {'Content-Type'=>'text/html'}, body]
+			return html_response(405, 'Method Not Allowed')
 		end
 	end
 
@@ -486,30 +450,17 @@ class HTTPGatewayService < Service
 		path = get_key_path_info(env)
 		rsid_s, sid_s, key = path.split('/', 3)
 		rsid = rsid_s.to_i
-		sid = rsid.to_i
-		okey = [key, sid, rsid]
+		sid = sid.to_i
+		okey = ObjectKey.new(key, sid, rsid)
+		check_request(request, %w[])
 
-		offset = optional_int(request, 'offset')
-		if offset
-			size = require_int(request, 'size')
-		else
-			size = optional_int(request, 'size')
-			if size
-				offset = 0
-			end
-		end
-
-		if offset
-			data = submit(DSRPCBus, :read_direct, okey, offset, size)
-		else
-			data = submit(DSRPCBus, :get_direct, okey)
-		end
+		data = submit(DSRPCBus, :get_direct, okey)
 
 		if data
-			[200, {'Content-Type'=>'application/octet-stream'}, data]
+			body = [data]
+			[200, {'Content-Type'=>'application/octet-stream'}, body]
 		else
-			body = ["<html><head></head><body><h1>404 Not Found</h1></body></html>"]
-			[404, {'Content-Type'=>'text/html'}, body]
+			return html_response(404, 'Not Found', "rsid=#{rsid} key=`#{key}' sid=#{sid}")
 		end
 	end
 
@@ -552,6 +503,10 @@ class HTTPGatewayService < Service
 		env['PATH_INFO'][1..-1]  # remove front '/' character
 	end
 
+	def check_request(request, accepts)
+		# FIXME check error
+	end
+
 	def parse_attrs(attrs, format)
 		case format
 		when 'json'
@@ -571,8 +526,6 @@ class HTTPGatewayService < Service
 	end
 
 	def format_attrs(attrs, format)
-		# FIXME
-		# returns str, content_type
 		case format
 		when 'json'
 			return JSON.dump(attrs), 'application/json'
@@ -582,8 +535,21 @@ class HTTPGatewayService < Service
 			data = attrs.map {|k,v| "#{k}\t#{v}" }.join("\n")
 			return data, 'text/tab-separated-values'
 		else
-			# FIXME
+			return nil
 		end
+	end
+
+	def html_response(code, title, msg=nil)
+		if msg
+			body = ['<html><head></head><body><h1>',
+							code.to_s, ' ', title,
+							'</h1><p>', CGI.escapeHTML(msg.to_s), "</p></body></html>\r\n"]
+		else
+			body = ['<html><head></head><body><h1>',
+							code.to_s, ' ', title,
+							"</h1></body></html>\r\n"]
+		end
+		return [code, {'Content-Type'=>'text/html'}, body]
 	end
 
 	protected
@@ -629,7 +595,7 @@ class HTTPGatewayService < Service
 	end
 
 	def submit(bus, name, *args)
-		$log.warn { "http rpc: #{name} #{args}" }
+		$log.trace { "http rpc: #{name} #{args}" }
 
 		r = Responder.new
 

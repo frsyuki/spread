@@ -51,10 +51,6 @@ class ReadOnlyGatewayService < GatewayService
 		raise_read_only_error
 	end
 
-	def rpc_write(key, offset, data)
-		raise_read_only_error
-	end
-
 	def rpc_truncate(key, size)
 		raise_read_only_error
 	end

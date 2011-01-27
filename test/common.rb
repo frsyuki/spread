@@ -15,6 +15,7 @@ CS_PORT = (ENV["CS_PORT"] || 49700).to_i
 DS_PORT = (ENV["DS_PORT"] || 49900).to_i
 GW_PORT = (ENV["GW_PORT"] || 49800).to_i
 MDS_PORT = (ENV["MDS_PORT"] || 49600).to_i
+DS_HTTP_PORT = (ENV["GW_HTTP_PORT"] || 49400).to_i
 GW_HTTP_PORT = (ENV["GW_HTTP_PORT"] || 49500).to_i
 
 if ENV["NO_TRACE"]
@@ -122,9 +123,10 @@ class DSProcess < ServerProcess
 		@nid = nid
 		@rsid = rsid
 		@port = DS_PORT+nid
+		@http_port = DS_HTTP_PORT+nid
 
 		ddir = init_data_dir("ds#{nid}")
-		super("#{CMD_DS} -c 127.0.0.1:#{CS_PORT} -s #{ddir} -i #{nid} -n node#{nid} -g #{rsid} -a 127.0.0.1:#{@port} #{args.join(' ')} #{OPT}")
+		super("#{CMD_DS} -c 127.0.0.1:#{CS_PORT} -s #{ddir} -i #{nid} -n node#{nid} -g #{rsid} -a 127.0.0.1:#{@port} -t #{@http_port} #{args.join(' ')} #{OPT}")
 
 		set_display("ds#{nid} rsid=#{rsid}")
 	end

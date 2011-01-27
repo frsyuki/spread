@@ -19,6 +19,7 @@ require 'msgpack/rpc'
 require 'digest/md5'
 require 'digest/sha1'
 require 'csv'
+require 'cgi'
 require 'tokyotyrant'
 require 'spread-osd/lib/cclog'
 require 'spread-osd/lib/ebus'
@@ -43,6 +44,7 @@ require 'spread-osd/service/config'
 require 'spread-osd/service/config_gw'
 require 'spread-osd/service/config_ds'
 require 'spread-osd/service/data_server'
+require 'spread-osd/service/data_server_url'
 require 'spread-osd/service/data_client'
 require 'spread-osd/service/mds'
 require 'spread-osd/service/mds_tt'
@@ -148,7 +150,7 @@ op.on('-r', '--rts PATH', "path to relay timestamp directory") do |path|
 	conf.rts_path = path
 end
 
-op.on('-t', '--http', "http listen port") do |addr|
+op.on('-t', '--http PORT', "http listen port") do |addr|
 	if addr.include?(':')
 		host, port = addr.split(':',2)
 		port = port.to_i
@@ -157,6 +159,14 @@ op.on('-t', '--http', "http listen port") do |addr|
 		port = addr.to_i
 	end
 	conf.http_gateway_address = Address.new(host, port)
+end
+
+op.on('--http-redirect-port PORT', Integer) do |port|
+	conf.http_redirect_port = port
+end
+
+op.on('--http-redirect-path FORMAT') do |format|
+	conf.http_redirect_path_format = format
 end
 
 op.on('-R', '--read-only', "read-only mode", TrueClass) do |b|
@@ -260,6 +270,10 @@ begin
 		conf.snapshot_path = File.join(conf.storage_path, "snapshot")
 	end
 
+	if conf.http_redirect_path_format && !conf.http_redirect_port
+		$log.warn "--http-redirect-port option is ignored"
+	end
+
 	listen_port ||= DS_DEFAULT_PORT
 
 rescue
@@ -292,7 +306,9 @@ UpdateLogSelector.open!
 RelayTimeStampSelector.open!
 SlaveService.init
 DataServerService.init
+DataServerURLService.init
 DSStatService.init
+MDSSelector.open!
 
 log_event_bus
 

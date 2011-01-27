@@ -32,12 +32,11 @@ class GWRPCBus < Bus
 	call_slot :set
 	call_slot :set_data
 	call_slot :set_attrs
-	call_slot :write
 	call_slot :remove
 	call_slot :select
 	call_slot :selects
-	call_slot :locate
-	call_slot :locates
+	call_slot :url
+	call_slot :urls
 end
 
 
@@ -103,13 +102,18 @@ class GWRPCService < RPCService
 	end
 
 
-	def write(key, offset, data)
-		#data.force_encoding("ASCII-8BIT")
-		dispatch(GWRPCBus, :write, key, offset, data)
-	end
+	#def write(key, offset, data)
+	#	#data.force_encoding("ASCII-8BIT")
+	#	dispatch(GWRPCBus, :write, key, offset, data)
+	#end
 
 	#def resize(key, size)
 	#	dispatch(GWRPCBus, :resize, key, size)
+	#end
+
+	#def append(key, data)
+	#	#data.force_encoding("ASCII-8BIT")
+	#	dispatch(GWRPCBus, :append, key, data)
 	#end
 
 
@@ -136,12 +140,12 @@ class GWRPCService < RPCService
 	end
 
 
-	def locate(key)
-		dispatch(GWRPCBus, :locate, key)
+	def url(key)
+		dispatch(GWRPCBus, :url, key)
 	end
 
-	def locates(sid, key)
-		dispatch(GWRPCBus, :locates, sid, key)
+	def urls(sid, key)
+		dispatch(GWRPCBus, :urls, sid, key)
 	end
 
 

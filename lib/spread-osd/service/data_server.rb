@@ -46,14 +46,14 @@ class DataServerService < Service
 		nil
 	end
 
-	def rpc_write_direct(okey, offset, data)
-		@stat_cmd_write += 1
-		d = UpdateLogData.new(okey.sid, okey.key, offset, data.size)
-		UpdateLogBus.append(d.dump) do
-			StorageBus.write(okey.sid, okey.key, offset, data)
-		end
-		nil
-	end
+	#def rpc_write_direct(okey, offset, data)
+	#	@stat_cmd_write += 1
+	#	d = UpdateLogData.new(okey.sid, okey.key, offset, data.size)
+	#	UpdateLogBus.append(d.dump) do
+	#		StorageBus.write(okey.sid, okey.key, offset, data)
+	#	end
+	#	nil
+	#end
 
 	#def rpc_resize_direct(okey, size)
 	#	# TODO: stat_cmd_resize?
@@ -64,6 +64,10 @@ class DataServerService < Service
 	#	end
 	#	nil
 	#end
+
+	def rpc_exist_direct(okey)
+		StorageBus.exist(okey.sid, okey.key)
+	end
 
 	def rpc_remove_direct(okey)
 		@stat_cmd_remove += 1
@@ -154,25 +158,9 @@ class DataServerService < Service
 		:get_direct       => :rpc_get_direct,
 		:set_direct       => :rpc_set_direct,
 		:read_direct      => :rpc_read_direct,
-		:write_direct     => :rpc_write_direct,
 		:remove_direct    => :rpc_remove_direct,
 		:replicate_pull   => :rpc_replicate_pull,
 		:replicate_notify => :rpc_replicate_notify
-
-	private
-	def append_ulog(sid, key, offset, size, &block)
-		if size == 0
-			block.call
-		else
-			raw = UpdateLogData.new(sid, key, offset, size).dump
-			UpdateLogBus.append(raw, &block)
-		end
-	end
-
-	def load_ulog(raw)
-		uld = UpdateLogData.load(raw)
-		return uld.sid, uld.key, uld.offset, uld.size
-	end
 end
 
 

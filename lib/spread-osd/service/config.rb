@@ -35,6 +35,9 @@ class ConfigBus < Bus
 
 	call_slot :get_mds_uri
 
+	call_slot :http_redirect_port
+	call_slot :http_redirect_path_format
+
 	call_slot :get_cs_address
 	call_slot :read_only_sid
 	call_slot :http_gateway_address

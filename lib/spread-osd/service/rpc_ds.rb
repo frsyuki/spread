@@ -24,7 +24,9 @@ class DSRPCBus < Bus
 	call_slot :remove_direct
 	call_slot :copy
 	call_slot :read_direct
-	call_slot :write_direct
+	call_slot :url_direct
+	#call_slot :write_direct
+	#call_slot :append_direct
 	call_slot :resize_direct
 	call_slot :replicate_pull
 	call_slot :replicate_notify
@@ -59,10 +61,21 @@ class DSRPCService < GWRPCService
 		dispatch(DSRPCBus, :read_direct, okey, offset, size)
 	end
 
-	def write_direct(okey, offset, data)
+	#def write_direct(okey, offset, data)
+	#	okey = ObjectKey.new.from_msgpack(okey)
+	#	#data.force_encoding("ASCII-8BIT")
+	#	dispatch(DSRPCBus, :write_direct, okey, offset, data)
+	#end
+
+	#def append_direct(okey, data)
+	#	okey = ObjectKey.new.from_msgpack(okey)
+	#	#data.force_encoding("ASCII-8BIT")
+	#	dispatch(DSRPCBus, :append_direct, okey, data)
+	#end
+
+	def url_direct(okey)
 		okey = ObjectKey.new.from_msgpack(okey)
-		#data.force_encoding("ASCII-8BIT")
-		dispatch(DSRPCBus, :write_direct, okey, offset, data)
+		dispatch(DSRPCBus, :url_direct, okey)
 	end
 
 	def resize_direct(okey, size)

@@ -32,11 +32,16 @@ class DataClientBus < Bus
 	# @return nil
 	call_slot :set
 
-	# @return nil
-	call_slot :write
+	## @return nil
+	#call_slot :write
 
 	# @return nil
 	#call_slot :resize
+
+	# @return
+	#   found: url string
+	#   not found: nil
+	call_slot :url
 end
 
 
@@ -55,30 +60,23 @@ class DataClientService < Service
 		call_rsid(okey, :set_direct, okey, data, &cb)
 	end
 
-	def write(okey, offset, data, &cb)
-		call_rsid(okey, :write_direct, okey, offset, data, &cb)
-	end
+	#def write(okey, offset, data, &cb)
+	#	call_rsid(okey, :write_direct, okey, offset, data, &cb)
+	#end
 
 	#def resize(okey, size, &cb)
 	#	call_rsid(okey, :resize_direct, okey, size)
 	#end
 
-	def locate(okey)
-		nids = MasterSelectBus.select_master(okey.rsid, okey.key)
-		faults = nids.reject! {|nid|
-			MembershipBus.is_fault(nid)
-		}
-		nids.concat(faults) if faults
-		nids.map {|nid|
-			MembershipBus.get_node(nid).address
-		}
+	def url(okey, &cb)
+		call_rsid(okey, :url_direct, okey, &cb)
 	end
 
 	ebus_connect :DataClientBus,
 		:get,
 		:read,
 		:set,
-		:write
+		:url
 
 	private
 	def call_rsid(okey, *args, &cb)

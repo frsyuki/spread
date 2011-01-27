@@ -28,11 +28,11 @@ class StorageBus < Bus
 
 	call_slot :read
 
-	call_slot :write
-
 	call_slot :remove
 
 	call_slot :copy
+
+	call_slot :exist
 
 	call_slot :get_items
 end
@@ -92,10 +92,10 @@ class StorageService < Service
 	#def read(sid, key, offset, size)
 	#end
 
-	#def write(sid, key, offset, data)
+	#def remove(sid, key)
 	#end
 
-	#def remove(sid, key)
+	#def exist(sid, key)
 	#end
 
 	#def get_items
@@ -105,8 +105,8 @@ class StorageService < Service
 		:get,
 		:set,
 		:read,
-		:write,
 		:remove,
+		:exist,
 		:get_items,
 		:open,
 		:close

@@ -53,6 +53,42 @@ class MDSBus < Bus
 end
 
 
+=begin
+# TODO
+class MDSConfigService < Service
+	def run
+		@uri = ConfigBus.get_mds_uri
+	end
+end
+
+
+class MDSConfigService < Service
+	def on_change
+		HeartbeatBus.update_sync_config(CONFIG_SYNC_SNAPSHOT,
+							@slist, @slist.get_hash)
+	end
+end
+
+
+class MDSSelectorService < Service
+	def initialize
+	end
+
+	def run
+		HeartbeatBus.register_sync_config(CONFIG_SYNC_SNAPSHOT,
+							@slist.get_hash) do |obj|
+			@slist.from_msgpack(obj)
+			on_change
+			@slist.get_hash
+		end
+	end
+
+	def open!
+	end
+end
+=end
+
+
 module MDSSelector
 	IMPLS = {}
 

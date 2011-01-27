@@ -46,10 +46,10 @@ class GatewayService < Service
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
 					data ||= ""
-					ar.result([data,attrs], nil)
+					ar.result([data,attrs])
 				}
 			else
-				ar.result([nil,nil], nil)
+				ar.result([nil,nil])
 			end
 		}
 		ar
@@ -113,7 +113,7 @@ class GatewayService < Service
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
 					data ||= ""
-					ar.result(data, nil)
+					ar.result(data)
 				}
 			else
 				ar.result(nil)
@@ -131,7 +131,7 @@ class GatewayService < Service
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			else
-				ar.result(data, nil)
+				ar.result(data)
 			end
 		}
 		ar
@@ -145,7 +145,7 @@ class GatewayService < Service
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			else
-				ar.result(data, nil)
+				ar.result(data)
 			end
 		}
 		ar
@@ -209,27 +209,27 @@ class GatewayService < Service
 	end
 
 
-	def rpc_write(key, offset, data)
-		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.set_okey(key) {|okey,error|
-			if error
-				$log.warn("failed to set a key to MDS: key=#{key.dump}: #{error}")
-				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-				ar.error(error.to_s)
-			else
-				DataClientBus.write(okey, offset, data) {|_,error|
-					if error
-						$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
-						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-						ar.error(error.to_s)
-					else
-						ar.result(okey)
-					end
-				}
-			end
-		}
-		ar
-	end
+	#def rpc_append(key, data)
+	#	ar = MessagePack::RPC::AsyncResult.new
+	#	MDSBus.set_okey(key) {|okey,error|
+	#		if error
+	#			$log.warn("failed to set a key to MDS: key=#{key.dump}: #{error}")
+	#			$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+	#			ar.error(error.to_s)
+	#		else
+	#			DataClientBus.append(okey, offset, data) {|_,error|
+	#				if error
+	#					$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
+	#					$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+	#					ar.error(error.to_s)
+	#				else
+	#					ar.result(okey)
+	#				end
+	#			}
+	#		end
+	#	}
+	#	ar
+	#end
 
 	#def rpc_resize(key, size)
 	#	ar = MessagePack::RPC::AsyncResult.new
@@ -297,22 +297,27 @@ class GatewayService < Service
 	#end
 
 
-	def rpc_locate(key)
-		rpc_locates(nil, key)
+	def rpc_url(key)
+		rpc_urls(nil, key)
 	end
 
-	def rpc_locates(sid, key)
+	def rpc_urls(sid, key)
 		ar = MessagePack::RPC::AsyncResult.new
 		MDSBus.get_okey(key, sid) {|okey,error|
 			if error
-				$log.warn("failed to get a key from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to get a key or attributes from MDS: key=#{key.dump}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
-				addrs = DataClientBus.locate(okey)
-				ar.result([okey, addrs])
+				DataClientBus.url(okey) {|url,error|
+					if error
+						$log.warn(error)
+						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+					end
+					ar.result(url)
+				}
 			else
-				ar.result([nil, nil])
+				ar.result(nil)
 			end
 		}
 		ar
@@ -333,12 +338,11 @@ class GatewayService < Service
 		:set          => :rpc_set,
 		:set_data     => :rpc_set_data,
 		:set_attrs    => :rpc_set_attrs,
-		:write        => :rpc_write,
 		:remove       => :rpc_remove,
 		:select       => :rpc_select,
 		:selects      => :rpc_selects,
-		:locate       => :rpc_locate,
-		:locates      => :rpc_locates
+		:url          => :rpc_url,
+		:urls         => :rpc_urls
 end
 
 

@@ -69,28 +69,52 @@ class DirectoryStorageService < StorageService
 		true
 	end
 
-	def write(sid, key, offset, data)
-		$log.trace { "DirectoryStorage: write sid=#{sid} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
+	#def write(sid, key, offset, data)
+	#	$log.trace { "DirectoryStorage: write sid=#{sid} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
+	#
+	#	path = key_to_path(sid, key)
+	#	make_dir(path)
+	#
+	#	File.open(path, File::WRONLY|File::CREAT) {|f|
+	#		f.pos = offset
+	#		#f.write(data)
+	#		while true
+	#			n = f.syswrite(data)
+	#			if data.size <= n
+	#				break
+	#			else
+	#				data = data[n..-1]
+	#				#data.slice!(0,n-1)
+	#			end
+	#		end
+	#	}
+	#
+	#	true
+	#end
 
-		path = key_to_path(sid, key)
-		make_dir(path)
-
-		File.open(path, File::WRONLY|File::CREAT) {|f|
-			f.pos = offset
-			#f.write(data)
-			while true
-				n = f.syswrite(data)
-				if data.size <= n
-					break
-				else
-					data = data[n..-1]
-					#data.slice!(0,n-1)
-				end
-			end
-		}
-
-		true
-	end
+	#def append(sid, key, data)
+	#	$log.trace { "DirectoryStorage: append sid=#{sid} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
+	#
+	#	path = key_to_path(sid, key)
+	#	make_dir(path)
+	#
+	#	size = nil
+	#	File.open(path, File::WRONLY|File::CREAT|File::APPEND) {|f|
+	#		#f.write(data)
+	#		while true
+	#			n = f.syswrite(data)
+	#			if data.size <= n
+	#				break
+	#			else
+	#				data = data[n..-1]
+	#				#data.slice!(0,n-1)
+	#			end
+	#		end
+	#		size = f.stat.size
+	#	}
+	#
+	#	size
+	#end
 
 	#def resize(sid, key, size)
 	#	$log.trace { "DirectoryStorage: resize sid=#{sid} key=#{key.dump} size=#{size}" }
@@ -117,6 +141,13 @@ class DirectoryStorageService < StorageService
 		end
 	end
 
+	def exist(sid, key)
+		$log.trace { "DirectoryStorage: exist sid=#{sid} key=#{key.dump}" }
+
+		path = key_to_path(sid, key)
+		return File.exist?(path)
+	end
+
 	def get_items
 		num = 0
 		Dir.glob("#{@dir}/sid-*") {|sdir|
@@ -132,6 +163,11 @@ class DirectoryStorageService < StorageService
 			}
 		}
 		num
+	end
+
+	# for DataServerURLService
+	def self.encode_okey(okey)
+		instance.key_to_path(okey.sid, okey.key)
 	end
 
 	private

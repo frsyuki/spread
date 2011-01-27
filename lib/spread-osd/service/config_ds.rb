@@ -31,6 +31,9 @@ class DSConfigService < GWConfigService
 	attr_accessor :ulog_path
 	attr_accessor :rts_path
 
+	attr_accessor :http_redirect_port
+	attr_accessor :http_redirect_path_format
+
 	attr_reader :self_node
 
 	ebus_connect :ConfigBus,
@@ -39,6 +42,8 @@ class DSConfigService < GWConfigService
 		:self_address,
 		:self_rsids,
 		:self_node,
+		:http_redirect_port,
+		:http_redirect_path_format,
 		:get_storage_path    => :storage_path,
 		:get_ulog_path       => :ulog_path,
 		:get_rts_path        => :rts_path
