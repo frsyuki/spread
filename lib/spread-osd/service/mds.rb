@@ -87,7 +87,7 @@ end
 class MDSService < Service
 	def initialize
 		@uri = ""
-		@mds = nil
+		@mds = NullMDS.new
 	end
 
 	def run
@@ -115,13 +115,11 @@ class MDSService < Service
 		old_mds = @mds
 		@mds = mds
 
-		if old_mds
-			begin
-				old_mds.close
-			rescue
-				$log.error "MDS close error: #{$!}"
-				$log.error $!.backtrace.pretty_inspect
-			end
+		begin
+			old_mds.close
+		rescue
+			$log.error "MDS close error: #{$!}"
+			$log.error $!.backtrace.pretty_inspect
 		end
 	end
 
@@ -232,6 +230,31 @@ class MDS
 
 	def get_current_sid
 		SnapshotBus.get_current_sid
+	end
+end
+
+
+class NullMDS < MDS
+	extend Forwardable
+
+	[
+		:get_okey,
+		:get_attrs,
+		:get_okey_attrs,
+		:set_okey,
+		:set_okey_attrs,
+		:remove,
+		:select,
+		:open
+	].each {|method|
+		def_delegator :self, :raise_error, method
+	}
+
+	def raise_error(*args)
+		raise "mds is not configured"
+	end
+
+	def close
 	end
 end
 

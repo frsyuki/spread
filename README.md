@@ -46,11 +46,11 @@ Multiple DSs composes a group that each member stores same data. The group is ca
 
 Following softwares are required to run SpreadOSD:
 
-  - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) >= 1.1.40
-  - [ruby](http://www.ruby-lang.org/) >= 1.9.1
-  - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) >= 0.4.3
-  - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) >= 1.13
-  - [rack gem](http://rubygems.org/gems/rack) >= 1.2.1
+  - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) &gt;= 1.1.40
+  - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.1
+  - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) &gt;= 0.4.3
+  - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) &gt;= 1.13
+  - [rack gem](http://rubygems.org/gems/rack) &gt;= 1.2.1
 
 There are 2 way to install SpreadOSD.
 
@@ -83,7 +83,7 @@ In this guide, you will install all systems on /opt/local/spread directory.
 
 First, install folowing packages using the package management system.
 
-  - gcc-g++ >= 4.1
+  - gcc-g++ &gt;= 4.1
   - openssl-devel (or libssl-dev) to build ruby
   - zlib-devel (or zlib1g-dev) to build ruby
   - readline-devel (or libreadline6-dev) to build ruby
@@ -331,7 +331,7 @@ Then confirm the status.
 
 Just restart it.
 
-Note that CS stores status of the cluster to "$store_path/membership" and "$store_path/fault" file.
+Note that CS stores status of the cluster to "$store\_path/membership" and "$store\_path/fault" file.
 
 If membership file is lost, DSs whose status is **FAULT** will become detached.
 If fault file is lost, DSs whose status is **FAULT** will become **active**, and go back to **FAULT** after timeout time elapsed.
@@ -352,86 +352,86 @@ SpreadOSD uses [MessagePack-RPC](http://msgpack.org/) and HTTP as a client proto
 ### MessagePack-RPC
 
 
-#### get(key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+#### get(key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
 Gets data and attributes from the storage.
 
 Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
 
 
-#### get_data(key:Raw) -> data:Raw
+#### get\_data(key:Raw) -&gt; data:Raw
 Gets data from the storage.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### get_attrs(key:Raw) -> attributes:Map<Raw,Raw>
+#### get\_attrs(key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
 Gets attributes from the storage.
 
 Returns the found attributes if it success. Otherwise, it returns nil.
 
 
-#### gets(sid:Integer, key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+#### gets(sid:Integer, key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
 Gets data and attributes from the storage using the snapshot.
 
 Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
 
 
-#### gets_data(sid:Integer, key:Raw) -> data:Raw
+#### gets\_data(sid:Integer, key:Raw) -&gt; data:Raw
 Gets data from the storage using the snapshot.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### gets_attrs(sid:Integer, key:Raw) -> attributes:Map<Raw,Raw>
+#### gets\_attrs(sid:Integer, key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
 Gets attributes from the storage using the snapshot.
 
 Returns the found attributes if it success. Otherwise, it returns nil.
 
 
-#### read(key:Raw, offset:Integer, size:Integer) -> data:Raw
+#### read(key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
 Reads part of data from the storage.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### reads(sid:Integer, key:Raw, offset:Integer, size:Integer) -> data:Raw
+#### reads(sid:Integer, key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
 Reads part of data from the storage using the snapshot.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### getd_data(objectKey:Object) -> data:Raw
+#### getd\_data(objectKey:Object) -&gt; data:Raw
 Gets data from DS directly.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### readd(objectKey:Object, offset:Integer, size:Integer) -> data:Raw
+#### readd(objectKey:Object, offset:Integer, size:Integer) -&gt; data:Raw
 Reads part of data from DS directly.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### set(key:Raw, data:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+#### set(key:Raw, data:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
 Sets data and attributes to the storage.
 The data is stored on DS, and the attributes are stored on MDS.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
 
 
-#### set_data(key:Raw, data:Raw) -> objectKey:Object
+#### set\_data(key:Raw, data:Raw) -&gt; objectKey:Object
 Sets data to the storage. The data is stored on DS.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
 
 
-#### set_attrs(key:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+#### set\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
 Sets attributes to the storage. The attributes is stored on MDS.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
 
 
-#### write(key:Raw, offset:Integer, data:Raw) -> objectKey:Object
+#### write(key:Raw, offset:Integer, data:Raw) -&gt; objectKey:Object
 Writes part of data to the storage.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
@@ -443,7 +443,7 @@ Removes data and attributes from the storage.
 Returns true if the object is removed. Otherwise, it returns false.
 
 
-#### select(cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+#### select(cols, conds, order, order\_col, limit, skip) -&gt; arrayOfAttributes:Array&lt;Map&lt;Raw,Raw&gt;&gt;
 
     cols:Array<String> or nil
     conds:Array<Condition>
@@ -453,7 +453,7 @@ Returns true if the object is removed. Otherwise, it returns false.
     skip:Integer or nil
 
 
-#### selects(sid, cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+#### selects(sid, cols, conds, order, order\_col, limit, skip) -&gt; arrayOfAttributes:Array&lt;Map&lt;Raw,Raw&gt;&gt;
 
 
 

@@ -53,7 +53,7 @@ class ProcessService < Service
 	end
 
 	def shutdown
-		# TODO stop @timer
+		@net.loop.detach(@timer) if @timer
 	end
 
 	def start_timer(interval, periodic, &block)
@@ -61,7 +61,9 @@ class ProcessService < Service
 	end
 
 	def get_session(addr)
-		@net.get_session(addr)
+		s = @net.get_session(addr)
+		s.timeout = 10   # FIXME timeout
+		s
 	end
 
 	ebus_connect :ProcessBus,

@@ -46,11 +46,11 @@ SpreadOSDは、次の4種類のサーバから構成されます：
 
 SpreadOSDを実行するには次のソフトウェアが必要です：
 
-  - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) >= 1.1.40
-  - [ruby](http://www.ruby-lang.org/) >= 1.9.1
-  - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) >= 0.4.3
-  - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) >= 1.13
-  - [rack gem](http://rubygems.org/gems/rack) >= 1.2.1
+  - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) &gt;= 1.1.40
+  - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.1
+  - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) &gt;= 0.4.3
+  - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) &gt;= 1.13
+  - [rack gem](http://rubygems.org/gems/rack) &gt;= 1.2.1
 
 SpreadOSDをインストールする方法は2つあります。
 
@@ -83,7 +83,7 @@ Rubyを広く活用しているサイトでは、後者の方がバージョン�
 
 まず以下のパッケージをOSのパッケージ管理システムを利用してインストールしてください。
 
-  - gcc-g++ >= 4.1
+  - gcc-g++ &gt;= 4.1
   - openssl-devel (or libssl-dev) to build ruby
   - zlib-devel (or zlib1g-dev) to build ruby
   - readline-devel (or libreadline6-dev) to build ruby
@@ -331,7 +331,7 @@ Rubyを広く活用しているサイトでは、後者の方がバージョン�
 
 CSは単に再起動してください。
 
-CSは、クラスタの状態を"$store_path/membership"ファイルと"$store_path/fault"ファイルに保存しています。
+CSは、クラスタの状態を"$store\_path/membership"ファイルと"$store\_path/fault"ファイルに保存しています。
 
 もしmembershipファイルが失われた場合は、状態が**FAULT**であるサーバは切り離されます。
 もしfaultファイルが失われた場合は、状態が**FAULT**であるサーバは**active**になり、タイムアウト時間が経過した後で**FAULT**に戻ります。
@@ -352,86 +352,86 @@ SpreadOSD uses [MessagePack-RPC](http://msgpack.org/) and HTTP as a client proto
 ### MessagePack-RPC
 
 
-#### get(key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+#### get(key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
 Gets data and attributes from the storage.
 
 Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
 
 
-#### get_data(key:Raw) -> data:Raw
+#### get\_data(key:Raw) -&gt; data:Raw
 Gets data from the storage.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### get_attrs(key:Raw) -> attributes:Map<Raw,Raw>
+#### get\_attrs(key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
 Gets attributes from the storage.
 
 Returns the found attributes if it success. Otherwise, it returns nil.
 
 
-#### gets(sid:Integer, key:Raw) -> [data:Raw, attributes:Map<Raw,Raw>]
+#### gets(sid:Integer, key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
 Gets data and attributes from the storage using the snapshot.
 
 Returns the found data and attributes if it success. Otherwise, it returns [nil, nil].
 
 
-#### gets_data(sid:Integer, key:Raw) -> data:Raw
+#### gets\_data(sid:Integer, key:Raw) -&gt; data:Raw
 Gets data from the storage using the snapshot.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### gets_attrs(sid:Integer, key:Raw) -> attributes:Map<Raw,Raw>
+#### gets\_attrs(sid:Integer, key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
 Gets attributes from the storage using the snapshot.
 
 Returns the found attributes if it success. Otherwise, it returns nil.
 
 
-#### read(key:Raw, offset:Integer, size:Integer) -> data:Raw
+#### read(key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
 Reads part of data from the storage.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### reads(sid:Integer, key:Raw, offset:Integer, size:Integer) -> data:Raw
+#### reads(sid:Integer, key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
 Reads part of data from the storage using the snapshot.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### getd_data(objectKey:Object) -> data:Raw
+#### getd\_data(objectKey:Object) -&gt; data:Raw
 Gets data from DS directly.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### readd(objectKey:Object, offset:Integer, size:Integer) -> data:Raw
+#### readd(objectKey:Object, offset:Integer, size:Integer) -&gt; data:Raw
 Reads part of data from DS directly.
 
 Returns the found data if it success. Otherwise, it returns nil.
 
 
-#### set(key:Raw, data:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+#### set(key:Raw, data:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
 Sets data and attributes to the storage.
 The data is stored on DS, and the attributes are stored on MDS.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
 
 
-#### set_data(key:Raw, data:Raw) -> objectKey:Object
+#### set\_data(key:Raw, data:Raw) -&gt; objectKey:Object
 Sets data to the storage. The data is stored on DS.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
 
 
-#### set_attrs(key:Raw, attributes:Map<Raw,Raw>) -> objectKey:Object
+#### set\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
 Sets attributes to the storage. The attributes is stored on MDS.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
 
 
-#### write(key:Raw, offset:Integer, data:Raw) -> objectKey:Object
+#### write(key:Raw, offset:Integer, data:Raw) -&gt; objectKey:Object
 Writes part of data to the storage.
 
 Returns object key of the stored object if it succeeded. Otherwise, it returns false.
@@ -443,7 +443,7 @@ Removes data and attributes from the storage.
 Returns true if the object is removed. Otherwise, it returns false.
 
 
-#### select(cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+#### select(cols, conds, order, order\_col, limit, skip) -&gt; arrayOfAttributes:Array&lt;Map&lt;Raw,Raw&gt;&gt;
 
     cols:Array<String> or nil
     conds:Array<Condition>
@@ -453,7 +453,7 @@ Returns true if the object is removed. Otherwise, it returns false.
     skip:Integer or nil
 
 
-#### selects(sid, cols, conds, order, order_col, limit, skip) -> arrayOfAttributes:Array<Map<Raw,Raw>>
+#### selects(sid, cols, conds, order, order\_col, limit, skip) -&gt; arrayOfAttributes:Array&lt;Map&lt;Raw,Raw&gt;&gt;
 
 
 

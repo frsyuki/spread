@@ -59,6 +59,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/stat_gw.rb \
 	lib/spread-osd/service/storage.rb \
 	lib/spread-osd/service/storage_dir.rb \
+	lib/spread-osd/service/sync.rb \
 	lib/spread-osd/service/ulog.rb \
 	lib/spread-osd/service/ulog_file.rb \
 	lib/spread-osd/service/ulog_memory.rb \
@@ -66,9 +67,11 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/version.rb \
 	test/01_get_set_remove.rt \
 	test/02_get_set_attrs_data.rt \
-	test/03_read_write.rb \
+	test/03_read_write.rt \
 	test/04_getd_readd.rt \
 	test/05_snapshot.rt \
+	test/06_http_get_set_remove_1.rt \
+	test/07_http_get_set_remove_2.rt \
 	test/chukan.rb \
 	test/common.rb
 
