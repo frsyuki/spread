@@ -59,19 +59,16 @@ class HTTPGatewayService < Service
 	# data/<key>
 	#    sid=i              get=>gets
 	#  get(data/key)                          => get/gets
-	#  put(data/key, data)                    => set
 	# post(data/key, data)                    => set
-	# delete(data/key)                        => remove_data
+	#  put(data/key, data)                    => set
 	def call_data(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
 			http_data_get(env)
 		when 'POST'
-			http_data_get(env)
+			http_data_post(env)
 		when 'PUT'
 			http_data_put(env)
-		when 'DELETE'
-			http_data_delete(env)
 		else
 			return html_response(405, 'Method Not Allowed')
 		end
@@ -117,19 +114,32 @@ class HTTPGatewayService < Service
 		return html_response(202, 'Accepted')
 	end
 
-	def http_data_delete(env)
+	def http_data_post(env)
+		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
+		data = require_str(request, 'data')
+		check_request(request, %w[data])
 
-		# FIXME check_request
+		okey = submit(GWRPCBus, :set_data, key, data)
 
-		removed = submit(GWRPCBus, :remove, key)
-
-		if removed
-			return html_response(200, 'OK')
-		else
-			return html_response(204, 'No Content')
-		end
+		# FIXME return okey?
+		return html_response(200, 'OK')
 	end
+
+	#def http_data_delete(env)
+	#	key = get_key_path_info(env)
+	#
+	#	# FIXME check_request
+	#
+	#	# TODO remove?
+	#	removed = submit(GWRPCBus, :remove_data, key)
+	#
+	#	if removed
+	#		return html_response(200, 'OK')
+	#	else
+	#		return html_response(204, 'No Content')
+	#	end
+	#end
 
 
 	# redirect/<key>
@@ -183,12 +193,16 @@ class HTTPGatewayService < Service
 	#    format=json        json, tsv, msgpack
 	#  get(attrs/key)                         => get/gets_attrs
 	# post(attrs/key, json)                   => set_attrs
+	#  put(attrs/key)                         => set_attrs
+	# TODO delete
 	def call_attrs(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
 			http_attrs_get(env)
 		when 'POST'
-			http_attrs_get(env)
+			http_attrs_post(env)
+		when 'PUT'
+			http_attrs_put(env)
 		else
 			return html_response(405, 'Method Not Allowed')
 		end
@@ -198,7 +212,7 @@ class HTTPGatewayService < Service
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
 		sid    = optional_int(request, 'sid')
-		format = require_str(request, 'format')
+		format = optional_str(request, 'format')
 		format ||= DEFAULT_FORMAT
 		check_request(request, %w[sid format])
 
@@ -228,28 +242,42 @@ class HTTPGatewayService < Service
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
 		attrs  = require_str(request, 'attrs')
-		format = require_str(request, 'format')
+		format = optional_str(request, 'format')
 		format ||= DEFAULT_FORMAT
-		check_request(request, %w[attrs sid format])
+		check_request(request, %w[attrs format])
 
 		attrs = parse_attrs(attrs, format)
+		unless attrs
+			return html_response(400, 'Bad Request', "unknown format `#{format}'")
+		end
 
 		okey = submit(GWRPCBus, :set_attrs, key, attrs)
 
-		if attrs
-			attrs, ct = format_attrs(attrs, format)
-			unless attrs
-				return html_response(400, 'Bad Request', "unknown format `#{format}'")
-			end
-			body = [attrs]
-			[200, {'Content-Type'=>ct}, body]
-		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
-			else
-				return html_response(404, 'Not Found', "key=`#{key}'")
-			end
+		# TODO okey
+		return html_response(200, 'OK')
+	end
+
+	def http_attrs_put(env)
+		request = ::Rack::Request.new(env)
+		key = get_key_path_info(env)
+		format = optional_str(request, 'format')
+		format ||= DEFAULT_FORMAT
+		check_request(request, %w[format])
+
+		if env['HTTP_EXPECT'] == '100-continue'
+			return html_response(417, 'Exception Failed')
 		end
+
+		attrs = env['rack.input'].read
+		attrs = parse_attrs(attrs, format)
+		unless attrs
+			return html_response(400, 'Bad Request', "unknown format `#{format}'")
+		end
+
+		okey = submit(GWRPCBus, :set_attrs, key, attrs)
+
+		# TODO okey
+		return html_response(202, 'Accepted')
 	end
 
 
@@ -325,12 +353,10 @@ class HTTPGatewayService < Service
 		format ||= DEFAULT_FORMAT
 		check_request(request, %w[key sid format])
 
-		attrs = parse_attrs(attrs, format)
-
 		if sid
-			attrs = submit(GWRPCBus, :gets_attrs, sid, key, attrs)
+			attrs = submit(GWRPCBus, :gets_attrs, sid, key)
 		else
-			attrs = submit(GWRPCBus, :get_attrs, key, attrs)
+			attrs = submit(GWRPCBus, :get_attrs, key)
 		end
 
 		if attrs
@@ -352,7 +378,7 @@ class HTTPGatewayService < Service
 	def http_rpc_set(env)
 		request = ::Rack::Request.new(env)
 		key = require_str(request, 'key')
-		attrs = require_str(request, 'attrs')
+		attrs = optional_str(request, 'attrs')
 		if attrs
 			format = optional_str(request, 'format')
 			format ||= DEFAULT_FORMAT
@@ -364,6 +390,9 @@ class HTTPGatewayService < Service
 
 		if attrs
 			attrs = parse_attrs(attrs, format)
+			unless attrs
+				return html_response(400, 'Bad Request', "unknown format `#{format}'")
+			end
 			if data
 				okey = submit(GWRPCBus, :set, key, data, attrs)
 			else
@@ -467,8 +496,12 @@ class HTTPGatewayService < Service
 
 	private
 	def require_str(request, k)
-		# FIXME check error
-		request.POST[k] || request.POST[k]
+		str = request.GET[k] || request.POST[k]
+		unless str
+			# FIXME
+			raise "#{k} is required"
+		end
+		str
 	end
 
 	def require_int(request, k)
@@ -482,7 +515,7 @@ class HTTPGatewayService < Service
 	end
 
 	def optional_str(request, k)
-		request.POST[k] || request.POST[k]
+		request.GET[k] || request.POST[k]
 	end
 
 	def optional_int(request, k)
@@ -521,7 +554,7 @@ class HTTPGatewayService < Service
 			}
 			return r
 		else
-			# FIXME
+			return nil
 		end
 	end
 

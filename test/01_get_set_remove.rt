@@ -61,7 +61,7 @@ test "run normally" do
 			key = keyf % i
 			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'get' do
+			test 'removed get' do
 				data_, attrs_ = c.call(:get, key)
 
 				test_equals nil, data_, 'get data_ is removed'

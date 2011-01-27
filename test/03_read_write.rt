@@ -2,6 +2,9 @@
 $LOAD_PATH << File.dirname(__FILE__)
 require 'common'
 
+# Note: write is removed
+__END__
+
 LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
 SIZE   = (ARGV[1] || 10).to_i
 NUM    = (ARGV[2] || 50).to_i

@@ -33,6 +33,10 @@ end
 require 'chukan'
 require 'msgpack/rpc'
 require 'fileutils'
+require 'json'
+
+require 'net/http'
+Net::HTTP.version_1_2
 
 include Chukan
 include Chukan::Test
@@ -139,6 +143,14 @@ class DSProcess < ServerProcess
 	def join_started
 		stdout_join('start on')
 	end
+
+	def client
+		MessagePack::RPC::Client.new(host, @port)
+	end
+
+	def http_client(path, &block)
+		Net::HTTP.start("127.0.0.1", @http_port, &block)
+	end
 end
 
 class GWProcess < ServerProcess
@@ -160,6 +172,10 @@ class GWProcess < ServerProcess
 
 	def client
 		MessagePack::RPC::Client.new(host, @port)
+	end
+
+	def http_client(&block)
+		Net::HTTP.start("127.0.0.1", @http_port, &block)
 	end
 end
 

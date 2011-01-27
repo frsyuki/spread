@@ -1,0 +1,111 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << File.dirname(__FILE__)
+require 'common'
+
+LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
+SIZE   = (ARGV[1] || 10).to_i
+NUM    = (ARGV[2] || 50).to_i
+
+mds = start_mds
+cs = start_cs
+ds0 = start_ds(0, 0)
+ds1 = start_ds(1, 0)
+ds2 = start_ds(2, 1)
+ds3 = start_ds(3, 1)
+
+cs.show_nodes
+cs.show_version
+
+gw = start_gw
+
+pid = Process.pid
+keyf = "#{pid}-key%d"
+data = "@"*SIZE
+
+test "run normally" do
+	LOOP.times {|o|
+		NUM.times do |i|
+			key = keyf % i
+			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'set_data' do
+				gw.http_client {|http|
+					res = http.post("/rpc/set_data", "key=#{key}&data=#{data}")
+					test_equals "200", res.code, "set_data 200 OK"
+				}
+			end
+
+			test 'set_attrs' do
+				gw.http_client {|http|
+					res = http.post("/rpc/set_attrs", "key=#{key}&attrs=#{JSON.dump(attrs)}")
+					test_equals "200", res.code, "set_data 200 OK"
+				}
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'get_data' do
+				data_ = nil
+
+				gw.http_client {|http|
+					res = http.get("/rpc/get_data?key=#{key}")
+					test_equals "200", res.code, "get_data 200 OK"
+					data_ = res.body
+				}
+
+				test_equals data, data_, 'get_data data_ == data'
+			end
+
+			test "get_attrs" do
+				attrs_ = nil
+
+				gw.http_client {|http|
+					res = http.get("/rpc/get_attrs?key=#{key}")
+					test_equals "200", res.code, "get_attrs 200 OK"
+					attrs_ = JSON.parse(res.body)
+				}
+
+				test_equals attrs, attrs_, 'get_attrs attrs_ == attrs'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test "remove" do
+				gw.http_client {|http|
+					res = http.post('/rpc/remove', "key=#{key}")
+					test_equals "200", res.code, "remove 200 OK"
+				}
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'removed get_data' do
+				gw.http_client {|http|
+					res = http.get("/rpc/get_data?key=#{key}")
+					test_equals "404", res.code, 'get_data 404 Not Found'
+				}
+			end
+
+			test 'removed get_attrs' do
+				gw.http_client {|http|
+					res = http.get("/rpc/get_attrs?key=#{key}")
+					test_equals "404", res.code, 'get_attrs 404 Not Found'
+				}
+			end
+		end
+	}
+end
+
+cs.show_items
+cs.show_stat
+
+term_all(ds0, ds1, ds2, ds3, gw, mds, cs)
+
