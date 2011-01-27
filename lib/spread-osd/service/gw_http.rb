@@ -506,12 +506,8 @@ class HTTPGatewayService < Service
 
 	def require_int(request, k)
 		str = require_str(request, k)
-		if str
-			# FIXME check error
-			str.to_i
-		else
-			nil
-		end
+		# FIXME check error
+		str.to_i
 	end
 
 	def optional_str(request, k)

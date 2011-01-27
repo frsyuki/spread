@@ -106,7 +106,7 @@ class WeightManagerService < WeightService
 
 	private
 	def on_change
-		HeartbeatBus.update_sync_config(CONFIG_SYNC_REPLSET_WEIGHT,
+		SyncBus.update(SYNC_REPLSET_WEIGHT,
 							@winfo, @winfo.get_hash)
 		super
 	end
@@ -121,7 +121,7 @@ class WeightMemberService < WeightService
 	def run
 		super
 
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_REPLSET_WEIGHT,
+		SyncBus.register_callback(SYNC_REPLSET_WEIGHT,
 							@winfo.get_hash) do |obj|
 			@winfo.from_msgpack(obj)
 			on_change

@@ -24,10 +24,7 @@ class CSConfigService < ConfigService
 	attr_accessor :mds_uri
 
 	ebus_connect :ConfigBus,
-		:get_mds_uri => :mds_uri
-
-	ebus_connect :CSRPCBus,
-		:get_mds_uri => :mds_uri
+		:get_initial_mds_uri => :mds_uri
 end
 
 

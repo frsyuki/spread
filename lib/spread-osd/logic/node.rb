@@ -40,7 +40,7 @@ class Node
 	end
 
 	def to_s
-		"Node<#{@nid} #{@address} #{@name.dump} #{@rsids.inspect}>"
+		"Node<#{@nid} #{@address} #{@name.dump} #{@rsids.inspect} #{@location.inspect}>"
 	end
 
 	def ==(o)

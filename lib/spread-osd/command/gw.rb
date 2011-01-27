@@ -46,6 +46,7 @@ require 'spread-osd/service/mds_tt'
 require 'spread-osd/service/gateway'
 require 'spread-osd/service/gateway_ro'
 require 'spread-osd/service/gw_http'
+require 'spread-osd/service/sync'
 require 'spread-osd/service/heartbeat'
 require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
@@ -197,6 +198,7 @@ end
 
 
 ProcessService.init
+SyncClientService.init
 HeartbeatClientService.init
 RoutRobinWeightBalanceService.init
 WeightMemberService.init
@@ -217,13 +219,14 @@ if conf.http_gateway_address
 end
 SnapshotMemberService.init
 GWStatService.init
-MDSSelector.open!
+MDSService.init
 
 log_event_bus
 
 ProcessBus.run
 
-HeartbeatClientService.instance.heartbeat_blocking! rescue nil
+SyncClientService.instance.sync_blocking! rescue nil
+#HeartbeatClientService.instance.heartbeat_blocking! rescue nil
 
 net = ProcessBus.serve_rpc(GWRPCService.instance)
 net.listen(listen_host, listen_port)

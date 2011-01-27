@@ -18,82 +18,50 @@
 module SpreadOSD
 
 
-CONFIG_SYNC_MEMBERSHIP     = 0
-CONFIG_SYNC_FAULT_LIST     = 1
-CONFIG_SYNC_SNAPSHOT       = 2
-CONFIG_SYNC_REPLSET_WEIGHT = 3
-CONFIG_SYNC_MDS_ADDRESS    = 4
-
-
-class HeartbeatBus < Bus
-	call_slot :register_sync_config
-	call_slot :update_sync_config
-end
-
-
 class HeartbeatResponse
-	def initialize(term=nil, sync_data=[])
+	def initialize(term=nil, sync_needed=nil)
 		@term = term
-		@sync_data = sync_data
+		@sync_needed = sync_needed
 	end
 
 	attr_accessor :term
-	attr_accessor :sync_data
+	attr_accessor :sync_needed
 
 	public
 	def to_msgpack(out = '')
-		[@term, @sync_data].to_msgpack(out)
+		[@term, @sync_needed].to_msgpack(out)
 	end
 	def from_msgpack(obj)
 		@term = obj[0]
-		if sync_data = obj[1]
-			@sync_data = sync_data
-		end
+		@sync_needed = obj[1]
 		self
 	end
 end
 
 
 class HeartbeatServerService < Service
-	class Entry
-		def initialize(data, hash)
-			@data = data
-			@hash = hash
-		end
-		attr_reader :data
-		attr_reader :hash
-	end
-
 	def initialize
 		super
 		@syncs = []
 	end
 
-	def update_sync_config(id, data, hash)
-		@syncs[id] = Entry.new(data, hash)
-		nil
-	end
-
-	def rpc_heartbeat(nid, sync_request)
+	def rpc_heartbeat(nid, sync_hash)
 		hbres = HeartbeatResponse.new
 
 		if nid
 			hbres.term = MembershipBus.reset_fault_detector(nid)
 		end
 
-		sync_request.each_with_index {|hash,id|
-			if e = @syncs[id]
-				if e.hash != hash
-					hbres.sync_data[id] = e.data
-				end
+		if sync_hash
+			if SyncBus.check_hash(sync_hash)
+				hbres.sync_needed = false
+			else
+				hbres.sync_needed = true
 			end
-		}
+		end
 
 		hbres
 	end
-
-	ebus_connect :HeartbeatBus,
-		:update_sync_config
 
 	ebus_connect :CSRPCBus,
 		:heartbeat => :rpc_heartbeat
@@ -101,25 +69,8 @@ end
 
 
 class HeartbeatClientService < Service
-	class Entry
-		def initialize(hash, on_update)
-			@hash = hash
-			@on_update = on_update
-		end
-		attr_reader :hash
-		attr_reader :on_update
-	end
-
 	def initialize
-		@syncs_hash = []
-		@syncs_callback = []
 		@heartbeat_nid = nil
-	end
-
-	def register_sync_config(id, initial_hash, &block)
-		@syncs_hash[id] = initial_hash
-		@syncs_callback[id] = block
-		nil
 	end
 
 	def get_cs_session
@@ -131,7 +82,8 @@ class HeartbeatClientService < Service
 	end
 
 	def do_heartbeat
-		get_cs_session.callback(:heartbeat, @heartbeat_nid, @syncs_hash) do |future|
+		sync_hash = SyncBus.get_hash
+		get_cs_session.callback(:heartbeat, @heartbeat_nid, sync_hash) do |future|
 			begin
 				hbres = HeartbeatResponse.new.from_msgpack(future.get)
 				ack_heartbeat(hbres)
@@ -143,25 +95,14 @@ class HeartbeatClientService < Service
 	end
 
 	def ack_heartbeat(hbres)
-		hbres.sync_data.each_with_index {|data,index|
-			if data
-				if callback = @syncs_callback[index]
-					@syncs_hash[index] = callback.call(data)
-				end
-			end
-		}
-
-		# do nothing
-		#if hbres.term
-		#end
+		if hbres.sync_needed
+			SyncBus.try_sync
+		end
 	end
 
 	def heartbeat_blocking!
 		do_heartbeat.join
 	end
-
-	ebus_connect :HeartbeatBus,
-		:register_sync_config
 
 	ebus_connect :ProcessBus,
 		:on_timer

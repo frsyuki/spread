@@ -41,7 +41,7 @@ class DSRPCService < GWRPCService
 
 	def set_direct(okey, data)
 		okey = ObjectKey.new.from_msgpack(okey)
-		#data.force_encoding("ASCII-8BIT")
+		force_binary!(data)
 		dispatch(DSRPCBus, :set_direct, okey, data)
 	end
 
@@ -63,13 +63,13 @@ class DSRPCService < GWRPCService
 
 	#def write_direct(okey, offset, data)
 	#	okey = ObjectKey.new.from_msgpack(okey)
-	#	#data.force_encoding("ASCII-8BIT")
+	#	force_binary!(data)
 	#	dispatch(DSRPCBus, :write_direct, okey, offset, data)
 	#end
 
 	#def append_direct(okey, data)
 	#	okey = ObjectKey.new.from_msgpack(okey)
-	#	#data.force_encoding("ASCII-8BIT")
+	#	force_binary!(data)
 	#	dispatch(DSRPCBus, :append_direct, okey, data)
 	#end
 

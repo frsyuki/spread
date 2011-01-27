@@ -24,6 +24,16 @@ end
 
 
 class RPCService < Service
+	if "".respond_to?(:encoding)
+		def force_binary!(str)
+			str.force_encoding('ASCII-8BIT')
+		end
+	else
+		def force_binary!(str)
+			str
+		end
+	end
+
 	protected
 	def dispatch(bus, name, *args)
 		$log.trace { "rpc: #{name} #{args}" }

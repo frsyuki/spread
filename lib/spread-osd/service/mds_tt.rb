@@ -74,7 +74,7 @@ module SpreadOSD
 #   return selected
 #
 #
-class TokyoTyrantMDSService < MDSService
+class TokyoTyrantMDS < MDS
 	MDSSelector.register(:tt, self)
 
 	DEFAULT_PORT = 1978

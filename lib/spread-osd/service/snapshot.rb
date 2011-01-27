@@ -84,7 +84,7 @@ class SnapshotManagerService < SnapshotService
 	end
 
 	def on_change
-		HeartbeatBus.update_sync_config(CONFIG_SYNC_SNAPSHOT,
+		SyncBus.update(SYNC_SNAPSHOT,
 							@slist, @slist.get_hash)
 		super
 	end
@@ -102,7 +102,7 @@ class SnapshotMemberService < SnapshotService
 	def run
 		super
 
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_SNAPSHOT,
+		SyncBus.register_callback(SYNC_SNAPSHOT,
 							@slist.get_hash) do |obj|
 			@slist.from_msgpack(obj)
 			on_change

@@ -38,12 +38,14 @@ require 'spread-osd/service/stat'
 require 'spread-osd/service/stat_cs'
 require 'spread-osd/service/config'
 require 'spread-osd/service/config_cs'
+require 'spread-osd/service/sync'
 require 'spread-osd/service/heartbeat'
 require 'spread-osd/service/membership'
 require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
 require 'spread-osd/service/master_select'
 require 'spread-osd/service/snapshot'
+require 'spread-osd/service/mds'
 require 'spread-osd/default'
 require 'spread-osd/version'
 require 'spread-osd/log'
@@ -160,10 +162,12 @@ end
 
 
 ProcessService.init
+SyncServerService.init
 HeartbeatServerService.init
 MembershipManagerService.init
 WeightManagerService.init
 SnapshotManagerService.init
+MDSConfigService.init
 CSStatService.init
 
 log_event_bus

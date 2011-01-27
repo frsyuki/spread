@@ -51,6 +51,7 @@ require 'spread-osd/service/mds_tt'
 require 'spread-osd/service/gateway'
 require 'spread-osd/service/gateway_ro'
 require 'spread-osd/service/gw_http'
+require 'spread-osd/service/sync'
 require 'spread-osd/service/heartbeat'
 require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
@@ -282,6 +283,7 @@ end
 
 
 ProcessService.init
+SyncClientService.init
 HeartbeatMemberService.init
 RoutRobinWeightBalanceService.init
 WeightMemberService.init
@@ -308,14 +310,15 @@ SlaveService.init
 DataServerService.init
 DataServerURLService.init
 DSStatService.init
-MDSSelector.open!
+MDSService.init
 
 log_event_bus
 
 ProcessBus.run
 
+SyncClientService.instance.sync_blocking! rescue nil
 MembershipMemberService.instance.register_self_blocking! rescue nil
-HeartbeatMemberService.instance.heartbeat_blocking! rescue nil
+#HeartbeatMemberService.instance.heartbeat_blocking! rescue nil
 
 net = ProcessBus.serve_rpc(DSRPCService.instance)
 net.listen(listen_host, listen_port)

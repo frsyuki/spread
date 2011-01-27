@@ -63,10 +63,10 @@ class NodeList < TSVData
 			if location
 				node.location = location
 			end
-			false
-		else
 			on_change
 			true
+		else
+			false
 		end
 	end
 
@@ -83,7 +83,7 @@ class NodeList < TSVData
 	end
 
 	def to_msgpack(out = '')
-		@map.values.to_msgpack(out)
+		@map.values.sort_by {|node| node.nid }.to_msgpack(out)
 	end
 
 	def from_msgpack(obj)

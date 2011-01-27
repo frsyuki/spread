@@ -28,6 +28,8 @@ def usage
 	puts "   set_weight <rsid> <weight>   set distribution weight"
 	puts "   snapshot                     show snapshot list"
 	puts "   add_snapshot <name>          add a snapshot"
+	puts "   mds                          show MDS uri"
+	puts "   set_mds <URI>                set MDS uri"
 	puts "   items                        show stored number of items"
 	puts "   version                      show software version of nodes"
 	exit 1
@@ -180,6 +182,18 @@ when 'add_snapshot'
 
 	sid = call(nil, :add_snapshot, name)
 	pp sid
+
+when 'mds'
+	cmd_args(0)
+
+	uri = call(nil, :get_mds_uri)
+
+	puts uri
+
+when 'set_mds'
+	uri = cmd_args(1)
+
+	pp call(nil, :set_mds_uri, uri)
 
 when 'stat', 'status'
 	STAT_FORMAT = "%4s %15s %10s %10s %10s %10s %30s"

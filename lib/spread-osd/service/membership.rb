@@ -208,7 +208,7 @@ class MembershipManagerService < MembershipService
 		:recover_node => :rpc_recover_node
 
 	def on_membership_change
-		HeartbeatBus.update_sync_config(CONFIG_SYNC_MEMBERSHIP,
+		SyncBus.update(SYNC_MEMBERSHIP,
 							@membership, @membership.get_hash)
 		super
 	end
@@ -219,7 +219,7 @@ class MembershipManagerService < MembershipService
 	end
 
 	def on_fault_list_change
-		HeartbeatBus.update_sync_config(CONFIG_SYNC_FAULT_LIST,
+		SyncBus.update(SYNC_FAULT_LIST,
 							@fault_list, @fault_list.get_hash)
 		super
 	end
@@ -234,14 +234,14 @@ class MembershipClientService < MembershipService
 	def run
 		super
 
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_MEMBERSHIP,
+		SyncBus.register_callback(SYNC_MEMBERSHIP,
 							@membership.get_hash) do |obj|
 			@membership.from_msgpack(obj)
 			on_membership_change
 			@membership.get_hash
 		end
 
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_FAULT_LIST,
+		SyncBus.register_callback(SYNC_FAULT_LIST,
 							@fault_list.get_hash) do |obj|
 			@fault_list.from_msgpack(obj)
 			on_fault_list_change

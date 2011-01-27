@@ -19,9 +19,6 @@ module SpreadOSD
 
 
 class MDSBus < Bus
-	call_slot :open
-	call_slot :close
-
 	# @return
 	#   found: ObjectKey
 	#   not found: nil
@@ -53,40 +50,105 @@ class MDSBus < Bus
 end
 
 
-=begin
-# TODO
 class MDSConfigService < Service
 	def run
-		@uri = ConfigBus.get_mds_uri
+		@uri = ConfigBus.get_initial_mds_uri
+		on_change
 	end
-end
 
+	def rpc_get_mds_uri
+		@uri
+	end
 
-class MDSConfigService < Service
+	def rpc_set_mds_uri(uri)
+		@uri = uri
+		on_change
+		nil
+	end
+
+	def self.hash_uri(uri)
+		Digest::SHA1.digest(uri)
+	end
+
 	def on_change
-		HeartbeatBus.update_sync_config(CONFIG_SYNC_SNAPSHOT,
-							@slist, @slist.get_hash)
+		SyncBus.update(SYNC_MDS_URI,
+							@uri, MDSConfigService.hash_uri(@uri))
 	end
+
+	ebus_connect :ProcessBus,
+		:run
+
+	ebus_connect :CSRPCBus,
+		:get_mds_uri => :rpc_get_mds_uri,
+		:set_mds_uri => :rpc_set_mds_uri
 end
 
 
-class MDSSelectorService < Service
+class MDSService < Service
 	def initialize
+		@uri = ""
+		@mds = nil
 	end
 
 	def run
-		HeartbeatBus.register_sync_config(CONFIG_SYNC_SNAPSHOT,
-							@slist.get_hash) do |obj|
-			@slist.from_msgpack(obj)
-			on_change
-			@slist.get_hash
+		SyncBus.register_callback(SYNC_MDS_URI,
+							MDSConfigService.hash_uri(@uri)) do |obj|
+			uri = obj
+			reopen(uri)
+			@uri = uri
+			MDSConfigService.hash_uri(@uri)
 		end
 	end
 
-	def open!
+	def shutdown
+		if @mds
+			@mds.close rescue nil
+		end
 	end
+
+	def reopen(uri)
+		klass, expr = MDSSelector.select_class(uri)
+
+		mds = klass.new
+		mds.open(expr)
+
+		old_mds = @mds
+		@mds = mds
+
+		if old_mds
+			begin
+				old_mds.close
+			rescue
+				$log.error "MDS close error: #{$!}"
+				$log.error $!.backtrace.pretty_inspect
+			end
+		end
+	end
+
+	ebus_connect :ProcessBus,
+		:run,
+		:shutdown
+
+	ebus_connect :MDSBus,
+		:get_okey,
+		:get_attrs,
+		:get_okey_attrs,
+		:set_okey,
+		:set_okey_attrs,
+		:remove,
+		:select
+
+	extend Forwardable
+
+	def_delegators :@mds,
+		:get_okey,
+		:get_attrs,
+		:get_okey_attrs,
+		:set_okey,
+		:set_okey_attrs,
+		:remove,
+		:select
 end
-=end
 
 
 module MDSSelector
@@ -113,31 +175,10 @@ module MDSSelector
 
 		return klass, expr
 	end
-
-	def self.select!(uri)
-		klass, expr = select_class(uri)
-		klass.bind!
-
-		MDSBus.open(expr)
-	end
-
-	def self.reselect!(uri)
-		klass, expr = select_class(uri)
-		MDSBus.ebus_disconnect!
-		klass.bind!
-
-		MDSBus.open(expr)
-	end
-
-	def self.open!
-		cs_address = ConfigBus.get_cs_address
-		uri = ProcessBus.get_session(cs_address).call(:get_mds_uri)
-		select!(uri)
-	end
 end
 
 
-class MDSService < Service
+class MDS
 	module Query
 		QC_EQ                = 0
 		QC_NOT_EQ            = 1
@@ -182,24 +223,6 @@ class MDSService < Service
 	def select(cols, conds, order, order_col, limit, skip, sid=nil)
 		raise "select is not supported on MDS"
 	end
-
-	ebus_connect :MDSBus,
-		:get_okey,
-		:get_attrs,
-		:get_okey_attrs,
-		:set_okey,
-		:set_okey_attrs,
-		:remove,
-		:select,
-		:open,
-		:close
-
-	def shutdown
-		MDSBus.close
-	end
-
-	ebus_connect :ProcessBus,
-		:shutdown
 
 	protected
 	def new_okey(key, sid=get_current_sid, rsid=nil)

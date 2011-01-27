@@ -88,12 +88,12 @@ class GWRPCService < RPCService
 
 
 	def set(key, data, attrs)
-		#data.force_encoding("ASCII-8BIT")
+		force_binary!(data)
 		dispatch(GWRPCBus, :set, key, data, attrs)
 	end
 
 	def set_data(key, data)
-		#data.force_encoding("ASCII-8BIT")
+		force_binary!(data)
 		dispatch(GWRPCBus, :set_data, key, data)
 	end
 
@@ -103,7 +103,7 @@ class GWRPCService < RPCService
 
 
 	#def write(key, offset, data)
-	#	#data.force_encoding("ASCII-8BIT")
+	#	force_binary!(data)
 	#	dispatch(GWRPCBus, :write, key, offset, data)
 	#end
 
@@ -112,7 +112,7 @@ class GWRPCService < RPCService
 	#end
 
 	#def append(key, data)
-	#	#data.force_encoding("ASCII-8BIT")
+	#	force_binary!(data)
 	#	dispatch(GWRPCBus, :append, key, data)
 	#end
 

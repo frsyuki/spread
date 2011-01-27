@@ -33,7 +33,7 @@ class ConfigBus < Bus
 	call_slot :get_weight_path
 	call_slot :get_snapshot_path
 
-	call_slot :get_mds_uri
+	call_slot :get_initial_mds_uri
 
 	call_slot :http_redirect_port
 	call_slot :http_redirect_path_format

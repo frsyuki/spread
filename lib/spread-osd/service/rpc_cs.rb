@@ -20,7 +20,9 @@ module SpreadOSD
 
 class CSRPCBus < Bus
 	call_slot :get_mds_uri
+	call_slot :set_mds_uri
 	call_slot :heartbeat
+	call_slot :sync_config
 	call_slot :add_node
 	call_slot :remove_node
 	call_slot :update_node_info
@@ -36,8 +38,21 @@ class CSRPCService < RPCService
 		dispatch(CSRPCBus, :get_mds_uri)
 	end
 
-	def heartbeat(nid=nil, sync_request)
-		dispatch(CSRPCBus, :heartbeat, nid, sync_request)
+	def set_mds_uri(uri)
+		force_binary!(uri)
+		dispatch(CSRPCBus, :set_mds_uri, uri)
+	end
+
+	def heartbeat(nid=nil, sync_hash)
+		force_binary!(sync_hash) if sync_hash
+		dispatch(CSRPCBus, :heartbeat, nid, sync_hash)
+	end
+
+	def sync_config(hash_array)
+		hash_array = hash_array.map {|str|
+			force_binary!(str) if str
+		}
+		dispatch(CSRPCBus, :sync_config, hash_array)
 	end
 
 	def add_node(nid, address, name, rsids, self_location)
