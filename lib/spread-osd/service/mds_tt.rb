@@ -18,6 +18,18 @@
 module SpreadOSD
 
 
+# single node:
+#   tt:host1:port1
+#
+# master-slave:
+#   tt:host1:port1,host2:port2
+#
+# master-slave with read weight:
+#   tt:host1:port1,host2:port2;0,1
+#
+# dual-master:
+#   tt:host1:port1--host2:port2
+#
 class TokyoTyrantMDS < MDS
 	MDSSelector.register(:tt, self)
 
@@ -35,13 +47,169 @@ class TokyoTyrantMDS < MDS
 
 	RDBQRY = TokyoTyrant::RDBQRY
 
-	FATAL_ERROR = [
-		TokyoTyrant::RDB::EINVALID,
-		TokyoTyrant::RDB::ENOHOST,
-		TokyoTyrant::RDB::EREFUSED,
-		TokyoTyrant::RDB::ESEND,
-		TokyoTyrant::RDB::ERECV
-	]
+	class HARDB
+		DEFAULT_WEIGHT = 10
+
+		FATAL_ERROR = [
+			TokyoTyrant::RDB::EINVALID,
+			TokyoTyrant::RDB::ENOHOST,
+			TokyoTyrant::RDB::EREFUSED,
+			TokyoTyrant::RDB::ESEND,
+			TokyoTyrant::RDB::ERECV,
+			TokyoTyrant::RDB::EMISC  # FIXME misc?
+		]
+
+		def initialize(expr)
+			@dbmap = {}    # {Address => TokyoTyrant::RDB}
+			@writers = []  # [Address]
+			@chains = []   # [Chain]
+
+			all_addrs = []
+
+			expr.split('--').each {|chain|
+				nodes, weights = chain.strip.split(';',2)
+
+				addrs = nodes.strip.split(',').map {|node|
+					host, port = node.split(':',2)
+					port ||= DEFAULT_PORT
+					port = port.to_i
+					host.strip!
+					Address.new(host, port)
+				}
+
+				weights = (weights||"").strip.split(',').map {|x| x.to_i }
+
+				@writers << addrs.first
+				@chains << Chain.new(addrs, weights)
+
+				all_addrs.concat(addrs)
+
+				$log.info "TokyoTyrant MDS -- #{addrs.join(',')}"
+			}
+
+			if all_addrs.empty?
+				raise "empty expression"
+			end
+
+			all_addrs.uniq.each {|addr|
+				@dbmap[addr] = open_rdb(addr)
+			}
+
+		rescue
+			raise "TokyoTyrant MDS: invlaid address expression: #{$!}"
+		end
+
+		def write(key, &block)
+			addrs = writer_addrs(key)
+			ha_call(addrs) {|rdb|
+				block.call(rdb)
+			}
+		end
+
+		def read(key, &block)
+			addrs = reader_addrs(key)
+			ha_call(addrs) {|rdb|
+				block.call(rdb)
+			}
+		end
+
+		def close
+			@dbmap.each_pari {|addr,rdb|
+				rdb.close rescue nil
+			}
+		end
+
+		private
+		class Chain
+			def initialize(addrs, weights)
+				@rr = 0
+				@array = []
+				if addrs.size == 1
+					@array = [addrs[0]]
+				else
+					addrs.each_with_index {|addr,i|
+						weight = weight[i] || DEFAULT_WEIGHT
+						weight.times {
+							@array << addr
+						}
+					}
+					#@array = array.sort_by {|addr| @random.rand }
+					@array = array.sort_by {|addr| rand }
+				end
+			end
+
+			attr_reader :array
+
+			def next_rr
+				@rr += 1
+				@rr = 0 if @rr >= @array.size
+				return @rr
+			end
+		end
+
+		def ha_call(addrs, &block)
+			while true
+				addr = addrs.shift
+				rdb = @dbmap[addr]
+				if ensure_rdb(rdb, rdb)
+					result = block.call(rdb)
+					unless FATAL_ERROR.include?(rdb.ecode)
+						return result
+					end
+				end
+				if addrs.empty?
+					raise "TokyoTyrant MDS error: #{rdb.errmsg(rdb.ecode)}"
+				end
+			end
+		end
+
+		def reader_addrs(key)
+			if @chains.size == 1
+				chain = @chains[0]
+			else
+				h = hash(key)
+				chain = @chains[h % @chains.size]
+			end
+			return rotate(chain.array, chain.next_rr)
+		end
+
+		def writer_addrs(key)
+			if @writers.size == 1
+				return @writers.dup
+			end
+			n = hash(key) % @writers.size
+			return rotate(@writers, n)
+		end
+
+		def hash(key)
+			digest = Digest::MD5.digest(key)
+			digest.unpack('C')[0]
+		end
+
+		def rotate(array, n)
+			return array[-n,n] + array[0, array.size-n]
+		end
+
+		def open_rdb(addr)
+			rdb = TokyoTyrant::RDBTBL.new
+			rdb.instance_eval("@enc = 'ASCII-8BIT'")  # FIXME
+			unless rdb.open(*addr)
+				$log.warn "failed to connect TokyoTyrant MDS: #{addr}"
+			end
+			rdb
+		end
+
+		def ensure_rdb(rdb, addr)
+			if FATAL_ERROR.include?(rdb.ecode)
+				rdb.close rescue nil
+				rdb.open(*addr)
+			end
+			return rdb
+		rescue
+			return nil
+		end
+	end
+
 
 	def initialize
 		@random = Random.new
@@ -49,26 +217,11 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def open(expr)
-		@rdb = TokyoTyrant::RDBTBL.new
-		@rdb.instance_eval("@enc = 'ASCII-8BIT'")  # FIXME
-		@host, @port = expr.split(':', 2)
-		@port ||= DEFAULT_PORT
-		unless @rdb.open(@host, @port)
-			raise "failed to open TokyoTyrant MDS: #{errmsg}"
-		end
+		@hardb = HARDB.new(expr)
 	end
 
 	def close
-		@rdb.close
-	end
-
-	def try_reopen
-		if FATAL_ERROR.include?(@rdb.ecode)
-			@rdb.close rescue nil
-			@rdb.open(@host, @port)
-		end
-	rescue
-		nil
+		@hardb.close
 	end
 
 	def get_okey(key, version=nil, &cb)
@@ -146,10 +299,8 @@ class TokyoTyrantMDS < MDS
 
 			# insert
 			pk = new_pk(map[COL_PK])
-			unless @rdb.put(pk, to_map({}, okey, nil, true))
-				try_reopen
-				raise "putcat failed: #{errmsg}"
-			end
+			map = to_map({}, okey, nil, true)
+			@hardb.write(key) {|rdb| rdb.put(pk, map) }
 
 			okey = to_okey(map)
 			cb.call(okey, nil)
@@ -163,10 +314,6 @@ class TokyoTyrantMDS < MDS
 	end
 
 	private
-	def errmsg
-		@rdb.errmsg(@rdb.ecode)
-	end
-
 	def to_okey(map)
 		key = map[COL_KEY]
 		rsid = map[COL_RSID].to_i
@@ -204,15 +351,16 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def get_impl_head(key, cols=nil)
-		qry = RDBQRY.new(@rdb)
-		qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
-		qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
-		qry.setlimit(1)
-		array = qry.searchget(cols)
-		map = array[0]
+		map = @hardb.read(key) {|rdb|
+			qry = RDBQRY.new(rdb)
+			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
+			qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
+			qry.setlimit(1)
+			array = qry.searchget(cols)
+			array[0]
+		}
 
 		if map == nil
-			try_reopen
 			return nil
 		elsif !is_valid_map(map)
 			return nil
@@ -222,16 +370,17 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def get_impl_vname(key, vname, cols=nil)
-		qry = RDBQRY.new(@rdb)
-		qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
-		qry.addcond(COL_VNAME, RDBQRY::QCSTREQ, vname)
-		qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
-		qry.setlimit(1)
-		array = qry.searchget(cols)
-		map = array[0]
+		map = @hardb.read(key) {|rdb|
+			qry = RDBQRY.new(rdb)
+			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
+			qry.addcond(COL_VNAME, RDBQRY::QCSTREQ, vname)
+			qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
+			qry.setlimit(1)
+			array = qry.searchget(cols)
+			array[0]
+		}
 
 		if map == nil
-			try_reopen
 			return nil
 		elsif !is_valid_map(map)
 			return nil
@@ -241,16 +390,17 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def get_impl_vtime(key, vtime, cols)
-		qry = RDBQRY.new(@rdb)
-		qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
-		qry.addcond(COL_VTIME, RDBQRY::QCNUMLE, vtime.to_s)
-		qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
-		qry.setlimit(1)
-		array = qry.searchget(cols)
-		map = array[0]
+		map = @hardb.read(key) {|rdb|
+			qry = RDBQRY.new(rdb)
+			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
+			qry.addcond(COL_VTIME, RDBQRY::QCNUMLE, vtime.to_s)
+			qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
+			qry.setlimit(1)
+			array = qry.searchget(cols)
+			array[0]
+		}
 
 		if map == nil
-			try_reopen
 			return nil
 		elsif !is_valid_map(map)
 			return nil
@@ -316,24 +466,18 @@ class TokyoTyrantMDS < MDS
 
 			# insert
 			pk = new_pk(map[COL_PK])
-			unless @rdb.put(pk, to_map(attrs, okey, vname))
-				try_reopen
-				raise "put failed #{errmsg}"
-			end
+			map = to_map(attrs, okey, vname)
+			@hardb.write(key) {|rdb| rdb.put(pk, map) }
 
 		else
-			try_reopen
-
 			attrs ||= {}
 
 			okey = new_okey(key)
 
 			# insert
 			pk = new_pk()
-			unless @rdb.put(pk, to_map(attrs, okey, vname))
-				try_reopen
-				raise "put failed #{errmsg}"
-			end
+			map = to_map(attrs, okey, vname)
+			@hardb.write(key) {|rdb| rdb.put(pk, map) }
 		end
 
 		return okey
@@ -356,10 +500,7 @@ class TokyoTyrantMDS < MDS
 
 			# update
 			pk = map.delete(COL_PK)
-			unless @rdb.put(pk, map)
-				try_reopen
-				raise "put failed #{errmsg}"
-			end
+			@hardb.write(key) {|rdb| rdb.put(pk, map) }
 
 			return okey
 
@@ -402,6 +543,12 @@ class TokyoTyrantMDS < MDS
 		raw = [raw].pack('m')
 		raw.gsub!(/[\n\=]+/,'')
 		raw
+	end
+
+	def ha_query(&block)
+	end
+
+	def ha_put(pk, map)
 	end
 end
 
