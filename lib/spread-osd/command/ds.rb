@@ -65,6 +65,7 @@ require 'spread-osd/service/storage_dir'
 require 'spread-osd/service/ulog'
 require 'spread-osd/service/ulog_file'
 require 'spread-osd/service/ulog_memory'
+require 'spread-osd/service/time_check'
 require 'spread-osd/default'
 require 'spread-osd/version'
 require 'spread-osd/log'
@@ -304,12 +305,13 @@ DataServerService.init
 DataServerURLService.init
 DSStatService.init
 MDSService.init
+TimeCheckService.init
 
 log_event_bus
 
 ProcessBus.run
 
-# FIXME compare UNIX time with CS and show warning if it is not correct
+TimeCheckService.instance.check_blocking! rescue nil
 SyncClientService.instance.sync_blocking! rescue nil
 MembershipMemberService.instance.register_self_blocking! rescue nil
 #HeartbeatMemberService.instance.heartbeat_blocking! rescue nil
