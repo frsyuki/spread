@@ -19,16 +19,16 @@ module SpreadOSD
 
 
 # single node:
-#   tt:host1:port1
+#   host1:port1
 #
 # master-slave:
-#   tt:host1:port1,host2:port2
+#   host1:port1,host2:port2
 #
 # master-slave with read weight:
-#   tt:host1:port1,host2:port2;0,1
+#   host1:port1,host2:port2;0,1
 #
 # dual-master:
-#   tt:host1:port1--host2:port2
+#   host1:port1--host2:port2
 #
 class TokyoTyrantMDS < MDS
 	MDSSelector.register(:tt, self)
@@ -56,18 +56,17 @@ class TokyoTyrantMDS < MDS
 			TokyoTyrant::RDB::EREFUSED,
 			TokyoTyrant::RDB::ESEND,
 			TokyoTyrant::RDB::ERECV,
-			TokyoTyrant::RDB::EMISC  # FIXME misc?
+			TokyoTyrant::RDB::EMISC
 		]
 
 		def initialize(expr)
-			@dbmap = {}    # {Address => TokyoTyrant::RDB}
-			@writers = []  # [Address]
-			@chains = []   # [Chain]
+			@dbmap = {}     # {Address => TokyoTyrant::RDB}
+			@writers = []   # [Address]
+			@readers = []   # [Address]
+			@readers_rr = 0
 
-			all_addrs = []
-
-			expr.split('--').each {|chain|
-				nodes, weights = chain.strip.split(';',2)
+			expr.split('--').each {|line|
+				nodes, weights = line.strip.split(';',2)
 
 				addrs = nodes.strip.split(',').map {|node|
 					host, port = node.split(':',2)
@@ -80,35 +79,58 @@ class TokyoTyrantMDS < MDS
 				weights = (weights||"").strip.split(',').map {|x| x.to_i }
 
 				@writers << addrs.first
-				@chains << Chain.new(addrs, weights)
 
-				all_addrs.concat(addrs)
+				addrs.each_with_index {|addr,i|
+					weight = weights[i] ||= DEFAULT_WEIGHT
+					weight.times {
+						@readers << addr
+					}
+					@dbmap[addr] = nil
+				}
 
-				$log.info "TokyoTyrant MDS -- #{addrs.join(',')}"
+				$log.info "TokyoTyrant MDS -- #{addrs.join(',')};#{weights.join(',')}"
 			}
 
-			if all_addrs.empty?
+			if @dbmap.empty?
 				raise "empty expression"
 			end
 
-			all_addrs.uniq.each {|addr|
+			if @dbmap.size == 1
+				# single node
+				@readers = [@readers[0]]
+			else
+				@readers = @readers.sort_by {|addr| rand }
+			end
+
+			# open remote database
+			@dbmap.keys.each {|addr|
 				@dbmap[addr] = open_rdb(addr)
 			}
 
 		rescue
+			@dbmap.each_pair {|addr,rdb|
+				if rdb
+					rdb.close rescue nil
+				end
+			}
 			raise "TokyoTyrant MDS: invlaid address expression: #{$!}"
 		end
 
 		def write(key, &block)
-			addrs = writer_addrs(key)
-			ha_call(addrs) {|rdb|
+			if @writers.size == 1
+				n = 0
+			else
+				n = hash_key(key) % @writers.size
+			end
+			ha_call(@writers, n) {|rdb|
 				block.call(rdb)
 			}
 		end
 
 		def read(key, &block)
-			addrs = reader_addrs(key)
-			ha_call(addrs) {|rdb|
+			@readers_rr += 1
+			@readers_rr = 0 if @readers_rr >= @readers.size
+			ha_call(@readers, @readers_rr) {|rdb|
 				block.call(rdb)
 			}
 		end
@@ -120,74 +142,30 @@ class TokyoTyrantMDS < MDS
 		end
 
 		private
-		class Chain
-			def initialize(addrs, weights)
-				@rr = 0
-				@array = []
-				if addrs.size == 1
-					@array = [addrs[0]]
-				else
-					addrs.each_with_index {|addr,i|
-						weight = weight[i] || DEFAULT_WEIGHT
-						weight.times {
-							@array << addr
-						}
-					}
-					#@array = array.sort_by {|addr| @random.rand }
-					@array = array.sort_by {|addr| rand }
-				end
-			end
-
-			attr_reader :array
-
-			def next_rr
-				@rr += 1
-				@rr = 0 if @rr >= @array.size
-				return @rr
-			end
-		end
-
-		def ha_call(addrs, &block)
-			while true
-				addr = addrs.shift
-				rdb = @dbmap[addr]
-				if ensure_rdb(rdb, rdb)
-					result = block.call(rdb)
-					unless FATAL_ERROR.include?(rdb.ecode)
-						return result
-					end
-				end
-				if addrs.empty?
-					raise "TokyoTyrant MDS error: #{rdb.errmsg(rdb.ecode)}"
-				end
-			end
-		end
-
-		def reader_addrs(key)
-			if @chains.size == 1
-				chain = @chains[0]
-			else
-				h = hash(key)
-				chain = @chains[h % @chains.size]
-			end
-			return rotate(chain.array, chain.next_rr)
-		end
-
-		def writer_addrs(key)
-			if @writers.size == 1
-				return @writers.dup
-			end
-			n = hash(key) % @writers.size
-			return rotate(@writers, n)
-		end
-
-		def hash(key)
+		def hash_key(key)
 			digest = Digest::MD5.digest(key)
 			digest.unpack('C')[0]
 		end
 
-		def rotate(array, n)
-			return array[-n,n] + array[0, array.size-n]
+		def ha_call(array, idx, &block)
+			rdb = nil
+			failed = []
+			sz = array.size
+			sz.times {
+				addr = array[idx % sz]
+				unless failed.include?(addr)
+					rdb = @dbmap[addr]
+					if ensure_rdb(rdb, addr)
+						result = block.call(rdb)
+						unless FATAL_ERROR.include?(rdb.ecode)
+							return result
+						end
+						failed << addr
+					end
+				end
+				idx += 1
+			}
+			raise "TokyoTyrant MDS error: #{rdb.errmsg(rdb.ecode)}"
 		end
 
 		def open_rdb(addr)
@@ -543,12 +521,6 @@ class TokyoTyrantMDS < MDS
 		raw = [raw].pack('m')
 		raw.gsub!(/[\n\=]+/,'')
 		raw
-	end
-
-	def ha_query(&block)
-	end
-
-	def ha_put(pk, map)
 	end
 end
 
