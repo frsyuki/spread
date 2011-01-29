@@ -23,7 +23,6 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/logic/membership.rb \
 	lib/spread-osd/logic/node.rb \
 	lib/spread-osd/logic/okey.rb \
-	lib/spread-osd/logic/snapshot.rb \
 	lib/spread-osd/logic/tsv_data.rb \
 	lib/spread-osd/logic/weight.rb \
 	lib/spread-osd/service/balance.rb \
@@ -35,6 +34,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/config_gw.rb \
 	lib/spread-osd/service/data_client.rb \
 	lib/spread-osd/service/data_server.rb \
+	lib/spread-osd/service/data_server_url.rb \
 	lib/spread-osd/service/gateway.rb \
 	lib/spread-osd/service/gateway_ro.rb \
 	lib/spread-osd/service/gw_http.rb \
@@ -52,7 +52,6 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/rts_file.rb \
 	lib/spread-osd/service/rts_memory.rb \
 	lib/spread-osd/service/slave.rb \
-	lib/spread-osd/service/snapshot.rb \
 	lib/spread-osd/service/stat.rb \
 	lib/spread-osd/service/stat_cs.rb \
 	lib/spread-osd/service/stat_ds.rb \
@@ -60,18 +59,21 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/storage.rb \
 	lib/spread-osd/service/storage_dir.rb \
 	lib/spread-osd/service/sync.rb \
+	lib/spread-osd/service/time_check.rb \
 	lib/spread-osd/service/ulog.rb \
 	lib/spread-osd/service/ulog_file.rb \
 	lib/spread-osd/service/ulog_memory.rb \
 	lib/spread-osd/service/weight.rb \
 	lib/spread-osd/version.rb \
-	test/01_get_set_remove.rt \
-	test/02_get_set_attrs_data.rt \
-	test/03_read_write.rt \
-	test/04_getd_readd.rt \
-	test/05_snapshot.rt \
+	test/01_add_get_remove.rt \
+	test/02_read.rt \
+	test/03_getd_readd.rt \
+	test/04_version_time.rt \
+	test/05_version_name.rt \
 	test/06_http_get_set_remove_1.rt \
 	test/07_http_get_set_remove_2.rt \
+	test/08_read_only_time.rt \
+	test/09_read_only_name.rt \
 	test/chukan.rb \
 	test/common.rb
 
