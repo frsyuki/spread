@@ -26,7 +26,6 @@ require 'spread-osd/logic/tsv_data'
 require 'spread-osd/logic/weight'
 require 'spread-osd/logic/fault_detector'
 require 'spread-osd/logic/membership'
-require 'spread-osd/logic/snapshot'
 require 'spread-osd/logic/node'
 require 'spread-osd/logic/okey'
 require 'spread-osd/service/base'
@@ -44,7 +43,6 @@ require 'spread-osd/service/membership'
 require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
 require 'spread-osd/service/master_select'
-require 'spread-osd/service/snapshot'
 require 'spread-osd/service/mds'
 require 'spread-osd/default'
 require 'spread-osd/version'
@@ -112,10 +110,6 @@ op.on('--weight_store PATH', "path to weight status file") do |path|
 	conf.weight_path = path
 end
 
-op.on('--snapshot_store PATH', "path to snapshot status file") do |path|
-	conf.snapshot_path = path
-end
-
 op.on('-v', '--verbose', "show debug messages", TrueClass) do |b|
 	$log.level = 1 if b
 end
@@ -152,10 +146,6 @@ begin
 		conf.weight_path = File.join(store_path, "weight")
 	end
 
-	if !conf.snapshot_path && store_path
-		conf.snapshot_path = File.join(store_path, "snapshot")
-	end
-
 rescue
 	usage $!.to_s
 end
@@ -166,7 +156,6 @@ SyncServerService.init
 HeartbeatServerService.init
 MembershipManagerService.init
 WeightManagerService.init
-SnapshotManagerService.init
 MDSConfigService.init
 CSStatService.init
 

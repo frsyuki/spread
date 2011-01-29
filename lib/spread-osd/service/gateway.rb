@@ -20,23 +20,61 @@ module SpreadOSD
 
 class GatewayService < Service
 	def rpc_get(key)
-		rpc_gets(nil, key)
+		rpc_get_impl(nil, key)
 	end
 
 	def rpc_get_data(key)
-		rpc_gets_data(nil, key)
+		rpc_get_data_impl(nil, key)
 	end
 
 	def rpc_get_attrs(key)
-		rpc_gets_attrs(nil, key)
+		rpc_get_attrs_impl(nil, key)
+	end
+
+	def rpc_read(key, offset, size)
+		rpc_read_impl(nil, key, offset, size)
 	end
 
 
-	def rpc_gets(sid, key)
+	def rpc_gett(vtime, key)
+		rpc_get_impl(vtime, key)
+	end
+
+	def rpc_gett_data(vtime, key)
+		rpc_get_data_impl(vtime, key)
+	end
+
+	def rpc_gett_attrs(vtime, key)
+		rpc_get_attrs_impl(vtime, key)
+	end
+
+	def rpc_readt(vtime, key, offset, size)
+		rpc_read_impl(vtime, key, offset, size)
+	end
+
+
+	def rpc_getv(vname, key)
+		rpc_get_impl(vname, key)
+	end
+
+	def rpc_getv_data(vname, key)
+		rpc_get_data_impl(vname, key)
+	end
+
+	def rpc_getv_attrs(vname, key)
+		rpc_get_attrs_impl(vname, key)
+	end
+
+	def rpc_readv(vname, key, offset, size)
+		rpc_read_impl(vname, key, offset, size)
+	end
+
+
+	def rpc_get_impl(version, key)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.get_okey_attrs(key, sid) {|(okey,attrs),error|
+		MDSBus.get_okey_attrs(key, version) {|(okey,attrs),error|
 			if error
-				$log.warn("failed to get a key or attributes from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to get a key or attributes from MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
@@ -55,11 +93,11 @@ class GatewayService < Service
 		ar
 	end
 
-	def rpc_gets_data(sid, key)
+	def rpc_get_data_impl(version, key)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.get_okey(key, sid) {|okey,error|
+		MDSBus.get_okey(key, version) {|okey,error|
 			if error
-				$log.warn("failed to get a key from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to get a key from MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
@@ -78,11 +116,11 @@ class GatewayService < Service
 		ar
 	end
 
-	def rpc_gets_attrs(sid, key)
+	def rpc_get_attrs_impl(version, key)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.get_attrs(key, sid) {|attrs,error|
+		MDSBus.get_attrs(key, version) {|attrs,error|
 			if error
-				$log.warn("failed to get attributes from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to get attributes from MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif attrs
@@ -94,22 +132,17 @@ class GatewayService < Service
 		ar
 	end
 
-
-	def rpc_read(key, offset, size)
-		rpc_reads(nil, key, offset, size)
-	end
-
-	def rpc_reads(sid, key, offset, size)
+	def rpc_read_impl(version, key, offset, size)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.get_okey(key, sid) {|okey,error|
+		MDSBus.get_okey(key, version) {|okey,error|
 			if error
-				$log.warn("failed to get a key from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to get a key from MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
 				DataClientBus.read(okey, offset, size) {|data,error|
 					if error
-						$log.warn("failed to get data from DS: key=#{key.dump}: #{error} rsid=#{okey.rsid}")
+						$log.warn("failed to get data from DS: key=#{key.inspect}: #{error} rsid=#{okey.rsid}")
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
 					data ||= ""
@@ -152,11 +185,29 @@ class GatewayService < Service
 	end
 
 
-	def rpc_set(key, data, attrs)
+	def rpc_add(key, data, attrs)
+		rpc_add_impl(nil, key, data, attrs)
+	end
+
+	def rpc_add_data(key, data)
+		rpc_add_impl(nil, key, data, {})
+	end
+
+
+	def rpc_addv(vname, key, data, attrs)
+		rpc_add_impl(vname, key, data, attrs)
+	end
+
+	def rpc_addv_data(vname, key, data)
+		rpc_add_impl(vname, key, data, {})
+	end
+
+
+	def rpc_add_impl(vname, key, data, attrs)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.set_okey_attrs(key, attrs) {|okey,error|
+		MDSBus.add(key, attrs, vname) {|okey,error|
 			if error
-				$log.warn("failed to set a key or attributes to MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to set a key or attributes to MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			else
@@ -172,33 +223,12 @@ class GatewayService < Service
 		ar
 	end
 
-	def rpc_set_data(key, data)
-		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.set_okey(key) {|okey,error|
-			if error
-				$log.warn("failed to set a key to MDS: key=#{key.dump}: #{error}")
-				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-				ar.error(error.to_s)
-			else
-				DataClientBus.set(okey, data) {|_,error|
-					if error
-						$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
-						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-						ar.error(error.to_s)
-					else
-						ar.result(okey)
-					end
-				}
-			end
-		}
-		ar
-	end
 
-	def rpc_set_attrs(key, attrs)
+	def rpc_update_attrs(key, attrs)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.set_okey_attrs(key, attrs) {|okey,error|
+		MDSBus.update_attrs(key, attrs) {|okey,error|
 			if error
-				$log.warn("failed to set a key or attributes to MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to set a key or attributes to MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			else
@@ -209,56 +239,11 @@ class GatewayService < Service
 	end
 
 
-	#def rpc_append(key, data)
-	#	ar = MessagePack::RPC::AsyncResult.new
-	#	MDSBus.set_okey(key) {|okey,error|
-	#		if error
-	#			$log.warn("failed to set a key to MDS: key=#{key.dump}: #{error}")
-	#			$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-	#			ar.error(error.to_s)
-	#		else
-	#			DataClientBus.append(okey, offset, data) {|_,error|
-	#				if error
-	#					$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
-	#					$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-	#					ar.error(error.to_s)
-	#				else
-	#					ar.result(okey)
-	#				end
-	#			}
-	#		end
-	#	}
-	#	ar
-	#end
-
-	#def rpc_resize(key, size)
-	#	ar = MessagePack::RPC::AsyncResult.new
-	#	MDSBus.set_okey(key) {|okey,error|
-	#		if error
-	#			$log.warn("failed to set a data to DS: key=#{key.dump}: #{error}")
-	#			$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-	#			ar.error(error.to_s)
-	#		else
-	#			DataClientBus.resize(okey, size) {|_,error|
-	#				if error
-	#					$log.warn("failed to resize a data on DS: key=#{key.dump} size=#{size}: #{error}")
-	#					$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-	#					ar.error(error.to_s)
-	#				else
-	#					ar.result(okey)
-	#				end
-	#			}
-	#		end
-	#	}
-	#	ar
-	#end
-
-
 	def rpc_remove(key)
 		ar = MessagePack::RPC::AsyncResult.new
 		MDSBus.remove(key) {|okey,error|
 			if error
-				$log.warn("failed remove a key from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed remove a key from MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
@@ -271,41 +256,23 @@ class GatewayService < Service
 	end
 
 
-	def rpc_select(cols, conds, order, order_col, limit, skip)
-		rpc_selects(nil, cols, conds, order, order_col, limit, skip)
-	end
-
-	def rpc_selects(sid, cols, conds, order, order_col, limit, skip)
-		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.select(cols, conds, order, order_col, limit, skip, reqdata, sid) {|array,error|
-			if error
-				$log.warn("failed select columns from MDS: #{error}")
-				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
-				ar.error(error.to_s)
-			else
-				ar.result(array)
-			end
-		}
-		ar
-	end
-
-
-	#def rpc_purge(key)
-	#end
-
-	#def rpc_purges(sid, key)
-	#end
-
-
 	def rpc_url(key)
-		rpc_urls(nil, key)
+		rpc_url_impl(nil, key)
 	end
 
-	def rpc_urls(sid, key)
+	def rpc_urlt(vtime, key)
+		rpc_urlt_impl(vtime, key)
+	end
+
+	def rpc_urlv(vname, key)
+		rpc_urlv_impl(vname, key)
+	end
+
+	def rpc_url_impl(version, key)
 		ar = MessagePack::RPC::AsyncResult.new
-		MDSBus.get_okey(key, sid) {|okey,error|
+		MDSBus.get_okey(key, version) {|okey,error|
 			if error
-				$log.warn("failed to get a key or attributes from MDS: key=#{key.dump}: #{error}")
+				$log.warn("failed to get a key or attributes from MDS: key=#{key.inspect}: #{error}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
@@ -328,21 +295,26 @@ class GatewayService < Service
 		:get          => :rpc_get,
 		:get_data     => :rpc_get_data,
 		:get_attrs    => :rpc_get_attrs,
-		:gets         => :rpc_gets,
-		:gets_data    => :rpc_gets_data,
-		:gets_attrs   => :rpc_gets_attrs,
 		:read         => :rpc_read,
-		:reads        => :rpc_reads,
+		:gett         => :rpc_gett,
+		:gett_data    => :rpc_gett_data,
+		:gett_attrs   => :rpc_gett_attrs,
+		:readt        => :rpc_readt,
+		:getv         => :rpc_getv,
+		:getv_data    => :rpc_getv_data,
+		:getv_attrs   => :rpc_getv_attrs,
+		:readv        => :rpc_readv,
 		:getd_data    => :rpc_getd_data,
 		:readd        => :rpc_readd,
-		:set          => :rpc_set,
-		:set_data     => :rpc_set_data,
-		:set_attrs    => :rpc_set_attrs,
+		:add          => :rpc_add,
+		:add_data     => :rpc_add_data,
+		:addv         => :rpc_addv,
+		:addv_data    => :rpc_addv_data,
+		:update_attrs => :rpc_update_attrs,
 		:remove       => :rpc_remove,
-		:select       => :rpc_select,
-		:selects      => :rpc_selects,
 		:url          => :rpc_url,
-		:urls         => :rpc_urls
+		:urlt         => :rpc_urlt,
+		:urlv         => :rpc_urlv
 end
 
 

@@ -83,19 +83,19 @@ class StorageService < Service
 	#def close
 	#end
 
-	#def get(sid, key)
+	#def get(vtime, key)
 	#end
 
-	#def set(sid, key, data)
+	#def set(vtime, key, data)
 	#end
 
-	#def read(sid, key, offset, size)
+	#def read(vtime, key, offset, size)
 	#end
 
-	#def remove(sid, key)
+	#def remove(vtime, key)
 	#end
 
-	#def exist(sid, key)
+	#def exist(vtime, key)
 	#end
 
 	#def get_items

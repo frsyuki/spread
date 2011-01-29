@@ -64,8 +64,8 @@ class SlaveService < Service
 
 			return if msgs.empty?
 
-			msgs.each {|sid,key,offset,data|
-				apply(sid, key, offset, data)
+			msgs.each {|vtime,key,offset,data|
+				apply(vtime, key, offset, data)
 			}
 
 			@rts.set(npos)
@@ -79,15 +79,15 @@ class SlaveService < Service
 			@pulling = false
 		end
 
-		def apply(sid, key, offset, data)
+		def apply(vtime, key, offset, data)
 			if data
 				if offset
-					@storage.write(sid, key, offset, data)
+					@storage.write(vtime, key, offset, data)
 				else
-					@storage.set(sid, key, data)
+					@storage.set(vtime, key, data)
 				end
 			else
-				@storage.remove(sid, key)
+				@storage.remove(vtime, key)
 			end
 		end
 	end

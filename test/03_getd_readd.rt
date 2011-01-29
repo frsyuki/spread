@@ -20,7 +20,11 @@ gw = start_gw
 
 pid = Process.pid
 keyf = "#{pid}-key%d"
-data = "@"*SIZE
+_data = "@"*SIZE
+
+_data[2,4] = "OVER"
+_data_0_8  = _data[0,8]
+_data_3_20 = _data[3,20]
 
 test "run normally" do
 	c = gw.client
@@ -30,36 +34,31 @@ test "run normally" do
 
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'set' do
-				okey = c.call(:set, key, data, attrs)
-				okeys << okey
+			test 'add_data' do
+				okey = c.call(:add_data, key, _data)
+				okeys[i] = okey
 			end
 		end
 
-		data_0_8  = data[0,8]
-		data_3_20 = data[3,20]
+		NUM.times do |i|
+			okey = okeys[i]
 
-		okeys.each {|okey|
 			test 'getd_data' do
-				data_ = c.call(:getd_data, okey)
-
-				test_equals data, data_, 'getd_data data_ == data'
+				data = c.call(:getd_data, okey)
+				test_equals _data, data, 'getd_data _data == data'
 			end
 
 			test 'readd offset=0 size=8' do
-				data_ = c.call(:readd, okey, 0, 8)
-
-				test_equals data_0_8, data_, 'readd data_ == data'
+				data = c.call(:readd, okey, 0, 8)
+				test_equals _data_0_8, data, 'readd _data[0,8] == data'
 			end
 
 			test 'readd offset=3 size=20' do
-				data_ = c.call(:readd, okey, 3, 20)
-
-				test_equals data_3_20, data_, 'readd data_ == data'
+				data = c.call(:readd, okey, 3, 20)
+				test_equals _data_3_20, data, 'readd _data[3,20] == data'
 			end
-		}
+		end
 	}
 end
 

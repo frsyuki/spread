@@ -34,19 +34,18 @@ class MDSBus < Bus
 	#   not found: [nil, nil]
 	call_slot :get_okey_attrs
 
-	# @return new ObjectKey or existent ObjectKey
-	call_slot :set_okey
-
-	# @return new ObjectKey or existent ObjectKey
-	call_slot :set_okey_attrs
+	# @return new ObjectKey
+	call_slot :add
 
 	# @return
-	#   found and removed: true
+	#   found: updated ObjectKey
+	#   not found: nil
+	call_slot :update_attrs
+
+	# @return
+	#   found: removed ObjectKey
 	#   not found: nil
 	call_slot :remove
-
-	# @return array
-	call_slot :select
 end
 
 
@@ -131,10 +130,9 @@ class MDSService < Service
 		:get_okey,
 		:get_attrs,
 		:get_okey_attrs,
-		:set_okey,
-		:set_okey_attrs,
-		:remove,
-		:select
+		:add,
+		:update_attrs,
+		:remove
 
 	extend Forwardable
 
@@ -142,10 +140,9 @@ class MDSService < Service
 		:get_okey,
 		:get_attrs,
 		:get_okey_attrs,
-		:set_okey,
-		:set_okey_attrs,
-		:remove,
-		:select
+		:add,
+		:update_attrs,
+		:remove
 end
 
 
@@ -200,36 +197,40 @@ class MDS
 	#def close
 	#end
 
-	#def get_okey(sid, key=nil, &cb)
+	# @param version vname:String or vtime:Integer
+	#def get_okey(key, version=nil, &cb)
 	#end
 
-	#def get_attrs(sid, key=nil, &cb)
+	# @param version vname:String or vtime:Integer
+	#def get_attrs(key, version=nil, &cb)
 	#end
 
-	#def get_okey_attrs(sid, key=nil, &cb)
+	# @param version vname:String or vtime:Integer
+	#def get_okey_attrs(key, version=nil, &cb)
 	#end
 
-	#def set_okey(key, &cb)
+	#def add(key, attrs={}, vname=nil, &cb)
 	#end
 
-	#def set_okey_attrs(key, attrs, &cb)
+	#def update_attrs(key, attrs, &cb)
 	#end
 
 	#def remove(key, &cb)
 	#end
 
-	def select(cols, conds, order, order_col, limit, skip, sid=nil)
-		raise "select is not supported on MDS"
-	end
-
 	protected
-	def new_okey(key, sid=get_current_sid, rsid=nil)
-		rsid ||= BalanceBus.select_next_rsid(key)
-		ObjectKey.new(key, sid, rsid)
+	def get_current_vtime(at_least=0)
+		now = Time.now.utc.to_i
+		if now <= at_least
+			return at_least + 1
+		else
+			return now
+		end
 	end
 
-	def get_current_sid
-		SnapshotBus.get_current_sid
+	def new_okey(key, vtime=get_current_vtime, rsid=nil)
+		rsid ||= BalanceBus.select_next_rsid(key)
+		ObjectKey.new(key, vtime, rsid)
 	end
 end
 
@@ -241,10 +242,8 @@ class NullMDS < MDS
 		:get_okey,
 		:get_attrs,
 		:get_okey_attrs,
-		:set_okey,
-		:set_okey_attrs,
+		:add,
 		:remove,
-		:select,
 		:open
 	].each {|method|
 		def_delegator :self, :raise_error, method

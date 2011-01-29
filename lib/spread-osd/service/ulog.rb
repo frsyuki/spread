@@ -101,26 +101,26 @@ end
 # |1|vbcode|  raw   |
 # +-+------+--...---+
 # 0x91
-#   sid
+#   vtime
 #          key
 #
 # +-+------+------+------+--...---+
 # |1|vbcode|vbcode|vbcode|  raw   |
 # +-+------+------+------+--...---+
 # 0x93
-#   sid
+#   vtime
 #          offset
 #                 size
 #                        key
 #
 class UpdateLogData
-	def initialize(sid, key, *meta)
-		@sid = sid
+	def initialize(vtime, key, *meta)
+		@vtime = vtime
 		@key = key
 		@meta = meta
 	end
 
-	attr_reader :sid
+	attr_reader :vtime
 	attr_reader :key
 	attr_reader :meta
 
@@ -134,7 +134,7 @@ class UpdateLogData
 
 	def dump
 		raw = [0x91 + @meta.size].pack('C')
-		VariableByteCode.encode(@sid, raw)
+		VariableByteCode.encode(@vtime, raw)
 		meta.each {|m|
 			VariableByteCode.encode(m, raw)
 		}
@@ -144,14 +144,14 @@ class UpdateLogData
 
 	def self.load(raw)
 		n = raw.unpack('C')[0]
-		sid, i = VariableByteCode.decode_index(raw, 1)
+		vtime, i = VariableByteCode.decode_index(raw, 1)
 		meta = []
 		(n - 0x91).times {
 			m, i = VariableByteCode.decode_index(raw, i)
 			meta << m
 		}
 		key = raw[i..-1]
-		new(sid, key, *meta)
+		new(vtime, key, *meta)
 	end
 end
 

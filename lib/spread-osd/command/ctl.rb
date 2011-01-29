@@ -26,8 +26,6 @@ def usage
 	puts "   remove_node <nid>            remove a node from the cluster"
 	puts "   weight                       show list of replication sets"
 	puts "   set_weight <rsid> <weight>   set distribution weight"
-	puts "   snapshot                     show snapshot list"
-	puts "   add_snapshot <name>          add a snapshot"
 	puts "   mds                          show MDS uri"
 	puts "   set_mds <URI>                set MDS uri"
 	puts "   items                        show stored number of items"
@@ -163,25 +161,6 @@ when 'reset_weight'
 		raise "invalid rsid: #{rsid}"
 	end
 	pp call(nil, :reset_replset_weight, rsid)
-
-when 'snapshot'
-	cmd_args(0)
-
-	slist = call(nil, :stat, 'snapshot')
-
-	SLIST_FORMAT = "%3s %15s %30s"
-	puts SLIST_FORMAT % %w[sid name time]
-
-	slist.each {|sid,name,time|
-		time = Time.at(time).localtime
-		puts SLIST_FORMAT % [sid, name, time]
-	}
-
-when 'add_snapshot'
-	name = cmd_args(1)
-
-	sid = call(nil, :add_snapshot, name)
-	pp sid
 
 when 'mds'
 	cmd_args(0)

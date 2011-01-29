@@ -29,7 +29,6 @@ class CSRPCBus < Bus
 	call_slot :recover_node
 	call_slot :set_replset_weight
 	call_slot :reset_replset_weight
-	call_slot :add_snapshot
 end
 
 
@@ -79,10 +78,6 @@ class CSRPCService < RPCService
 
 	def reset_replset_weight(rsid)
 		dispatch(CSRPCBus, :reset_replset_weight, rsid)
-	end
-
-	def add_snapshot(name)
-		dispatch(CSRPCBus, :add_snapshot, name)
 	end
 
 	def stat(cmd)

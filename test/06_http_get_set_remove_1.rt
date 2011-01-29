@@ -20,59 +20,61 @@ gw = start_gw
 
 pid = Process.pid
 keyf = "#{pid}-key%d"
-data = "@"*SIZE
+_data = "@"*SIZE
 
 test "run normally" do
+	c = gw.client
+
 	LOOP.times {|o|
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'set_data' do
+			test 'add_data' do
 				gw.http_client {|http|
 					req = Net::HTTP::Put.new("/data/#{key}")
-					req.body = data
+					req.body = _data
 					res = http.request(req)
-					test_equals "202", res.code, "set_data 202 Accepted"
+					test_equals "202", res.code, "add_data 202 Accepted"
 				}
 			end
 
-			test 'set_attrs' do
+			test 'update_attrs' do
 				gw.http_client {|http|
 					req = Net::HTTP::Put.new("/attrs/#{key}")
-					req.body = JSON.dump(attrs)
+					req.body = JSON.dump(_attrs)
 					res = http.request(req)
-					test_equals "202", res.code, "set_data 202 Accepted"
+					test_equals "202", res.code, "update_attrs 202 Accepted"
 				}
 			end
 		end
 
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
 			test 'get_data' do
-				data_ = nil
+				data = nil
 
 				gw.http_client {|http|
 					res = http.get("/data/#{key}")
 					test_equals "200", res.code, "get_data 200 OK"
-					data_ = res.body
+					data = res.body
 				}
 
-				test_equals data, data_, 'get_data data_ == data'
+				test_equals _data, data, 'get_data _data == data'
 			end
 
 			test "get_attrs" do
-				attrs_ = nil
+				attrs = nil
 
 				gw.http_client {|http|
 					res = http.get("/attrs/#{key}")
 					test_equals "200", res.code, "get_attrs 200 OK"
-					attrs_ = JSON.parse(res.body)
+					attrs = JSON.parse(res.body)
 				}
 
-				test_equals attrs, attrs_, 'get_attrs attrs_ == attrs'
+				test_equals _attrs, attrs, 'get_attrs _attrs == attrs'
 			end
 		end
 
@@ -89,12 +91,12 @@ test "run normally" do
 
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
 			test 'removed get_data' do
 				gw.http_client {|http|
 					res = http.get("/data/#{key}")
 					test_equals "404", res.code, 'get_data 404 Not Found'
+					p res.body
 				}
 			end
 

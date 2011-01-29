@@ -1,0 +1,161 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << File.dirname(__FILE__)
+require 'common'
+
+LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
+SIZE   = (ARGV[1] || 10).to_i
+NUM    = (ARGV[2] || 50).to_i
+
+mds = start_mds
+cs = start_cs
+ds0 = start_ds(0, 0)
+ds1 = start_ds(1, 0)
+ds2 = start_ds(2, 1)
+ds3 = start_ds(3, 1)
+
+cs.show_nodes
+cs.show_version
+
+gw = start_gw
+
+pid = Process.pid
+keyf = "#{pid}-key%d"
+_data1 = "1"*SIZE
+_data2 = "2"*SIZE
+
+_data1[2,4] = "OVER"
+_data1_0_8  = _data1[0,8]
+_data1_3_20 = _data1[3,20]
+
+_data2[2,4] = "OVER"
+_data2_0_8  = _data2[0,8]
+_data2_3_20 = _data2[3,20]
+
+test "run normally" do
+	c = gw.client
+
+	LOOP.times {|o|
+		okeys1 = []
+		okeys2 = []
+
+		vname1 = "ver#{o}-1"
+		vname2 = "ver#{o}-2"
+		vname0 = "ver#{o}-0"
+
+		NUM.times do |i|
+			key = keyf % i
+			_attrs1 = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'addv 1' do
+				c.call(:addv, vname1, key, _data1, _attrs1)
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			_attrs2 = {"loop"=>"2", "attr2#{i}"=>i.to_s}
+
+			test 'addv 2' do
+				c.call(:addv, vname2, key, _data2, _attrs2)
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			_attrs2 = {"loop"=>"2", "attr2#{i}"=>i.to_s}
+
+			test 'get head' do
+				data, attrs = c.call(:get, key)
+				test_equals _data2, data, 'get head _data2 == data'
+				test_equals _attrs2, attrs, 'get head _attrs2 == attrs'
+			end
+
+			test 'get_data head' do
+				data = c.call(:get_data, key)
+				test_equals _data2, data, 'get_data head _data2 == data'
+			end
+
+			test 'get_attrs head' do
+				attrs = c.call(:get_attrs, key)
+				test_equals _attrs2, attrs, 'get_attrs head _attrs2 == attrs'
+			end
+
+			test 'read head offset=0 size=8' do
+				data = c.call(:read, key, 0, 8)
+				test_equals _data2_0_8, data, 'read head _data2[0,8] == data'
+			end
+
+			test 'read head offset=3 size=20' do
+				data = c.call(:read, key, 3, 20)
+				test_equals _data2_3_20, data, 'read head _data2[3,20] == data'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			_attrs1 = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'getv 1' do
+				data, attrs = c.call(:getv, vname1, key)
+				test_equals _data1, data, 'getv 1 _data1 == data'
+				test_equals _attrs1, attrs, 'getv 1 _attrs1 == attrs'
+			end
+
+			test 'getv_data 1' do
+				data = c.call(:getv_data, vname1, key)
+				test_equals _data1, data, 'getv 1 _data1 == data'
+			end
+
+			test 'getv_attrs 1' do
+				attrs = c.call(:getv_attrs, vname1, key)
+				test_equals _attrs1, attrs, 'getv 1 _attrs1 == attrs'
+			end
+
+			test 'readv 1 offset=0 size=8' do
+				data = c.call(:readv, vname1, key, 0, 8)
+				test_equals _data1_0_8, data, 'readv 1 _data1[0,8] == data'
+			end
+
+			test 'readv 1 offset=3 size=20' do
+				data = c.call(:readv, vname1, key, 3, 20)
+				test_equals _data1_3_20, data, 'readv 1 _data1[3,20] == data'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test 'getv 0' do
+				data, attrs = c.call(:getv, vname0, key)
+				test_equals nil, data, 'getv 0 _data1 is not found'
+				test_equals nil, attrs, 'getv 0 _attrs1 is not founds'
+			end
+
+			test 'getv_data 0' do
+				data = c.call(:getv_data, vname0, key)
+				test_equals nil, data, 'getv 0 _data1 is not found'
+			end
+
+			test 'getv_attrs 0' do
+				attrs = c.call(:getv_attrs, vname0, key)
+				test_equals nil, attrs, 'getv 0 _attrs1 is not founds'
+			end
+
+			test 'readv 0 offset=0 size=8' do
+				data = c.call(:readv, vname0, key, 0, 8)
+				test_equals nil, data, 'readv 0 _data1[0,8] is not found'
+			end
+
+			test 'readv 0 offset=3 size=20' do
+				data = c.call(:readv, vname0, key, 3, 20)
+				test_equals nil, data, 'readv 0 _data1[3,20] is not found'
+			end
+		end
+	}
+end
+
+cs.show_items
+cs.show_stat
+
+term_all(ds0, ds1, ds2, ds3, gw, mds, cs)
+

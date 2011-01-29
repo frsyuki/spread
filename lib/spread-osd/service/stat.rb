@@ -21,7 +21,6 @@ module SpreadOSD
 class StatBus < Bus
 	call_slot :membership_info
 	call_slot :fault_info
-	call_slot :snapshot_info
 	call_slot :replset_info
 
 	call_slot :db_items
@@ -74,10 +73,6 @@ class StatService < Service
 
 	def stat_fault
 		StatBus.fault_info
-	end
-
-	def stat_snapshot
-		StatBus.snapshot_info
 	end
 
 	def stat_replset

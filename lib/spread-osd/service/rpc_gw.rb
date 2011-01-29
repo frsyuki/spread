@@ -22,25 +22,33 @@ class GWRPCBus < Bus
 	call_slot :get
 	call_slot :get_data
 	call_slot :get_attrs
-	call_slot :gets
-	call_slot :gets_data
-	call_slot :gets_attrs
 	call_slot :read
-	call_slot :reads
+	call_slot :gett
+	call_slot :gett_data
+	call_slot :gett_attrs
+	call_slot :readt
+	call_slot :getv
+	call_slot :getv_data
+	call_slot :getv_attrs
+	call_slot :readv
 	call_slot :getd_data
 	call_slot :readd
-	call_slot :set
-	call_slot :set_data
-	call_slot :set_attrs
+	call_slot :add
+	call_slot :add_data
+	call_slot :addv
+	call_slot :addv_data
+	call_slot :update_attrs
 	call_slot :remove
-	call_slot :select
-	call_slot :selects
 	call_slot :url
-	call_slot :urls
+	call_slot :urlt
+	call_slot :urlv
 end
 
 
 class GWRPCService < RPCService
+	####
+	## get head
+	##
 	def get(key)
 		dispatch(GWRPCBus, :get, key)
 	end
@@ -53,29 +61,63 @@ class GWRPCService < RPCService
 		dispatch(GWRPCBus, :get_attrs, key)
 	end
 
-
-	def gets(sid, key)
-		dispatch(GWRPCBus, :gets, sid, key)
-	end
-
-	def gets_data(sid, key)
-		dispatch(GWRPCBus, :gets_data, sid, key)
-	end
-
-	def gets_attrs(sid, key)
-		dispatch(GWRPCBus, :gets_attrs, sid, key)
-	end
-
-
 	def read(key, offset, size)
 		dispatch(GWRPCBus, :read, key, offset, size)
 	end
 
-	def reads(sid, key, offset, size)
-		dispatch(GWRPCBus, :reads, sid, key, offset, size)
+
+	####
+	## time-based get version
+	##
+	def gett(vtime, key)
+		vtime = vtime.to_i  # TODO type check
+		dispatch(GWRPCBus, :gett, vtime, key)
+	end
+
+	def gett_data(vtime, key)
+		vtime = vtime.to_i  # TODO type check
+		dispatch(GWRPCBus, :gett_data, vtime, key)
+	end
+
+	def gett_attrs(vtime, key)
+		vtime = vtime.to_i  # TODO type check
+		dispatch(GWRPCBus, :gett_attrs, vtime, key)
+	end
+
+	def readt(vtime, key, offset, size)
+		vtime = vtime.to_i  # TODO type check
+		dispatch(GWRPCBus, :readt, vtime, key, offset, size)
 	end
 
 
+	####
+	## name-based get version
+	##
+	def getv(vname, key)
+		vname = vname.to_s  # TODO type check
+		dispatch(GWRPCBus, :getv, vname, key)
+	end
+
+	def getv_data(vname, key)
+		vname = vname.to_s  # TODO type check
+		dispatch(GWRPCBus, :getv_data, vname, key)
+	end
+
+	def getv_attrs(vname, key)
+		vname = vname.to_s  # TODO type check
+		dispatch(GWRPCBus, :getv_attrs, vname, key)
+	end
+
+	def readv(vname, key, offset, size)
+		vname = vname.to_s  # TODO type check
+		dispatch(GWRPCBus, :readt, vname, key, offset, size)
+	end
+
+
+
+	####
+	## direct get
+	##
 	def getd_data(okey)
 		okey = ObjectKey.new.from_msgpack(okey)
 		dispatch(GWRPCBus, :getd_data, okey)
@@ -87,36 +129,65 @@ class GWRPCService < RPCService
 	end
 
 
-	def set(key, data, attrs)
+	####
+	## add
+	##
+	def add(key, data, attrs)
 		force_binary!(data)
-		dispatch(GWRPCBus, :set, key, data, attrs)
+		dispatch(GWRPCBus, :add, key, data, attrs)
 	end
 
-	def set_data(key, data)
+	def add_data(key, data)
 		force_binary!(data)
-		dispatch(GWRPCBus, :set_data, key, data)
-	end
-
-	def set_attrs(key, attrs)
-		dispatch(GWRPCBus, :set_attrs, key, attrs)
+		dispatch(GWRPCBus, :add_data, key, data)
 	end
 
 
+	####
+	## add with version name
+	##
+	def addv(vname, key, data, attrs)
+		vname = vname.to_s  # TODO type check
+		force_binary!(data)
+		dispatch(GWRPCBus, :addv, vname, key, data, attrs)
+	end
+
+	def addv_data(vname, key, data)
+		vname = vname.to_s  # TODO type check
+		force_binary!(data)
+		dispatch(GWRPCBus, :addv_data, vname, key, data)
+	end
+
+
+	####
+	## in-place update data
+	##
 	#def write(key, offset, data)
 	#	force_binary!(data)
 	#	dispatch(GWRPCBus, :write, key, offset, data)
 	#end
-
+	#
 	#def resize(key, size)
 	#	dispatch(GWRPCBus, :resize, key, size)
 	#end
-
+	#
 	#def append(key, data)
 	#	force_binary!(data)
 	#	dispatch(GWRPCBus, :append, key, data)
 	#end
 
 
+	####
+	## in-place update attributes
+	##
+	def update_attrs(key, attrs)
+		dispatch(GWRPCBus, :update_attrs, key, attrs)
+	end
+
+
+	####
+	## remove
+	##
 	def remove(key)
 		dispatch(GWRPCBus, :remove, key)
 	end
@@ -131,21 +202,21 @@ class GWRPCService < RPCService
 	#end
 
 
-	def select(cols, conds, order, order_col, limit, skip)
-		dispatch(GWRPCBus, :select, cols, conds, order, order_col, limit, skip)
-	end
-
-	def selects(sid, cols, conds, order, order_col, limit, skip)
-		dispatch(GWRPCBus, :selects, sid, cols, conds, order, order_col, limit, skip)
-	end
-
-
+	####
+	## URL
+	##
 	def url(key)
 		dispatch(GWRPCBus, :url, key)
 	end
 
-	def urls(sid, key)
-		dispatch(GWRPCBus, :urls, sid, key)
+	def urlt(vtime, key)
+		vtime = vtime.to_i  # TODO type check
+		dispatch(GWRPCBus, :urlt, vtime, key)
+	end
+
+	def urlv(vname, key)
+		vname = vname.to_s  # TODO type check
+		dispatch(GWRPCBus, :urlv, vname, key)
 	end
 
 

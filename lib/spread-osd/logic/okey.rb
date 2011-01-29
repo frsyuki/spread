@@ -19,23 +19,23 @@ module SpreadOSD
 
 
 class ObjectKey
-	def initialize(key=nil, sid=nil, rsid=nil)
-		@sid = sid.to_i
+	def initialize(key=nil, vtime=nil, rsid=nil)
 		@key = key
+		@vtime = vtime.to_i
 		@rsid = rsid.to_i
 	end
 
 	attr_reader :key
-	attr_reader :sid
+	attr_reader :vtime
 	attr_reader :rsid
 
 	def to_msgpack(out = '')
-		[@key, @sid, @rsid].to_msgpack(out)
+		[@key, @vtime, @rsid].to_msgpack(out)
 	end
 
 	def from_msgpack(obj)
 		@key = obj[0]
-		@sid = obj[1].to_i
+		@vtime = obj[1].to_i
 		@rsid = obj[2].to_i
 		self
 	end

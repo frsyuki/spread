@@ -28,7 +28,6 @@ require 'spread-osd/logic/tsv_data'
 require 'spread-osd/logic/weight'
 require 'spread-osd/logic/fault_detector'
 require 'spread-osd/logic/membership'
-require 'spread-osd/logic/snapshot'
 require 'spread-osd/logic/node'
 require 'spread-osd/logic/okey'
 require 'spread-osd/service/base'
@@ -52,7 +51,6 @@ require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
 require 'spread-osd/service/master_select'
 require 'spread-osd/service/membership'
-require 'spread-osd/service/snapshot'
 require 'spread-osd/default'
 require 'spread-osd/version'
 require 'spread-osd/log'
@@ -123,9 +121,14 @@ op.on('-R', '--read-only', "read-only mode", TrueClass) do |b|
 	read_only_gw = b
 end
 
-op.on('-S', '--snapshot SID', "read-only mode using the snapshot", Integer) do |i|
+op.on('-N', '--read-only-name NAME', "read-only mode using the version name") do |name|
 	read_only_gw = true
-	conf.read_only_sid = i
+	conf.read_only_version = name
+end
+
+op.on('-T', '--read-only-time TIME', "read-only mode using the time", Integer) do |time|
+	read_only_gw = true
+	conf.read_only_version = time
 end
 
 op.on('-L', '--location STRING', "enable location-aware master selection") do |str|
@@ -146,10 +149,6 @@ end
 
 op.on('--weight_store PATH', "path to weight status file") do |path|
 	conf.weight_path = path
-end
-
-op.on('--snapshot_store PATH', "path to snapshot status file") do |path|
-	conf.snapshot_path = path
 end
 
 op.on('-v', '--verbose', "show debug messages", TrueClass) do |b|
@@ -188,10 +187,6 @@ begin
 		conf.weight_path = File.join(store_path, "weight")
 	end
 
-	if !conf.snapshot_path && store_path
-		conf.snapshot_path = File.join(store_path, "snapshot")
-	end
-
 rescue
 	usage $!.to_s
 end
@@ -217,7 +212,6 @@ end
 if conf.http_gateway_address
 	HTTPGatewayService.open!
 end
-SnapshotMemberService.init
 GWStatService.init
 MDSService.init
 
@@ -225,6 +219,7 @@ log_event_bus
 
 ProcessBus.run
 
+# FIXME compare UNIX time with CS and show warning if it is not correct
 SyncClientService.instance.sync_blocking! rescue nil
 #HeartbeatClientService.instance.heartbeat_blocking! rescue nil
 

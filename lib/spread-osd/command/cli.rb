@@ -22,21 +22,24 @@ require 'pp'
 def usage
 	puts "Usage: #{File.basename($0)} <cs address[:port]> <command> [options]"
 	puts "command:"
-	puts "   get_data <key>                     get data"
-	puts "   get_attrs <key>                    get attributes"
-	puts "   gets_data <sid> <key>              get data using the snapshot"
-	puts "   gets_attrs <sid> <key>             get attributes using the snapshot"
-	puts "   read <key> <offset> <size>         get data with the offset and the size"
-	puts "   reads <sid> <key> <offset> <size>  get data with the offset and the size"
-	puts "   set_data <key> <data>              set data"
-	puts "   set_attrs <key> <json>             set attributes"
-	puts "   write <key> <offset> <data>        set data with the offset and the size"
-	puts "   get <key>                          get data and attributes"
-	puts "   gets <sid> <key>                   get data and attributes using the snapshot"
-	puts "   set <key> <data> <json>            set data and attributes"
-	puts "   remove <key>                       remove the data"
-	puts "   select <expr> [cols...]            select attributes"
-	puts "   selects <sid> <expr> [cols...]     select attributes using the snapshot"
+	puts "   get <key>                           get data and attributes"
+	puts "   gett <time> <key>                   get data and attributes using the time"
+	puts "   getv <vname> <key>                  get data and attributes using the version name"
+	puts "   get_data <key>                      get data"
+	puts "   gett_data <time> <key>              get data using the time"
+	puts "   getv_data <vname> <key>             get data using the version name"
+	puts "   get_attrs <key>                     get attributes"
+	puts "   gett_attrs <time> <key>             get attributes using the time"
+	puts "   getv_attrs <vname> <key>            get attributes using the version name"
+	puts "   read <key> <offset> <size>          get data with the offset and the size"
+	puts "   readt <time> <key> <offset> <size>  get data with the offset and the size"
+	puts "   readv <vname> <key> <offset> <size> get data with the offset and the size"
+	puts "   add <key> <data> <json>             set data and attributes"
+	puts "   addv <vname> <key> <data> <json>    set data and attributes with version name"
+	puts "   add_data <key> <data>               set data"
+	puts "   addv_data <vname> <key> <data>      set data with version name"
+	puts "   update_attrs <key> <json>           update attributes"
+	puts "   remove <key>                        remove the data and attributes"
 	exit 1
 end
 
@@ -82,77 +85,6 @@ def call(klass, *args)
 	result
 end
 
-def select_argv
-	if ARGV.length < 1
-		usage
-	end
-
-	expr = ARGV.shift
-	cols = ARGV
-	cols = nil if cols.empty?
-
-	conds = []
-	order = nil
-	order_col = nil
-	limit = nil
-	skip = nil
-
-	expr.strip.split(/\s+/).each {|e|
-		if e =~ /order=(\w+)(,str-asc|,str-desc|,num-asc|,num-desc)?/
-			order = 1
-			order_col = $~[1]
-			case $~[2]
-			when nil, ',str-asc'
-				order = 1
-			when ',str-desc'
-				order = 2
-			when ',num-asc'
-				order = 3
-			when ',num-desc'
-				order = 4
-			end
-		elsif e =~ /limit=(\d+)/
-			limit = $~[1].to_i
-		elsif e =~ /skip=(\d+)/
-			skip = $~[1].to_i
-		elsif e =~ /(\w+)\=\=(\w+)/
-			rval = $~[2]
-			rval = rval.to_i if rval.to_i.to_s == rval
-			conds << [$~[1], 0, rval]
-		elsif e =~ /(\w+)\!\=(\w+)/
-			rval = $~[2]
-			rval = rval.to_i if rval.to_i.to_s == rval
-			conds << [$~[1], 1, rval]
-		elsif e =~ /(\w+)\<(\w+)/
-			rval = $~[2]
-			rval = rval.to_i if rval.to_i.to_s == rval
-			conds << [$~[1], 2, rval]
-		elsif e =~ /(\w+)\<\=(\w+)/
-			rval = $~[2]
-			rval = rval.to_i if rval.to_i.to_s == rval
-			conds << [$~[1], 3, rval]
-		elsif e =~ /(\w+)\>(\w+)/
-			rval = $~[2]
-			rval = rval.to_i if rval.to_i.to_s == rval
-			conds << [$~[1], 4, rval]
-		elsif e =~ /(\w+)\>\=(\w+)/
-			rval = $~[2]
-			rval = rval.to_i if rval.to_i.to_s == rval
-			conds << [$~[1], 5, rval]
-		else
-			raise "invalid expression: #{e.dump}"
-		end
-	}
-
-	$stderr.puts "select: cols=#{cols ? cols.join(',') : '*'}"
-	$stderr.puts "  conds: #{conds.inspect}"
-	$stderr.puts "  skip: #{skip}"
-	$stderr.puts "  limit: #{limit}"
-	$stderr.puts "  order: #{order_col} #{order}"
-
-	return cols, conds, order, order_col, limit, skip
-end
-
 case cmd
 when 'get'
 	key = cmd_args(1)
@@ -164,9 +96,19 @@ when 'get'
 		$stderr.puts "nil"
 	end
 
-when 'gets'
-	sid, key = cmd_args(2)
-	data, attrs = call(nil, :gets, sid.to_i, key)
+when 'gett'
+	vtime, key = cmd_args(2)
+	data, attrs = call(nil, :gett, vtime.to_i, key)
+	if data
+		puts attrs.to_json
+		$stdout.write data
+	else
+		$stderr.puts "nil"
+	end
+
+when 'getv'
+	vname, key = cmd_args(2)
+	data, attrs = call(nil, :getv, vname, key)
 	if data
 		puts attrs.to_json
 		$stdout.write data
@@ -184,9 +126,19 @@ when 'get_data'
 		$stderr.puts "nil"
 	end
 
-when 'gets_data'
-	sid, key = cmd_args(2)
-	data = call(nil, :gets_data, sid.to_i, key)
+when 'gett_data'
+	vtime, key = cmd_args(2)
+	data = call(nil, :gett_data, vtime.to_i, key)
+	if data
+		$stderr.puts "#{data.size} bytes"
+		$stdout.write data
+	else
+		$stderr.puts "nil"
+	end
+
+when 'getv_data'
+	vname, key = cmd_args(2)
+	data = call(nil, :getv_data, vname, key)
 	if data
 		$stderr.puts "#{data.size} bytes"
 		$stdout.write data
@@ -203,9 +155,18 @@ when 'get_attrs'
 		puts "nil"
 	end
 
-when 'gets_attrs'
-	sid, key = cmd_args(2)
-	attrs = call(nil, :gets_attrs, sid.to_i, key)
+when 'gett_attrs'
+	vtime, key = cmd_args(2)
+	attrs = call(nil, :gett_attrs, vtime.to_i, key)
+	if attrs
+		puts attrs.to_json
+	else
+		puts "nil"
+	end
+
+when 'getv_attrs'
+	vname, key = cmd_args(2)
+	attrs = call(nil, :getv_attrs, vname, key)
 	if attrs
 		puts attrs.to_json
 	else
@@ -218,42 +179,44 @@ when 'read'
 	$stderr.puts "#{data.size} bytes"
 	$stdout.write data
 
-when 'reads'
-	sid, key, offset, size = cmd_args(4)
-	data = call(nil, :reads, sid.to_i, key, offset.to_i, size.to_i)
+when 'readt'
+	vtime, key, offset, size = cmd_args(4)
+	data = call(nil, :readt, vtime.to_i, key, offset.to_i, size.to_i)
 	$stderr.puts "#{data.size} bytes"
 	$stdout.write data
 
-when 'set'
+when 'readt'
+	vname, key, offset, size = cmd_args(4)
+	data = call(nil, :readv, vname.to_i, key, offset.to_i, size.to_i)
+	$stderr.puts "#{data.size} bytes"
+	$stdout.write data
+
+when 'add'
 	key, data, json = cmd_args(3)
 	attrs = JSON.parse(json)
-	pp call(nil, :set, key, data, attrs)
+	pp call(nil, :add, key, data, attrs)
 
-when 'set_data'
+when 'addv'
+	vname, key, data, json = cmd_args(4)
+	attrs = JSON.parse(json)
+	pp call(nil, :addv, vname, key, data, attrs)
+
+when 'add_data'
 	key, data = cmd_args(2)
-	pp call(nil, :set_data, key, data)
+	pp call(nil, :add_data, key, data)
 
-when 'set_attrs'
+when 'addv_data'
+	vname, key, data = cmd_args(3)
+	pp call(nil, :addv_data, vname, key, data)
+
+when 'update_attrs'
 	key, json = cmd_args(2)
 	attrs = JSON.parse(json)
-	pp call(nil, :set_attrs, key, attrs)
-
-when 'write'
-	key, offset, data = cmd_args(3)
-	pp call(nil, :write, key, offset, data)
+	pp call(nil, :update_attrs, key, attrs)
 
 when 'remove'
 	key = cmd_args(1)
 	pp call(nil, :remove, key)
-
-when 'select'
-	args = select_argv
-	pp call(nil, :select, *args)
-
-when 'selects'
-	sid = ARGV.shift.to_i
-	args = select_argv
-	pp call(nil, :selects, sid, *args)
 
 else
 	$stderr.puts "unknown command #{cmd}"

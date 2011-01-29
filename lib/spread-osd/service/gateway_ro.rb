@@ -20,38 +20,42 @@ module SpreadOSD
 
 class ReadOnlyGatewayService < GatewayService
 	def initialize
-		@rosid = ConfigBus.read_only_sid
+		@rover = ConfigBus.read_only_version
 	end
 
-	def rpc_gets(sid, key)
-		super(@rosid||sid, key)
+	def rpc_get_impl(version, key)
+		super(version||@rover, key)
 	end
 
-	def rpc_gets_data(sid, key)
-		super(@rosid||sid, key)
+	def rpc_get_data_impl(version, key)
+		super(version||@rover, key)
 	end
 
-	def rpc_gets_attrs(sid, key)
-		super(@rosid||sid, key)
+	def rpc_get_attrs_impl(version, key)
+		super(version||@rover, key)
 	end
 
-	def rpc_reads(sid, key, offset, size)
-		super(@rosid||sid, key, offset, size)
+	def rpc_read_impl(version, key, offset, size)
+		super(version||@rover, key, offset, size)
 	end
 
-	def rpc_set(key, data, attrs)
+	def rpc_add(key, data, attrs)
 		raise_read_only_error
 	end
 
-	def rpc_set_data(key, data)
+	def rpc_add_data(key, data)
 		raise_read_only_error
 	end
 
-	def rpc_set_attrs(key, attrs)
+	def rpc_addv(vname, key, data, attrs)
 		raise_read_only_error
 	end
 
-	def rpc_truncate(key, size)
+	def rpc_addv_data(vname, key, attrs)
+		raise_read_only_error
+	end
+
+	def rpc_update_attrs(key, attrs)
 		raise_read_only_error
 	end
 
@@ -59,8 +63,8 @@ class ReadOnlyGatewayService < GatewayService
 		raise_read_only_error
 	end
 
-	def rpc_selects(sid, cols, conds, order, order_col, limit, skip)
-		super(@rosid||sid, cols, conds, order, order_col, limit, skip)
+	def rpc_url_impl(version, key)
+		super(version||@rover, key)
 	end
 
 	private

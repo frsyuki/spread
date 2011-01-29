@@ -57,10 +57,18 @@ class HTTPGatewayService < Service
 	end
 
 	# data/<key>
-	#    sid=i              get=>gets
-	#  get(data/key)                          => get/gets
-	# post(data/key, data)                    => set
-	#  put(data/key, data)                    => set
+	#  get(data/key)         => get_data
+	#     vtime=i            => gett_data
+	#     vname=s            => getv_data
+	# post(data/key, data)   => add_data
+	#     vname=s            => addv_data
+	#     attrs=formated     => add/addv
+	#     format=json/msgpack/tsv
+	#  put(data/key, data)   => add_data
+	#     vname=s            => addv_data
+	#     attrs=formated     => add/addv
+	#     format=json/msgpack/tsv
+	# TODO delete(data/key)
 	def call_data(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
@@ -77,124 +85,124 @@ class HTTPGatewayService < Service
 	def http_data_get(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		sid = optional_int(request, 'sid')
-		check_request(request, %w[sid])
+		vtime = nil
+		vname = nil
+#		vtime = optional_int(request, 'vtime')
+#		if vtime
+#			check_request(request, %w[vtime])
+#		else
+#			vname = optional_str(request, 'vname')
+#			check_request(request, %w[vname])
+#		end
 
-		if sid
-			data = submit(GWRPCBus, :gets_data, sid, key)
+		if vtime
+			data = submit(GWRPCBus, :gett_data, vtime, key)
+		elsif vname
+			data = submit(GWRPCBus, :getv_data, vname, key)
 		else
 			data = submit(GWRPCBus, :get_data, key)
 		end
 
 		if data
-			[200, {'Content-Type'=>'application/octet-stream'}, data]
+			body = [data]
+			return [200, {'Content-Type'=>'application/octet-stream'}, body]
 		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			if vtime
+				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
+			elsif vname
+				return html_response(404, 'Not Found', "key=`#{key}' vname=#{vname}")
 			else
 				return html_response(404, 'Not Found', "key=`#{key}'")
 			end
 		end
-	end
-
-	def http_data_put(env)
-		key = get_key_path_info(env)
-
-		if env['HTTP_EXPECT'] == '100-continue'
-			return html_response(417, 'Exception Failed')
-		end
-
-		# FIXME check_request
-
-		data = env['rack.input'].read
-
-		okey = submit(GWRPCBus, :set_data, key, data)
-
-		# FIXME return okey?
-		return html_response(202, 'Accepted')
 	end
 
 	def http_data_post(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
 		data = require_str(request, 'data')
-		check_request(request, %w[data])
+		vname = optional_str(request, 'vname')
+		attrs = optional_str(request, 'attrs')
+		if attrs
+			format = optional_str(request, 'format')
+			format ||= DEFAULT_FORMAT
+			check_request(request, %w[data vname attrs format])
+		else
+			check_request(request, %w[data vname])
+		end
 
-		okey = submit(GWRPCBus, :set_data, key, data)
+		if attrs
+			attrs = parse_attrs(attrs, format)
+			unless attrs
+				return html_response(400, 'Bad Request', "unknown format `#{format}'")
+			end
+			if vname
+				okey = submit(GWRPCBus, :addv, vname, key, data, attrs)
+			else
+				okey = submit(GWRPCBus, :add, key, data, attrs)
+			end
+		else
+			if vname
+				okey = submit(GWRPCBus, :addv_data, vname, key, data)
+			else
+				okey = submit(GWRPCBus, :add_data, key, data)
+			end
+		end
 
 		# FIXME return okey?
 		return html_response(200, 'OK')
 	end
 
-	#def http_data_delete(env)
-	#	key = get_key_path_info(env)
-	#
-	#	# FIXME check_request
-	#
-	#	# TODO remove?
-	#	removed = submit(GWRPCBus, :remove_data, key)
-	#
-	#	if removed
-	#		return html_response(200, 'OK')
-	#	else
-	#		return html_response(204, 'No Content')
-	#	end
-	#end
-
-
-	# redirect/<key>
-	#    sid=i              get=>gets
-	#  get(data/key)                          => redirect
-	def call_redirect(env)
-		case env['REQUEST_METHOD']
-		when 'GET'
-			http_redirect_get(env)
-		else
-			return html_response(405, 'Method Not Allowed')
+	def http_data_put(env)
+		if env['HTTP_EXPECT'] == '100-continue'
+			return html_response(417, 'Exception Failed')
 		end
-	end
 
-	def http_redirect_get(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		sid = optional_int(request, 'sid')
-		check_request(request, %w[sid])
-
-		if sid
-			url = submit(GWRPCBus, :urls, sid, key)
+		vname = optional_str(request, 'vname')
+		attrs = optional_str(request, 'attrs')
+		if attrs
+			format = optional_str(request, 'format')
+			format ||= DEFAULT_FORMAT
+			check_request(request, %w[vname attrs format])
 		else
-			url = submit(GWRPCBus, :url, key)
+			check_request(request, %w[vname])
 		end
 
-		unless url
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+		data = env['rack.input'].read
+
+		if attrs
+			attrs = parse_attrs(attrs, format)
+			unless attrs
+				return html_response(400, 'Bad Request', "unknown format `#{format}'")
+			end
+			if vname
+				okey = submit(GWRPCBus, :addv, vname, key, data, attrs)
 			else
-				return html_response(404, 'Not Found', "key=`#{key}'")
+				okey = submit(GWRPCBus, :add, key, data, attrs)
+			end
+		else
+			if vname
+				okey = submit(GWRPCBus, :addv_data, vname, key, data)
+			else
+				okey = submit(GWRPCBus, :add_data, key, data)
 			end
 		end
 
-		if url
-			body = ["302 Found"]
-			return [302, {'Content-Type'=>'text/plain', 'Location'=>url}, body]
-		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
-			else
-				return html_response(404, 'Not Found', "key=`#{key}'")
-			end
-		end
+		# FIXME return okey?
+		return html_response(202, 'Accepted')
 	end
 
 
 	# attrs/<key>
-	#    sid=i
-	#    attrs=
-	#    format=json        json, tsv, msgpack
-	#  get(attrs/key)                         => get/gets_attrs
-	# post(attrs/key, json)                   => set_attrs
-	#  put(attrs/key)                         => set_attrs
-	# TODO delete
+	#  get(data/key)         => get_attrs
+	#     vtime=i            => gett_attrs
+	#     vname=s            => getv_attrs
+	#     format=json/msgpack/tsv
+	# post(attrs/key, json)  => update_attrs
+	#  put(attrs/key, json)  => update_attrs
+	# TODO delete(data/key)
 	def call_attrs(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
@@ -211,13 +219,20 @@ class HTTPGatewayService < Service
 	def http_attrs_get(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		sid    = optional_int(request, 'sid')
 		format = optional_str(request, 'format')
 		format ||= DEFAULT_FORMAT
-		check_request(request, %w[sid format])
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[format vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[format vname])
+		end
 
-		if sid
-			attrs = submit(GWRPCBus, :gets_attrs, sid, key)
+		if vtime
+			attrs = submit(GWRPCBus, :gett_attrs, vtime, key)
+		elsif vname
+			attrs = submit(GWRPCBus, :getv_attrs, vname, key)
 		else
 			attrs = submit(GWRPCBus, :get_attrs, key)
 		end
@@ -228,10 +243,12 @@ class HTTPGatewayService < Service
 				return html_response(400, 'Bad Request', "unknown format `#{format}'")
 			end
 			body = [attrs]
-			[200, {'Content-Type'=>ct}, body]
+			return [200, {'Content-Type'=>ct}, body]
 		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			if vtime
+				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
+			elsif vname
+				return html_response(404, 'Not Found', "key=`#{key}' vname=#{vname}")
 			else
 				return html_response(404, 'Not Found', "key=`#{key}'")
 			end
@@ -241,7 +258,7 @@ class HTTPGatewayService < Service
 	def http_attrs_post(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		attrs  = require_str(request, 'attrs')
+		attrs = require_str(request, 'attrs')
 		format = optional_str(request, 'format')
 		format ||= DEFAULT_FORMAT
 		check_request(request, %w[attrs format])
@@ -251,22 +268,25 @@ class HTTPGatewayService < Service
 			return html_response(400, 'Bad Request', "unknown format `#{format}'")
 		end
 
-		okey = submit(GWRPCBus, :set_attrs, key, attrs)
+		okey = submit(GWRPCBus, :update_attrs, key, attrs)
 
-		# TODO okey
-		return html_response(200, 'OK')
+		if okey
+			return html_response(200, 'OK')
+		else
+			return html_response(404, 'Not Found', "key=`#{key}'")
+		end
 	end
 
 	def http_attrs_put(env)
+		if env['HTTP_EXPECT'] == '100-continue'
+			return html_response(417, 'Exception Failed')
+		end
+
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
 		format = optional_str(request, 'format')
 		format ||= DEFAULT_FORMAT
 		check_request(request, %w[format])
-
-		if env['HTTP_EXPECT'] == '100-continue'
-			return html_response(417, 'Exception Failed')
-		end
 
 		attrs = env['rack.input'].read
 		attrs = parse_attrs(attrs, format)
@@ -274,10 +294,60 @@ class HTTPGatewayService < Service
 			return html_response(400, 'Bad Request', "unknown format `#{format}'")
 		end
 
-		okey = submit(GWRPCBus, :set_attrs, key, attrs)
+		okey = submit(GWRPCBus, :update_attrs, key, attrs)
 
-		# TODO okey
-		return html_response(202, 'Accepted')
+		if okey
+			return html_response(202, 'Accepted')
+		else
+			return html_response(404, 'Not Found', "key=`#{key}'")
+		end
+	end
+
+
+	# redirect/<key>
+	#  get(data/key)         => url
+	#     vtime=i            => urlt
+	#     vname=s            => urlv
+	def call_redirect(env)
+		case env['REQUEST_METHOD']
+		when 'GET'
+			http_redirect_get(env)
+		else
+			return html_response(405, 'Method Not Allowed')
+		end
+	end
+
+	def http_redirect_get(env)
+		request = ::Rack::Request.new(env)
+		key = get_key_path_info(env)
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[vname])
+		end
+
+		if vtime
+			url = submit(GWRPCBus, :urlt, vtime, key)
+		elsif vname
+			url = submit(GWRPCBus, :urlv, vname, key)
+		else
+			url = submit(GWRPCBus, :url, key)
+		end
+
+		if url
+			body = ["302 Found"]
+			return [302, {'Content-Type'=>'text/plain', 'Location'=>url}, body]
+		else
+			if vtime
+				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
+			elsif vname
+				return html_response(404, 'Not Found', "key=`#{key}' vname=#{vname}")
+			else
+				return html_response(404, 'Not Found', "key=`#{key}'")
+			end
+		end
 	end
 
 
@@ -285,14 +355,13 @@ class HTTPGatewayService < Service
 	#  get(rpc/cmd?k=v)
 	# post(rpc/cmd?k=v)
 	#    cmd:
-	#      get_data      [sid=] key=
-	#      get_attrs     [sid=] key= format=
-	#      set           key= [data=] [attrs= [format=]]
-	#      set_data      key= data=
-	#      set_attrs     key= attrs= format=
+	#      get_data      key= [vtime=] [vname=]
+	#      get_attrs     key= [vtime=] [vname=] [format=]
+	#      add           key= [vname=] data= [attrs= [format=]]
+	#      add_data      (alias of add)
+	#      update_attrs  key= attrs= [format=]
 	#      remove        key=
-	#      url           [sid=] key=
-	#      select        conds= [cols=] [order=] [order_col=] [limit=] [skip=] [sid=]
+	#      url           key= [vtime=] [vname=]
 	#
 	def call_rpc(env)
 		m = env['REQUEST_METHOD']
@@ -304,18 +373,16 @@ class HTTPGatewayService < Service
 			http_rpc_get_data(env)
 		when 'get_attrs'
 			http_rpc_get_attrs(env)
-		when 'set'
-			http_rpc_set(env)
-		when 'set_data'
-			http_rpc_set(env)
-		when 'set_attrs'
-			http_rpc_set(env)
+		when 'add'
+			http_rpc_add(env)
+		when 'add_data'
+			http_rpc_add(env)
+		when 'update_attrs'
+			http_rpc_update_attrs(env)
 		when 'remove'
 			http_rpc_remove(env)
 		when 'url'
 			http_rpc_url(env)
-		when 'select'
-			http_rpc_select(env)
 		else
 			return html_response(406, 'Not Acceptable Method')
 		end
@@ -324,21 +391,30 @@ class HTTPGatewayService < Service
 	def http_rpc_get_data(env)
 		request = ::Rack::Request.new(env)
 		key = require_str(request, 'key')
-		sid = optional_int(request, 'sid')
-		check_request(request, %w[key sid])
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[key vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[key vname])
+		end
 
-		if sid
-			data = submit(GWRPCBus, :gets_data, sid, key)
+		if vtime
+			data = submit(GWRPCBus, :gett_data, vtime, key)
+		elsif vname
+			data = submit(GWRPCBus, :getv_data, vname, key)
 		else
 			data = submit(GWRPCBus, :get_data, key)
 		end
 
 		if data
 			body = [data]
-			[200, {'Content-Type'=>'application/octet-stream'}, body]
+			return [200, {'Content-Type'=>'application/octet-stream'}, body]
 		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			if vtime
+				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
+			elsif vname
+				return html_response(404, 'Not Found', "key=`#{key}' vname=#{vname}")
 			else
 				return html_response(404, 'Not Found', "key=`#{key}'")
 			end
@@ -348,13 +424,20 @@ class HTTPGatewayService < Service
 	def http_rpc_get_attrs(env)
 		request = ::Rack::Request.new(env)
 		key = require_str(request, 'key')
-		sid = optional_int(request, 'sid')
 		format = optional_str(request, 'format')
 		format ||= DEFAULT_FORMAT
-		check_request(request, %w[key sid format])
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[format vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[format vname])
+		end
 
-		if sid
-			attrs = submit(GWRPCBus, :gets_attrs, sid, key)
+		if vtime
+			attrs = submit(GWRPCBus, :gett_attrs, vtime, key)
+		elsif vname
+			attrs = submit(GWRPCBus, :getv_attrs, vname, key)
 		else
 			attrs = submit(GWRPCBus, :get_attrs, key)
 		end
@@ -365,27 +448,30 @@ class HTTPGatewayService < Service
 				return html_response(400, 'Bad Request', "unknown format `#{format}'")
 			end
 			body = [attrs]
-			[200, {'Content-Type'=>ct}, body]
+			return [200, {'Content-Type'=>ct}, body]
 		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			if vtime
+				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
+			elsif vname
+				return html_response(404, 'Not Found', "key=`#{key}' vname=#{vname}")
 			else
 				return html_response(404, 'Not Found', "key=`#{key}'")
 			end
 		end
 	end
 
-	def http_rpc_set(env)
+	def http_rpc_add(env)
 		request = ::Rack::Request.new(env)
 		key = require_str(request, 'key')
+		data = require_str(request, 'data')
+		vname = optional_str(request, 'vname')
 		attrs = optional_str(request, 'attrs')
 		if attrs
 			format = optional_str(request, 'format')
 			format ||= DEFAULT_FORMAT
-			check_request(request, %w[key attrs format])
+			check_request(request, %w[key vname data attrs format])
 		else
-			data   = require_str(request, 'data')
-			check_request(request, %w[key data])
+			check_request(request, %w[key vname data])
 		end
 
 		if attrs
@@ -393,16 +479,20 @@ class HTTPGatewayService < Service
 			unless attrs
 				return html_response(400, 'Bad Request', "unknown format `#{format}'")
 			end
-			if data
-				okey = submit(GWRPCBus, :set, key, data, attrs)
+			if vname
+				okey = submit(GWRPCBus, :addv, vname, key, data, attrs)
 			else
-				okey = submit(GWRPCBus, :set_attrs, key, attrs)
+				okey = submit(GWRPCBus, :add, key, data, attrs)
 			end
 		else
-			okey = submit(GWRPCBus, :set_data, key, data)
+			if vname
+				okey = submit(GWRPCBus, :addv_data, vname, key, data)
+			else
+				okey = submit(GWRPCBus, :add_data, key, data)
+			end
 		end
 
-		# TODO okey
+		# FIXME return okey?
 		return html_response(200, 'OK')
 	end
 
@@ -416,55 +506,45 @@ class HTTPGatewayService < Service
 		if removed
 			return html_response(200, 'OK')
 		else
-			return html_response(204, 'No Content')
+			return html_response(404, 'Not Found', "key=`#{key}'")
 		end
 	end
 
 	def http_rpc_url(env)
 		request = ::Rack::Request.new(env)
 		key = require_str(request, 'key')
-		sid = optional_int(request, 'sid')
-		check_request(request, %w[key sid])
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[key vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[key vname])
+		end
 
-		if sid
-			url = submit(GWRPCBus, :urls, sid, key)
+		if vtime
+			url = submit(GWRPCBus, :urlt, vtime, key)
+		elsif vname
+			url = submit(GWRPCBus, :urlv, vname, key)
 		else
 			url = submit(GWRPCBus, :url, key)
 		end
 
 		if url
 			body = [url]
-			[200, {'Content-Type'=>'application/text-plain'}, body]
+			return [200, {'Content-Type'=>'application/text-plain'}, body]
 		else
-			if sid
-				return html_response(404, 'Not Found', "key=`#{key}' sid=#{sid}")
+			if vtime
+				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
+			elsif vname
+				return html_response(404, 'Not Found', "key=`#{key}' vname=#{vname}")
 			else
 				return html_response(404, 'Not Found', "key=`#{key}'")
 			end
 		end
 	end
 
-	def http_rpc_select(env)
-		request = ::Rack::Request.new(env)
-		sid    = optional_int(request, 'sid')
-		conds  = require_str(request, 'conds')
-		cols   = optional_str(request, 'cols')
-		order  = optional_str(request, 'order')
-		order_col  = optional_str(request, 'order_col')
-		limit  = optional_int(request, 'limit')
-		skip   = optional_int(request, 'skip')
-		check_request(request, %w[sid conds cols order order_col limit skip])
 
-		# FIXME order
-		# FIXME conds
-
-		# TODO
-		html_response(501, 'Not Implemented')
-	end
-
-
-	# direct/<rsid>/<sid>/<key>
-	#  get(data/key)                          => direct get/gets/read/reads
+	# direct/<rsid>/<vtime>/<key>  => get_direct
 	def call_direct(env)
 		case env['REQUEST_METHOD']
 		when 'GET'
@@ -477,19 +557,20 @@ class HTTPGatewayService < Service
 	def http_direct_get(env)
 		request = ::Rack::Request.new(env)
 		path = get_key_path_info(env)
-		rsid_s, sid_s, key = path.split('/', 3)
-		rsid = rsid_s.to_i
-		sid = sid.to_i
-		okey = ObjectKey.new(key, sid, rsid)
+		rsid, vtime, key = path.split('/', 3)
+		rsid = rsid.to_i
+		vtime = vtime.to_i
+
 		check_request(request, %w[])
 
+		okey = ObjectKey.new(key, vtime, rsid)
 		data = submit(DSRPCBus, :get_direct, okey)
 
 		if data
 			body = [data]
-			[200, {'Content-Type'=>'application/octet-stream'}, body]
+			return [200, {'Content-Type'=>'application/octet-stream'}, body]
 		else
-			return html_response(404, 'Not Found', "rsid=#{rsid} key=`#{key}' sid=#{sid}")
+			return html_response(404, 'Not Found', "rsid=#{rsid} key=`#{key}' vtime=#{vtime}")
 		end
 	end
 
@@ -498,7 +579,7 @@ class HTTPGatewayService < Service
 	def require_str(request, k)
 		str = request.GET[k] || request.POST[k]
 		unless str
-			# FIXME
+			# FIXME HTTP error code
 			raise "#{k} is required"
 		end
 		str

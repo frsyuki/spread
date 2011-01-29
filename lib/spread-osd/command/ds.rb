@@ -28,7 +28,6 @@ require 'spread-osd/logic/tsv_data'
 require 'spread-osd/logic/weight'
 require 'spread-osd/logic/fault_detector'
 require 'spread-osd/logic/membership'
-require 'spread-osd/logic/snapshot'
 require 'spread-osd/logic/node'
 require 'spread-osd/logic/okey'
 require 'spread-osd/service/base'
@@ -57,12 +56,10 @@ require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
 require 'spread-osd/service/master_select'
 require 'spread-osd/service/membership'
-require 'spread-osd/service/snapshot'
 require 'spread-osd/service/rts'
 require 'spread-osd/service/rts_file'
 require 'spread-osd/service/rts_memory'
 require 'spread-osd/service/slave'
-require 'spread-osd/service/snapshot'
 require 'spread-osd/service/storage'
 require 'spread-osd/service/storage_dir'
 require 'spread-osd/service/ulog'
@@ -174,9 +171,14 @@ op.on('-R', '--read-only', "read-only mode", TrueClass) do |b|
 	read_only_gw = b
 end
 
-op.on('-S', '--snapshot SID', "read-only mode using the snapshot", Integer) do |i|
+op.on('-N', '--read-only-name NAME', "read-only mode using the version name") do |name|
 	read_only_gw = true
-	conf.read_only_sid = i
+	conf.read_only_version = name
+end
+
+op.on('-T', '--read-only-time TIME', "read-only mode using the time", Integer) do |time|
+	read_only_gw = true
+	conf.read_only_version = time
 end
 
 op.on('--fault_store PATH', "path to fault status file") do |path|
@@ -185,10 +187,6 @@ end
 
 op.on('--membership_store PATH', "path to membership status file") do |path|
 	conf.membership_path = path
-end
-
-op.on('--snapshot_store PATH', "path to snapshot status file") do |path|
-	conf.snapshot_path = path
 end
 
 op.on('-v', '--verbose', "show debug messages", TrueClass) do |b|
@@ -267,10 +265,6 @@ begin
 		conf.weight_path = File.join(conf.storage_path, "weight")
 	end
 
-	unless conf.snapshot_path
-		conf.snapshot_path = File.join(conf.storage_path, "snapshot")
-	end
-
 	if conf.http_redirect_path_format && !conf.http_redirect_port
 		$log.warn "--http-redirect-port option is ignored"
 	end
@@ -302,7 +296,6 @@ end
 if conf.http_gateway_address
 	HTTPGatewayService.open!
 end
-SnapshotMemberService.init
 StorageSelector.open!
 UpdateLogSelector.open!
 RelayTimeStampSelector.open!
@@ -316,6 +309,7 @@ log_event_bus
 
 ProcessBus.run
 
+# FIXME compare UNIX time with CS and show warning if it is not correct
 SyncClientService.instance.sync_blocking! rescue nil
 MembershipMemberService.instance.register_self_blocking! rescue nil
 #HeartbeatMemberService.instance.heartbeat_blocking! rescue nil

@@ -20,9 +20,8 @@ module SpreadOSD
 
 SYNC_MEMBERSHIP     = 0
 SYNC_FAULT_LIST     = 1
-SYNC_SNAPSHOT       = 2
-SYNC_REPLSET_WEIGHT = 3
-SYNC_MDS_URI        = 4
+SYNC_REPLSET_WEIGHT = 2
+SYNC_MDS_URI        = 3
 
 
 class SyncBus < Bus

@@ -20,7 +20,7 @@ gw = start_gw
 
 pid = Process.pid
 keyf = "#{pid}-key%d"
-data = "@"*SIZE
+_data = "@"*SIZE
 
 test "run normally" do
 	c = gw.client
@@ -28,22 +28,31 @@ test "run normally" do
 	LOOP.times {|o|
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'set' do
-				c.call(:set, key, data, attrs)
+			test 'add' do
+				c.call(:add, key, _data, _attrs)
 			end
 		end
 
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
 			test 'get' do
-				data_, attrs_ = c.call(:get, key)
+				data, attrs = c.call(:get, key)
+				test_equals _data, data, 'get _data == data'
+				test_equals _attrs, attrs, 'get _attrs == attrs'
+			end
 
-				test_equals data, data_, 'get data_ == data'
-				test_equals attrs, attrs_, 'get attrs_ == attrs'
+			test 'get_data' do
+				data = c.call(:get_data, key)
+				test_equals _data, data, 'get_data _data == data'
+			end
+
+			test 'get_attrs' do
+				attrs = c.call(:get_attrs, key)
+				test_equals _attrs, attrs, 'get_attrs _attrs == attrs'
 			end
 		end
 
@@ -52,20 +61,17 @@ test "run normally" do
 
 			test "remove" do
 				removed = c.call(:remove, key)
-
 				test_equals true, removed, 'removed == true'
 			end
 		end
 
 		NUM.times do |i|
 			key = keyf % i
-			attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
 			test 'removed get' do
-				data_, attrs_ = c.call(:get, key)
-
-				test_equals nil, data_, 'get data_ is removed'
-				test_equals nil, attrs_, 'get attrs_ is removed'
+				data, attrs = c.call(:get, key)
+				test_equals nil, data, 'get_data _data is removed'
+				test_equals nil, attrs, 'get_attrs _attrs is removed'
 			end
 		end
 	}

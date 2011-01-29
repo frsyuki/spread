@@ -30,14 +30,14 @@ class DirectoryStorageService < StorageService
 	def close
 	end
 
-	def get(sid, key)
-		read(sid, key, nil, nil)
+	def get(vtime, key)
+		read(vtime, key, nil, nil)
 	end
 
-	def read(sid, key, offset, size)
-		$log.trace { "DirectoryStorage: read sid=#{sid} key=#{key.dump} offset=#{offset} size=#{size}" }
+	def read(vtime, key, offset, size)
+		$log.trace { "DirectoryStorage: read vtime=#{vtime} key=#{key.dump} offset=#{offset} size=#{size}" }
 
-		path = key_to_path(sid, key)
+		path = key_to_path(vtime, key)
 		begin
 			return File.read(path, size, offset)
 		rescue
@@ -45,10 +45,10 @@ class DirectoryStorageService < StorageService
 		end
 	end
 
-	def set(sid, key, data)
-		$log.trace { "DirectoryStorage: set sid=#{sid} key=#{key.dump} data=#{data.size}byte)" }
+	def set(vtime, key, data)
+		$log.trace { "DirectoryStorage: set vtime=#{vtime} key=#{key.dump} data=#{data.size}byte)" }
 
-		path = key_to_path(sid, key)
+		path = key_to_path(vtime, key)
 		make_dir(path)
 
 		tmp_path = path+".tmp"
@@ -69,10 +69,10 @@ class DirectoryStorageService < StorageService
 		true
 	end
 
-	#def write(sid, key, offset, data)
-	#	$log.trace { "DirectoryStorage: write sid=#{sid} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
+	#def write(vtime, key, offset, data)
+	#	$log.trace { "DirectoryStorage: write vtime=#{vtime} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
 	#
-	#	path = key_to_path(sid, key)
+	#	path = key_to_path(vtime, key)
 	#	make_dir(path)
 	#
 	#	File.open(path, File::WRONLY|File::CREAT) {|f|
@@ -92,10 +92,10 @@ class DirectoryStorageService < StorageService
 	#	true
 	#end
 
-	#def append(sid, key, data)
-	#	$log.trace { "DirectoryStorage: append sid=#{sid} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
+	#def append(vtime, key, data)
+	#	$log.trace { "DirectoryStorage: append vtime=#{vtime} key=#{key.dump} offset=#{offset} data=#{data.size}bytes" }
 	#
-	#	path = key_to_path(sid, key)
+	#	path = key_to_path(vtime, key)
 	#	make_dir(path)
 	#
 	#	size = nil
@@ -116,10 +116,10 @@ class DirectoryStorageService < StorageService
 	#	size
 	#end
 
-	#def resize(sid, key, size)
-	#	$log.trace { "DirectoryStorage: resize sid=#{sid} key=#{key.dump} size=#{size}" }
+	#def resize(vtime, key, size)
+	#	$log.trace { "DirectoryStorage: resize vtime=#{vtime} key=#{key.dump} size=#{size}" }
 	#
-	#	path = key_to_path(sid, key)
+	#	path = key_to_path(vtime, key)
 	#	make_dir(path)
 	#
 	#	File.open(path, File::WRONLY|File::CREAT) {|f|
@@ -129,10 +129,10 @@ class DirectoryStorageService < StorageService
 	#	true
 	#end
 
-	def remove(sid, key)
-		$log.trace { "DirectoryStorage: remove sid=#{sid} key=#{key.dump}" }
+	def remove(vtime, key)
+		$log.trace { "DirectoryStorage: remove vtime=#{vtime} key=#{key.dump}" }
 
-		path = key_to_path(sid, key)
+		path = key_to_path(vtime, key)
 		begin
 			File.unlink(path)
 			return true
@@ -141,42 +141,40 @@ class DirectoryStorageService < StorageService
 		end
 	end
 
-	def exist(sid, key)
-		$log.trace { "DirectoryStorage: exist sid=#{sid} key=#{key.dump}" }
+	def exist(vtime, key)
+		$log.trace { "DirectoryStorage: exist vtime=#{vtime} key=#{key.dump}" }
 
-		path = key_to_path(sid, key)
+		path = key_to_path(vtime, key)
 		return File.exist?(path)
 	end
 
 	def get_items
 		num = 0
-		Dir.glob("#{@dir}/sid-*") {|sdir|
-			(0..0xff).each {|d|
-				dir = "%03d" % d
-				dirpath = File.join(sdir, dir)
-				begin
-					e = Dir.entries(dirpath).size
-					e -= 2  # skip "." and ".."
-					num += e if e > 0
-				rescue
-				end
-			}
+		(0..0xff).each {|d|
+			box = "%03d" % d
+			dirpath = File.join(@dir, "data", box)
+			begin
+				e = Dir.entries(dirpath).size
+				e -= 2  # skip "." and ".."
+				num += e if e > 0
+			rescue
+			end
 		}
 		num
 	end
 
 	# for DataServerURLService
 	def self.encode_okey(okey)
-		instance.key_to_path(okey.sid, okey.key)
+		instance.key_to_path(okey.vtime, okey.key)
 	end
 
 	private
-	def key_to_path(sid, key)
-		sdir = "sid-%05d" % sid
+	def key_to_path(vtime, key)
 		digest = Digest::MD5.digest(key)
-		dir = "%03d" % digest.unpack('C')[0]
-		fname = encode_path(key)
-		File.join(@dir, sdir, dir, fname)
+		box = "%03d" % digest.unpack('C')[0]
+		kdir = encode_path(key)
+		fname = "v#{vtime}"
+		File.join(@dir, "data", box, kdir, fname)
 	end
 
 	def encode_path(s)

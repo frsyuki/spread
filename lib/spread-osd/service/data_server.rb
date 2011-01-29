@@ -29,28 +29,28 @@ class DataServerService < Service
 
 	def rpc_get_direct(okey)
 		@stat_cmd_read += 1
-		StorageBus.get(okey.sid, okey.key)
+		StorageBus.get(okey.vtime, okey.key)
 	end
 	
 	def rpc_read_direct(okey, offset, size)
 		@stat_cmd_read += 1
-		StorageBus.read(okey.sid, okey.key, offset, size)
+		StorageBus.read(okey.vtime, okey.key, offset, size)
 	end
 	
 	def rpc_set_direct(okey, data)
 		@stat_cmd_write += 1
-		d = UpdateLogData.new(okey.sid, okey.key)
+		d = UpdateLogData.new(okey.vtime, okey.key)
 		UpdateLogBus.append(d.dump) do
-			StorageBus.set(okey.sid, okey.key, data)
+			StorageBus.set(okey.vtime, okey.key, data)
 		end
 		nil
 	end
 
 	#def rpc_write_direct(okey, offset, data)
 	#	@stat_cmd_write += 1
-	#	d = UpdateLogData.new(okey.sid, okey.key, offset, data.size)
+	#	d = UpdateLogData.new(okey.vtime, okey.key, offset, data.size)
 	#	UpdateLogBus.append(d.dump) do
-	#		StorageBus.write(okey.sid, okey.key, offset, data)
+	#		StorageBus.write(okey.vtime, okey.key, offset, data)
 	#	end
 	#	nil
 	#end
@@ -58,22 +58,22 @@ class DataServerService < Service
 	#def rpc_resize_direct(okey, size)
 	#	# TODO: stat_cmd_resize?
 	#	# FIXME size field?
-	#	d = UpdateLogData.new(okey.sid, okey.key, nil, size)
+	#	d = UpdateLogData.new(okey.vtime, okey.key, nil, size)
 	#	UpdateLogBus.append(d.dump) do
-	#		StorageBus.resize(okey.sid, okey.key, size)
+	#		StorageBus.resize(okey.vtime, okey.key, size)
 	#	end
 	#	nil
 	#end
 
 	def rpc_exist_direct(okey)
-		StorageBus.exist(okey.sid, okey.key)
+		StorageBus.exist(okey.vtime, okey.key)
 	end
 
 	def rpc_remove_direct(okey)
 		@stat_cmd_remove += 1
-		d = UpdateLogData.new(okey.sid, okey.key)
+		d = UpdateLogData.new(okey.vtime, okey.key)
 		UpdateLogBus.append(d.dump) do
-			StorageBus.remove(okey.sid, okey.key)
+			StorageBus.remove(okey.vtime, okey.key)
 		end
 		nil
 	end
@@ -93,18 +93,18 @@ class DataServerService < Service
 				pos = npos
 			else
 				if d.offset && d.size
-					data = StorageBus.read(d.sid, d.key, d.offset, d.size)
+					data = StorageBus.read(d.vtime, d.key, d.offset, d.size)
 				else
-					data = StorageBus.get(d.sid, d.key)
+					data = StorageBus.get(d.vtime, d.key)
 					mkeys << d.key
 				end
 				# data may be null => removed
 				if data
-					msgs << [d.sid, d.key, d.offset, data]
+					msgs << [d.vtime, d.key, d.offset, data]
 					msize += data.size
 				else
 					# data is removed
-					msgs << [d.sid, d.key, 0, nil]
+					msgs << [d.vtime, d.key, 0, nil]
 				end
 				pos = npos
 				break if msize > limit

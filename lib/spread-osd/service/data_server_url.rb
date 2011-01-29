@@ -21,7 +21,7 @@ module SpreadOSD
 class DataServerURLService < Service
 	# %p    path encoded key
 	# %k    url encoded key
-	# %s    sid
+	# %v    vtime
 	# %r    rsid
 	def initialize
 		host = ConfigBus.self_address.host
@@ -34,7 +34,7 @@ class DataServerURLService < Service
 			end
 
 		elsif self_http_address = ConfigBus.http_gateway_address
-			@format = "http://#{host}:#{self_http_address.port}/direct/%r/%s/%k"
+			@format = "http://#{host}:#{self_http_address.port}/direct/%r/%v/%k"
 
 		else
 			@format = nil
@@ -46,7 +46,7 @@ class DataServerURLService < Service
 			raise "redirect url is not configured"
 		end
 
-		unless StorageBus.exist(okey.sid, okey.key)
+		unless StorageBus.exist(okey.vtime, okey.key)
 			return nil
 		end
 
@@ -60,7 +60,7 @@ class DataServerURLService < Service
 	def format_url(okey)
 		url = @format.dup
 
-		url.gsub!('%s', okey.sid.to_s)
+		url.gsub!('%v', okey.vtime.to_s)
 		url.gsub!('%r', okey.rsid.to_s)
 
 		path_key_index = url.index('%p')

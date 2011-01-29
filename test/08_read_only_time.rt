@@ -1,0 +1,177 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << File.dirname(__FILE__)
+require 'common'
+
+LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
+SIZE   = (ARGV[1] || 10).to_i
+NUM    = (ARGV[2] || 50).to_i
+
+mds = start_mds
+cs = start_cs
+ds0 = start_ds(0, 0)
+ds1 = start_ds(1, 0)
+ds2 = start_ds(2, 1)
+ds3 = start_ds(3, 1)
+
+cs.show_nodes
+cs.show_version
+
+gw = start_gw
+
+rogw = []
+
+pid = Process.pid
+keyf = "#{pid}-key%d"
+_data1 = "1"*SIZE
+_data2 = "2"*SIZE
+
+_data1[2,4] = "OVER"
+_data1_0_8  = _data1[0,8]
+_data1_3_20 = _data1[3,20]
+
+_data2[2,4] = "OVER"
+_data2_0_8  = _data2[0,8]
+_data2_3_20 = _data2[3,20]
+
+test "run normally" do
+	c = gw.client
+
+	gw0 = start_gw(rogw.size+1, "--read-only-time #{Time.now.utc.to_i}")
+	rogw << gw0
+
+	sleep 3
+
+	NUM.times do |i|
+		key = keyf % i
+		_attrs1 = {"loop"=>"0", "attr#{i}"=>i.to_s}
+
+		test 'add 1' do
+			c.call(:add, key, _data1, _attrs1)
+		end
+	end
+
+	sleep 2
+
+	gw1 = start_gw(rogw.size+1, "--read-only-time #{Time.now.utc.to_i}")
+	rogw << gw1
+
+	sleep 3
+
+	NUM.times do |i|
+		key = keyf % i
+		_attrs2 = {"loop"=>"2", "attr2#{i}"=>i.to_s}
+
+		test 'add 2' do
+			c.call(:add, key, _data2, _attrs2)
+		end
+	end
+
+	sleep 2
+
+	gw2 = start_gw(rogw.size+1, "--read-only-time #{Time.now.utc.to_i}")
+	rogw << gw2
+
+	c2 = gw2.client
+
+	NUM.times do |i|
+		key = keyf % i
+		_attrs2 = {"loop"=>"2", "attr2#{i}"=>i.to_s}
+
+		test 'get 2' do
+			data, attrs = c2.call(:get, key)
+			test_equals _data2, data, 'get 2 _data2 == data'
+			test_equals _attrs2, attrs, 'get 2 _attrs2 == attrs'
+		end
+
+		test 'get_data 2' do
+			data = c2.call(:get_data, key)
+			test_equals _data2, data, 'get_data 2 _data2 == data'
+		end
+
+		test 'get_attrs 2' do
+			attrs = c2.call(:get_attrs, key)
+			test_equals _attrs2, attrs, 'get_attrs 2 _attrs2 == attrs'
+		end
+
+		test 'read 2 offset=0 size=8' do
+			data = c2.call(:read, key, 0, 8)
+			test_equals _data2_0_8, data, 'read 2 _data2[0,8] == data'
+		end
+
+		test 'read 2 offset=3 size=20' do
+			data = c2.call(:read, key, 3, 20)
+			test_equals _data2_3_20, data, 'read 2 _data2[3,20] == data'
+		end
+	end
+
+	c1 = gw1.client
+
+	NUM.times do |i|
+		key = keyf % i
+		_attrs1 = {"loop"=>"0", "attr#{i}"=>i.to_s}
+
+		test 'get 1' do
+			data, attrs = c1.call(:get, key)
+			test_equals _data1, data, 'get 1 _data1 == data'
+			test_equals _attrs1, attrs, 'get 1 _attrs1 == attrs'
+		end
+
+		test 'get_data 1' do
+			data = c1.call(:get_data, key)
+			test_equals _data1, data, 'get 1 _data1 == data'
+		end
+
+		test 'get_attrs 1' do
+			attrs = c1.call(:get_attrs, key)
+			test_equals _attrs1, attrs, 'get 1 _attrs1 == attrs'
+		end
+
+		test 'read 1 offset=0 size=8' do
+			data = c1.call(:read, key, 0, 8)
+			test_equals _data1_0_8, data, 'read 1 _data1[0,8] == data'
+		end
+
+		test 'read 1 offset=3 size=20' do
+			data = c1.call(:read, key, 3, 20)
+			test_equals _data1_3_20, data, 'read 1 _data1[3,20] == data'
+		end
+	end
+
+	c0 = gw0.client
+
+	NUM.times do |i|
+		key = keyf % i
+
+		test 'get 0' do
+			data, attrs = c0.call(:get, key)
+			test_equals nil, data, 'get 0 _data1 is not found'
+			test_equals nil, attrs, 'get 0 _attrs1 is not founds'
+		end
+
+		test 'get_data 0' do
+			data = c0.call(:get_data, key)
+			test_equals nil, data, 'get 0 _data1 is not found'
+		end
+
+		test 'get_attrs 0' do
+			attrs = c0.call(:get_attrs, key)
+			test_equals nil, attrs, 'get 0 _attrs1 is not founds'
+		end
+
+		test 'read 0 offset=0 size=8' do
+			data = c0.call(:read, key, 0, 8)
+			test_equals nil, data, 'read 0 _data1[0,8] is not found'
+		end
+
+		test 'read 0 offset=3 size=20' do
+			data = c0.call(:read, key, 3, 20)
+			test_equals nil, data, 'read 0 _data1[3,20] is not found'
+		end
+	end
+end
+
+cs.show_items
+cs.show_stat
+
+term_all(ds0, ds1, ds2, ds3, gw, mds, cs, *rogw)
+
