@@ -19,7 +19,7 @@ Since change of cluster configuration is hidden from applications, you can scale
 
 SpreadOSD supports replication. Data won't be lost even if some servers crashed. Also I/O requests from applications will be proceeded normally.
 
-Replication strategy of SpreadOSD is combination of multi-master replication. When a master server is crashed, another master server fails-over automatically at minimal downtime.
+Replication strategy of SpreadOSD is combination of multi-master replication. When a master server is crashed, another master server fails-over immediately at minimal downtime.
 
 SpreadOSD also supports inter-datacenter replication (aka. geo-redundancy). Each data is stored over multiple datacenters and you can prepare for disasters.
 
@@ -27,13 +27,12 @@ SpreadOSD also supports inter-datacenter replication (aka. geo-redundancy). Each
 ### Maintainability
 
 SpreadOSD provides some management tools to control all data servers all together. And you can visualize load of servers with monitoring tools.
-
 It means that management cost doesn't grow even if scale of the cluster grows.
 
 
 ### Data model
 
-SpreadOSD stores set of *objects* identified by a key. Each object has both data (an sequence of bytes) and attributes (an associative array).
+SpreadOSD stores set of *objects* identified by a **key** (a string). Each object has both **data** (an sequence of bytes) and **attributes** (an associative array).
 
         key             data                  attributes
     +----------+-------------------+---------------------------------+
@@ -45,13 +44,17 @@ SpreadOSD stores set of *objects* identified by a key. Each object has both data
     +----------+-------------------+---------------------------------+
     ...
 
-And each object can have multiple versions. You can get back old version of the object unless you surely delete it.
+And each object can have multiple versions.
+You can get back old version of the object unless you surely delete it.
+Each version is identified by name or created time (UNIX time at UTC).
+
+TODO: See API Reference
 
 
 ## Learm more
 
   - TODO: See Architecture
-  - TODO: See Install
+  - TODO: See Installation
   - TODO: See API Reference
 
 
@@ -135,8 +138,8 @@ Metadata servers store "which replication-set stores the actual data", and data 
                      +----+   +----+   +----+
 
   1. Application sends add request to a GW (gateway) or DS (data server). Any of GW or DS can respond to the requests.
-  2. GW or DS selects a replication-set that stores the data and insert its ID to MDS (metadata server). The replication-set is selected using weighted round-robin algorithm.
-  3. GW or DS sends add request to a DS in the replication-set.
+  2. GW (or DS) selects a replication-set that stores the data and insert its ID to MDS (metadata server). Weighted round-robin algorithm is used to select the replication-set.
+  3. GW (or DS) sends add request to a DS in the replication-set.
   4. Other DSs in the replication-set replicate the stored data.
 
 
@@ -159,13 +162,13 @@ Metadata servers know which replication-set stores the actual data. So gateway (
                      +----+   +----+   +----+
 
   1. Application sends get request to a GW or DS. Any of GW or DS can respond to the requests.
-  2. GW or DS sends search query to MDS. MDS returns ID of replication-set that has the requested data if it's found.
-  3. GW or DS sends get request to one of DS in the replication-set. The DS is selected using location-aware algorithm (TODO: See HowTo Geo-redundancy).
+  2. GW (or DS) sends search query to MDS. MDS returns ID of replication-set that has the requested data if it's found.
+  3. GW (or DS) sends get request to one of DS in the replication-set. The DS is selected using location-aware algorithm (TODO: See HowTo Geo-redundancy).
 
 
-### Updating and geting metadata
+### Updating and geting attributes
 
-Metadata is stored on metadata servers.
+Attributes are stored on metadata servers.
 
                         App     App     App
            (2)       (1) |       |       |
@@ -182,12 +185,12 @@ Metadata is stored on metadata servers.
                      +----+   +----+   +----+
 
   1. Application sends update or get request to a GW or DS. Any of GW or DS can respond to the requests.
-  2. GW or DS sends a query to MDS.
+  2. GW (or DS) sends a query to MDS.
 
 
 ## Control and Monitoring
 
-All data servers are registered on configuration server. Control and monitoring tools helps you to gather information from the data servers by taking server list from the configuration server.
+All data servers are registered on configuration server. Control and monitoring tools deal with all data servers all together by changing settings on configuration server or taking server list from the configuration server.
 
                      (1)      (2)
        Administrator --> Tool --> CS
@@ -206,9 +209,11 @@ All data servers are registered on configuration server. Control and monitoring 
   2. The control tool takes cluster information from CS (configuration server).
   3. The control tool takes status or statistics from DSs and show them.
 
+TODO: See Operations
 
-Install - SpreadOSD
-===================
+
+Installation - SpreadOSD
+========================
 
 SpreadOSD is a distributed storage system implemed in Ruby.
 You can install using *make install* or using RubyGems.
@@ -255,14 +260,15 @@ Following commands will be installed:
 
 In this guide, you will install all systems on /opt/local/spread directory.
 
-First, install folowing packages using the package management system.
+First, install folowing packages using the package management system:
 
   - gcc-g++ &gt;= 4.1
-  - openssl-devel (or libssl-dev) to build ruby
-  - zlib-devel (or zlib1g-dev) to build ruby
-  - readline-devel (or libreadline6-dev) to build ruby
+  - openssl-devel (or libssl-dev) to build Ruby
+  - zlib-devel (or zlib1g-dev) to build Ruby
+  - readline-devel (or libreadline6-dev) to build Ruby
+  - tokyocabinet (or libtokyocabinet-dev) to build Tokyo Tyrant
 
-Following guide installs SpreadOSD on /opt/local/spread.
+Following procedure installs Ruby and SpreadOSD:
 
     # Installs ruby-1.9 into /opt/local/spread
     $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p0.tar.bz2
@@ -292,9 +298,6 @@ Following guide installs SpreadOSD on /opt/local/spread.
     $ make
     $ sudo make install
 
-TODO: Tokyo Cabinet
-TODO: Install Tokyo Tyrant using apt or yum
-
 
 Cluster construction - SpreadOSD
 ================================
@@ -318,8 +321,8 @@ You can try to use SpreadOSD on single host as follows:
     #    DS requires following options:
     #      --cs (address of CS)
     #      --address (address of this node)
-    #      --nid (unique node id)
-    #      --rsid (replication set id to join)
+    #      --nid (unique node ID)
+    #      --rsid (ID of replication-set to join)
     #      --name (human-friendly node name)
     #      --store (storage path)
     [localhost]$ mkdir data-ds0
@@ -350,7 +353,7 @@ Confirm status of the cluster using *spreadctl* command.
       2             ds2         127.0.0.1:18902      subnet-127.000.000       1     active
       3             ds3         127.0.0.1:18903      subnet-127.000.000       1     active
 
-Now you can use HTTP client to use SpreadOSD.
+It is prepared to use SpreadOSD with HTTP client.
 
     [localhost]$ curl -X POST -d 'data=value1&attrs={"test":"attr"}' http://localhost:18080/data/key1
     
@@ -370,6 +373,7 @@ Now you can use HTTP client to use SpreadOSD.
 
 It runs runs 6-node cluster in following tutorial:
 
+TODO figure
 
     # node01 and node02: run two Tokyo Tyrant servers as dual-master.
     [on node01]$ mkdir /var/spread/mds1
@@ -384,22 +388,22 @@ It runs runs 6-node cluster in following tutorial:
     [on node01]$ mkdir /var/spread/cs
     [on node01]$ spread-cs --mds tt:node01--node02 -s /var/spread/cs
     
-    # node03: runs DS for repliset-set 0.
+    # node03: runs DS for replication-set 0.
     [on node03]$ mkdir /var/spread/node03
     [on node03]$ spread-ds --cs node01 --address node03 --nid 0 --rsid 0 \
                            --name node03 -s /var/spread/node03
     
-    # node04: runs DS for repliset-set 0.
+    # node04: runs DS for replication-set 0.
     [on node04]$ mkdir /var/spread/node04
     [on node04]$ spread-ds --cs node01 --address node04 --nid 1 --rsid 0 \
                            --name node04 -s /var/spread/node04
     
-    # node05: runs DS for repliset-set 1.
+    # node05: runs DS for replication-set 1.
     [on node05]$ mkdir /var/spread/node05
     [on node05]$ spread-ds --cs node01 --address node05 --nid 2 --rsid 1 \
                            --name node05 -s /var/spread/node05
     
-    # node06: runs DS for repliset-set 1.
+    # node06: runs DS for replication-set 1.
     [on node06]$ mkdir /var/spread/node06
     [on node06]$ spread-ds --cs node01 --address node06 --nid 3 --rsid 1 \
                            --name node06 -s /var/spread/node06
@@ -409,7 +413,7 @@ It runs runs 6-node cluster in following tutorial:
 
 Confirm status of the cluster using *spreadctl* command.
 
-    [localhost] $ spreadctl localhost nodes
+    $ spreadctl node01 nodes
     nid            name                 address                location    rsid      state
       0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
       1          node04       192.168.0.14:18900      subnet-192.168.000       0     active
@@ -425,9 +429,187 @@ Now the cluster is active. Try to set and get using http client, or *spreadcli* 
     {"type":"png"}
     val1
 
+TODO: See Operations
 
-Operaionts - SpreadOSD
+
+Operations - SpreadOSD
 ======================
+
+TODO
+
+## Adding data servers
+
+### Creating a new replication-set
+
+By creating new replication-set, both storage capacity and I/O performance grow.
+
+First of all, confirm current status of the cluster:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     active
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+
+Prepare 2 or more servers for the new replication-set and run spread-ds command on the servers.
+In this process, we'll create replication-set (ID=2) with 2 servers named "node07" and "node08":
+
+    [on node07]$ mkdir /var/spread/node07
+    [on node07]$ spread-ds --cs node01 --address node07 --nid 4 --rsid 2 \
+                           --name node07 -s /var/spread/node07
+    
+    [on node08]$ mkdir /var/spread/node08
+    [on node08]$ spread-ds --cs node01 --address node08 --nid 5 --rsid 2 \
+                           --name node08 -s /var/spread/node08
+
+Finally, confirm the status of the cluster:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     active
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+      4          node07       192.168.0.17:18900      subnet-192.168.000       2     active
+      5          node08       192.168.0.18:18900      subnet-192.168.000       2     active
+
+TODO: See: Changing weight of load balancing
+
+
+### Adding a server to existing replication-set
+
+By adding a server to existing replication-set, you can raise availability and read performance of the replication-set.
+
+First of all, confirm current status of the cluster:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     active
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+
+In this process, we'll add a server to replication-set whose ID is 0.
+
+Prepare new server and copy existing data from other server on the replication-set using rsync.
+
+    [on node07]$ mkdir /var/spread/node07
+    
+    # Copy relay time stamps first
+    [on node07]$ scp node03:/var/spread/node03/rts-* /var/spread/node07/
+    
+    # Copy data using rsync.
+    #   rsync option:
+    #     -a  Archive mode
+    #     -v  Verbose mode
+    #     -e  Set cipher algorithm.
+    #         Note that arcfour128 is fast but weak algorithm only for secure network.
+    #         "blowfish" is good choice if the network is insecure.
+    #     --bwlimit limits bandwidth in KB/s
+    [on node07]$ rsync -av -e 'ssh -c arcfour128' --bwlimit 32768 \
+                       node03:/var/spread/node03/data /var/spread/node07/
+
+After data is copied, run a DS process.
+
+    [on node07]$ spread-ds --cs node01 --address node07 --nid 4 --rsid 0 \
+                           --name node07 -s /var/spread/node07
+
+Finally, confirm the status of the cluster:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     active
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+      4          node07       192.168.0.17:18900      subnet-192.168.000       0     active
+
+TODO: See HowTo Geo-redundancy
+
+
+## Removing a data server
+
+You can remove data servers to reduce scale of the cluster.
+
+First of all, confirm current status of the cluster:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     active
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+
+Terminate a DS process:
+
+    [on node04]$ kill `pidof spread-ds`
+
+Status of the cluster becomes as follows:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     FAULT
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+
+Then, run **spreadctl** **remove_node** command:
+
+    $ spreadctl node01 remove_node 1
+
+Finally, confirm the status of the cluster:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+
+
+## Changing weight of load balancing
+
+TODO
+
+    $ spreadctl node01 weight
+    rsid   weight       nids   names
+       0       10        0,1   node3,node4
+       1       10        2,3   node5,node6
+
+    $ spreadctl node01 set_weight 0 5
+
+    $ spreadctl node01 weight
+    rsid   weight       nids   names
+       0        5        0,1   node3,node4
+       1       10        2,3   node5,node6
+
+
+## Monitoring load
+
+TODO
+
+    $ spreadtop node01
+
+Type 's' to toggle short mode.
+
+
+## Backup
+
+TODO
+
+### Items to backup
+
+TODO
+
+### Backup cluster information
+
+TODO
+
+### Backup data
+
+TODO
+
+### Backup metadata
 
 TODO
 
@@ -438,6 +620,56 @@ Fault management - SpreadOSD
 
 TODO
 
+## Recovering data server
+
+TODO
+
+### If data is not lost
+
+TODO
+
+Restart the server process with same **--nid** option and same **--rsid** option.
+
+### If data is lost
+
+TODO
+
+Detach the crashed server first:
+
+    $ spreadctl node01 remove_node 1
+
+Then add new node.
+TODO: See Adding a server to existing replication-set
+
+## Recovering configuration server
+
+TODO
+
+Since IP address of the configuration server can't be change, you have to restart use same IP address of the crashed server on a substitute server.
+
+It is good ide to use IP alias for the address of configuration server.
+
+### If data is not lost
+
+TODO
+
+
+### If data is lost
+
+TODO
+
+Copy cluster information data from another data server or gateway:
+
+    [on node01]$ mkdir /var/spread/cs
+    [on node01]$ scp node03:/var/spread/node03/membership node03:/var/spread/node03/fault /var/spread/cs/
+
+Restart the server process with same **--port** option.
+
+
+## Recovering gateway
+
+Just restart it, since gateway is a *stateless* server.
+
 
 
 Commandline reference - SpreadOSD
@@ -445,18 +677,195 @@ Commandline reference - SpreadOSD
 
 TODO
 
+## Server commands
+
+### spread-cs: configuration server
+
+    Usage: spread-cs [options]
+        -p, --port PORT                  listen port
+        -l, --listen HOST                listen address
+        -m, --mds ADDRESS                address of metadata server
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --weight_store PATH          path to weight status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
+
+### spread-ds: data server
+
+    Usage: spread-ds [options]
+        -c, --cs ADDRESS                 address of config server
+        -i, --nid ID                     unieque node id
+        -n, --name NAME                  node name
+        -a, --address ADDRESS[:PORT]     address of this node
+        -l, --listen HOST[:PORT]         listen address
+        -g, --rsid IDs                   replication set IDs
+        -L, --location STRING            location of this node
+        -s, --store PATH                 path to storage directory
+        -u, --ulog PATH                  path to update log directory
+        -r, --rts PATH                   path to relay timestamp directory
+        -t, --http PORT                  http listen port
+            --http-redirect-port PORT
+            --http-redirect-path FORMAT
+        -R, --read-only                  read-only mode
+        -N, --read-only-name NAME        read-only mode using the version name
+        -T, --read-only-time TIME        read-only mode using the time
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
+
+### spread-gw: gateway
+
+    Usage: spread-gw [options]
+        -c, --cs ADDRESS                 address of config server
+        -p, --port PORT                  listen port
+        -l, --listen HOST                listen address
+        -t, --http PORT                  http listen port
+        -R, --read-only                  read-only mode
+        -N, --read-only-name NAME        read-only mode using the version name
+        -T, --read-only-time TIME        read-only mode using the time
+        -L, --location STRING            enable location-aware master selection
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --weight_store PATH          path to weight status file
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
 
 
-API - SpreadOSD
-================
+## Operation tools
+
+### spreadctl: control tool
+
+    Usage: spreadctl <cs address[:port]> <command> [options]
+    command:
+       stat                         show statistics of nodes
+       nodes                        show list of nodes
+       remove_node <nid>            remove a node from the cluster
+       weight                       show list of replication sets
+       set_weight <rsid> <weight>   set distribution weight
+       mds                          show MDS uri
+       set_mds <URI>                set MDS uri
+       items                        show stored number of items
+       version                      show software version of nodes
+
+### spreadcli: command line client
+
+    Usage: spreadcli <cs address[:port]> <command> [options]
+    command:
+       get <key>                           get data and attributes
+       gett <time> <key>                   get data and attributes using the time
+       getv <vname> <key>                  get data and attributes using the version name
+       get_data <key>                      get data
+       gett_data <time> <key>              get data using the time
+       getv_data <vname> <key>             get data using the version name
+       get_attrs <key>                     get attributes
+       gett_attrs <time> <key>             get attributes using the time
+       getv_attrs <vname> <key>            get attributes using the version name
+       read <key> <offset> <size>          get data with the offset and the size
+       readt <time> <key> <offset> <size>  get data with the offset and the size using version time
+       readv <vname> <key> <offset> <size> get data with the offset and the size using version name
+       add <key> <data> <json>             set data and attributes
+       addv <vname> <key> <data> <json>    set data and attributes with version name
+       add_data <key> <data>               set data
+       addv_data <vname> <key> <data>      set data with version name
+       update_attrs <key> <json>           update attributes
+       remove <key>                        remove the data and attributes
+
+### spreadtop: monitoring tool like 'top'
+
+    Usage: spreadtop <cs address>
+
+
+
+API Reference - SpreadOSD
+=========================
 
 ## HTTP API
 
-TODO
+### GET from /data/&gt;key&lt;
+
+### PUT to /data/&gt;key&lt;
+
+### POST to /data/&gt;key&lt;
+
+### GET from /attrs/&gt;key&lt;
+
+### PUT to /attrs/&gt;key&lt;
+
+### POST to /attrs/&gt;key&lt;
+
+### POST or GET on /rpc/&gt;command&lt;
+
+### GET from /redirect/&gt;key&lt;
+
+TODO: See Direct data transfer with X-Accel-Redirect
+
 
 ## MessagePack-RPC API
 
 TODO
+
+### Getting API
+
+#### get(key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
+
+#### get\_data(key:Raw) -&gt; data:Raw
+
+#### get\_attrs(key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
+
+#### read(key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+
+### Getting specific version API
+
+#### gett(vtime:Integer, key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
+
+#### gett\_data(vtime:Integer, key:Raw) -&gt; data:Raw
+
+#### gett\_attrs(vtime:Integer, key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
+
+#### readt(vtime:Integer, key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+
+#### getv(vname:Raw, key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
+
+#### getv\_data(vname:Raw, key:Raw) -&gt; data:Raw
+
+#### getv\_attrs(vname:Raw, key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
+
+#### readv(vname:Raw, key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+
+### Adding API
+
+#### add(key:Raw, data:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
+
+#### add\_data(key:Raw, data:Raw) -&gt; objectKey:Object
+
+#### addv(vname:Raw, key:Raw, data:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
+
+#### addv\_data(vname:Raw, key:Raw, data:Raw) -&gt; objectKey:Object
+
+
+### Removing API
+
+#### remove(key:Raw)
+
+
+### In-place updating API
+
+#### update\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;)
+
+
+### Direct getting API
+
+#### getd\_data(objectKey:Object) -&gt; data:Raw
 
 
 
@@ -551,5 +960,43 @@ TODO
     +-- log.rb
     |
     +-- version.rb
+
+
+
+Managing server process using Upstart - SpreadOSD HowTo
+=======================================================
+
+TODO
+
+
+Direct data transfer with X-Accel-Redirect - SpreadOSD HowTo
+=============================================================
+
+TODO
+
+
+Redundancy of Tokyo Tyrant MDS - SpreadOSD HowTo
+================================================
+
+TODO
+
+
+Geo-redundancy - SpreadOSD HowTo
+================================
+
+TODO
+
+
+Visualize load with MUNIN - SpreadOSD HowTo
+============================================
+
+TODO
+
+
+Visualize load with Nagios - SpreadOSD HowTo
+=============================================
+
+TODO: 
+
 
 
