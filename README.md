@@ -44,7 +44,7 @@ SpreadOSD stores set of *objects* identified by a **key** (a string). Each objec
     +----------+-------------------+---------------------------------+
     ...
 
-And each object can have multiple versions.
+And each object can have multiple *versions*.
 You can get back old version of the object unless you surely delete it.
 Each version is identified by name or created time (UNIX time at UTC).
 
@@ -121,7 +121,7 @@ Multiple DSs composes a group whose member stores same data. The group is called
 ### Adding data
 
 Gateway (or aata server) relays requests from applications to metadata servers and data servers.
-Metadata servers store "which replication-set stores the actual data", and data servers store the actual data.
+Metadata servers store "which replication-set stores the data", and data servers store the data.
 
                         App     App     App
            (2)       (1) |       |       |
@@ -145,7 +145,7 @@ Metadata servers store "which replication-set stores the actual data", and data 
 
 ### Geting data
 
-Metadata servers know which replication-set stores the actual data. So gateway (or data server) sends query to metadata server first, and then get data from the data server.
+Metadata servers know which replication-set stores the data. So gateway (or data server) sends query to metadata server first, and then get data from the data server.
 
                         App     App     App
            (2)       (1) |       |       |
@@ -188,12 +188,12 @@ Attributes are stored on metadata servers.
   2. GW (or DS) sends a query to MDS.
 
 
-## Control and Monitoring
+## Controling and Monitoring
 
-All data servers are registered on configuration server. Control and monitoring tools deal with all data servers all together by changing settings on configuration server or taking server list from the configuration server.
+All data servers are registered on configuration server. Controling and monitoring tools deal with all data servers all together by changing settings on configuration server or taking server list from the configuration server.
 
                      (1)      (2)
-       Administrator --> Tool --> CS
+      Administrator --> Tools --> CS
                          / \
     +-------------+     |   -------------  (3)
     |             |     |       |        \
@@ -788,21 +788,156 @@ API Reference - SpreadOSD
 
 ## HTTP API
 
-### GET from /data/&gt;key&lt;
+### GET /data/&lt;key&gt;
 
-### PUT to /data/&gt;key&lt;
+Gets data of the object.
 
-### POST to /data/&gt;key&lt;
+If the object is found, it returns status code *200 OK* and *application/octet-stream* data.
+If the object is not found, it returns status code *404 Not Found*.
 
-### GET from /attrs/&gt;key&lt;
+Following parameters are acceptable:
 
-### PUT to /attrs/&gt;key&lt;
+  - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
+  - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
 
-### POST to /attrs/&gt;key&lt;
 
-### POST or GET on /rpc/&gt;command&lt;
+### POST /data/&lt;key&gt;
 
-### GET from /redirect/&gt;key&lt;
+Adds a object.
+
+If it succeeded, it returns status code *200 OK*.
+
+Following parameters are acceptable:
+
+  - *data=&lt;bytes&gt;* Sets the data. This parameter is required.
+  - *vname=&lt;string&gt;* Sets the version name of the object.
+  - *attrs=&lt;format&gt;* Sets the attributes of the object. Encode this parameter using the format specified with *format=* parameter.
+  - *format=&lt;string&gt;* Sets the format of the *attrs=* option. This parameter is valid only when *attrs=* parameter is specified. You can use json (JSON), msgpack (MessagePack) or tsv (Tab-separated values). The default value is json.
+
+
+### PUT /data/&lt;key&gt;
+
+Adds a object.
+
+This is same as POST excluding this returns status code *200* when it succeeded.
+
+
+### GET /attrs/&lt;key&gt;
+
+Gets attributes of the object.
+
+If the object is found, it returns status code *200 OK* and attributes encoded by format specified with *format=* parameter.
+If the object is not found, it returns status code *404 Not Found*.
+
+Following parameters are acceptable:
+
+  - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
+  - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
+  - *format=&lt;string&gt;* Specify the format of the attributes to be returned. You can use json (JSON; application/json), msgpack (MessagePack; application/x-msgpack) or tsv (Tab-separated values; text/tab-separated-values). The default value is json.
+
+
+### POST /attrs/&lt;key&gt;
+
+Overwrites attributes of the object.
+
+If the object is found, it returns status code *200 OK* and *application/octet-stream* data.
+If the object is not found, it returns status code *404 Not Found*.
+
+Following parameters are acceptable:
+
+  - *attrs=&lt;format&gt;* Sets the attributes. This parameter is required.
+  - *format=&lt;string&gt;* Sets the format of the *attrs=* option. You can use json (JSON), msgpack (MessagePack) or tsv (Tab-separated values). The default value is json.
+
+
+### GET /api/get\_data
+
+Gets data of the object.
+
+If the object is found, it returns status code *200 OK* and *application/octet-stream* data.
+If the object is not found, it returns status code *404 Not Found*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+  - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
+  - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
+
+
+### GET /api/get\_attrs
+
+Gets attributes of the object.
+
+If the object is found, it returns status code *200 OK* and attributes encoded by format specified with *format=* parameter.
+If the object is not found, it returns status code *404 Not Found*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+  - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
+  - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
+  - *format=&lt;string&gt;* Specify the format of the attributes to be returned. You can use json (JSON; application/json), msgpack (MessagePack; application/x-msgpack) or tsv (Tab-separated values; text/tab-separated-values). The default value is json.
+
+
+### POST /api/add
+
+Adds a object.
+
+If it succeeded, it returns status code *200 OK*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+  - *data=&lt;bytes&gt;* Sets the data. This parameter is required.
+  - *vname=&lt;string&gt;* Sets the version name of the object.
+  - *attrs=&lt;format&gt;* Sets the attributes of the object. Encode this parameter using the format specified with *format=* parameter.
+  - *format=&lt;string&gt;* Sets the format of the *attrs=* option. This parameter is valid only when *attrs=* parameter is specified. You can use json (JSON), msgpack (MessagePack) or tsv (Tab-separated values). The default value is json.
+
+
+### POST /api/update\_attrs
+
+Overwrites attributes of the object.
+
+If the object is found, it returns status code *200 OK* and *application/octet-stream* data.
+If the object is not found, it returns status code *404 Not Found*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+  - *attrs=&lt;format&gt;* Sets the attributes. This parameter is required.
+  - *format=&lt;string&gt;* Sets the format of the *attrs=* option. You can use json (JSON), msgpack (MessagePack) or tsv (Tab-separated values). The default value is json.
+
+
+### POST /api/remove
+
+Removes the object
+
+If it succeeded, it returns status code *200 OK*.
+If it is not found, it returns status code *204 Not Found*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+
+
+### GET /api/url
+
+Selects a data server (DS) which stores the data, and returns URL to get the data directly from the DS. This is valid only when *--http* option or *--http-redirect-port* option is specified on the DS.
+
+If the object is found, it returns status code *200 OK* and URL in *text/plain* format.
+If the object is not found, it returns status code *404 Not Found*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+  - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
+  - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
+
+TODO: See Direct data transfer with X-Accel-Redirect
+
+
+### GET /redirect/&lt;key&gt;
+
+This is similar to GET /api/url?key=&lt;key&gt;, but this returns status code *302 Found* and redirects using *Location:* header.
 
 TODO: See Direct data transfer with X-Accel-Redirect
 
@@ -815,11 +950,22 @@ TODO
 
 #### get(key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
 
+Gets data and attributes of the object.
+
+
 #### get\_data(key:Raw) -&gt; data:Raw
+
+Gets data of the object.
+
 
 #### get\_attrs(key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
 
+Gets attributes of the object.
+
+
 #### read(key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+Gets a part data of the object.
 
 
 ### Getting specific version API
@@ -866,6 +1012,8 @@ TODO
 ### Direct getting API
 
 #### getd\_data(objectKey:Object) -&gt; data:Raw
+
+#### readd(objectKey:Object, offset:Integer, size:Integer) -&gt; data:Raw
 
 
 

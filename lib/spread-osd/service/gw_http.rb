@@ -45,7 +45,7 @@ class HTTPGatewayService < Service
 		app = ::Rack::URLMap.new({
 			'/data'     => Proc.new {|env| me.call_data(env)     },
 			'/attrs'    => Proc.new {|env| me.call_attrs(env)    },
-			'/rpc'      => Proc.new {|env| me.call_rpc(env)      },
+			'/api'      => Proc.new {|env| me.call_rpc(env)      },
 			'/direct'   => Proc.new {|env| me.call_direct(env)   },
 			'/redirect' => Proc.new {|env| me.call_redirect(env) },
 		})
@@ -85,15 +85,13 @@ class HTTPGatewayService < Service
 	def http_data_get(env)
 		request = ::Rack::Request.new(env)
 		key = get_key_path_info(env)
-		vtime = nil
-		vname = nil
-#		vtime = optional_int(request, 'vtime')
-#		if vtime
-#			check_request(request, %w[vtime])
-#		else
-#			vname = optional_str(request, 'vname')
-#			check_request(request, %w[vname])
-#		end
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[vname])
+		end
 
 		if vtime
 			data = submit(GWRPCBus, :gett_data, vtime, key)
@@ -337,7 +335,7 @@ class HTTPGatewayService < Service
 		end
 
 		if url
-			body = ["302 Found"]
+			body = [url]
 			return [302, {'Content-Type'=>'text/plain', 'Location'=>url}, body]
 		else
 			if vtime
@@ -351,9 +349,9 @@ class HTTPGatewayService < Service
 	end
 
 
-	# rpc/<cmd>
-	#  get(rpc/cmd?k=v)
-	# post(rpc/cmd?k=v)
+	# api/<cmd>
+	#  get(api/cmd?k=v)
+	# post(api/cmd?k=v)
 	#    cmd:
 	#      get_data      key= [vtime=] [vname=]
 	#      get_attrs     key= [vtime=] [vname=] [format=]
@@ -496,6 +494,28 @@ class HTTPGatewayService < Service
 		return html_response(200, 'OK')
 	end
 
+	def http_rpc_update_attrs(env)
+		request = ::Rack::Request.new(env)
+		key = require_str(request, 'key')
+		attrs = require_str(request, 'attrs')
+		format = optional_str(request, 'format')
+		format ||= DEFAULT_FORMAT
+		check_request(request, %w[attrs format])
+
+		attrs = parse_attrs(attrs, format)
+		unless attrs
+			return html_response(400, 'Bad Request', "unknown format `#{format}'")
+		end
+
+		okey = submit(GWRPCBus, :update_attrs, key, attrs)
+
+		if okey
+			return html_response(200, 'OK')
+		else
+			return html_response(404, 'Not Found', "key=`#{key}'")
+		end
+	end
+
 	def http_rpc_remove(env)
 		request = ::Rack::Request.new(env)
 		key = require_str(request, 'key')
@@ -531,7 +551,7 @@ class HTTPGatewayService < Service
 
 		if url
 			body = [url]
-			return [200, {'Content-Type'=>'application/text-plain'}, body]
+			return [200, {'Content-Type'=>'text/plain'}, body]
 		else
 			if vtime
 				return html_response(404, 'Not Found', "key=`#{key}' vtime=#{vtime}")
@@ -705,7 +725,7 @@ class HTTPGatewayService < Service
 	end
 
 	def submit(bus, name, *args)
-		$log.trace { "http rpc: #{name} #{args}" }
+		$log.trace { "http api: #{name} #{args}" }
 
 		r = Responder.new
 
@@ -733,7 +753,7 @@ class HTTPGatewayService < Service
 			r.result(result)
 		end
 	rescue => e
-		msg = ["http rpc error on #{name}: #{e}"]
+		msg = ["http api error on #{name}: #{e}"]
 		e.backtrace.each {|bt| msg <<  "    #{bt}" }
 		$log.error msg.join("\n")
 		r.error(e)

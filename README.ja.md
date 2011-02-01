@@ -9,13 +9,13 @@ SpreadOSDは、画像、音声、動画などの大きなデータを保存す�
 高い **拡張性**、**可用性**、**保守性** を持ち、優れた性能を発揮します。
 
 
-## 拡張性
+### 拡張性
 
 サーバを追加することで、ストレージの容量とI/Oスループットが向上します。
 クラスタの構成はアプリケーションから隠蔽されるので、アプリケーションを停止したり設定しなおしたりすることなくサーバを追加することができます。
 
 
-## 可用性
+### 可用性
 
 SpreadOSDはレプリケーションをサポートしています。数台のサーバが故障してもデータが失われることはありません。アプリケーションからのリクエストも通常通り処理されます。
 
@@ -24,13 +24,13 @@ SpreadOSDのレプリケーション戦略は、マルチマスタ･レプリ�
 また、SpreadOSDはデータセンタをまたいだレプリケーション（地理を考慮したレプリケーション）をサポートしています。それぞれのデータは複数のデータセンタに保存されるため、災害に備えることができます。
 
 
-## 保守性
+### 保守性
 
 SpreadOSDは、すべてのデータサーバを一斉に制御するための管理ツールを同梱しています。また監視ツールを使ってサーバの負荷を可視化することもできます。
 クラスタの規模が大きくなっても管理コストが増大しにくいと言いえます。
 
 
-## データモデル
+### データモデル
 
 SpreadOSDは、**キー**（文字列）によって識別される*オブジェクト*の集合を保存します。それぞれのオブジェクトは、**データ**（バイト列）と**属性**（連想配列）を持ちます。
 
@@ -44,7 +44,7 @@ SpreadOSDは、**キー**（文字列）によって識別される*オブジェ
     +----------+-------------------+---------------------------------+
     ...
 
-また、オブジェクトは複数のバージョンを持つことができます。
+また、オブジェクトは複数の*バージョン*を持つことができます。
 明示的に削除しない限りは、古いバージョンのオブジェクトを取り出すことができます。
 それぞれのバージョンは、名前か作成時刻（協定世界時のUNIX時刻）で識別されます。
 
@@ -58,7 +58,7 @@ TODO: See APIリファレンス
   - TODO: See APIリファレンス
 
 
-## ライセンス
+## License
 
     Copyright (C) 2010  FURUHASHI Sadayuki
     
@@ -98,8 +98,8 @@ SpreadOSDは、次の4種類のサーバから構成されます：
 
 
                         App     App     App
-                         |       |       |  HTTP or MessagePack-RPC
-            ----------- GW      GW      GW or DS
+                         |       |       |  HTTP または MessagePack-RPC
+            ----------- GW      GW      GW（またはDS）
            /            /
     +-------------+    |  GWはアプリケーションからDSにリクエストを中継
     | TokyoTyrant |    |
@@ -120,9 +120,9 @@ SpreadOSDは、次の4種類のサーバから構成されます：
 
 ### データの保存
 
-GW (Gateway) （または DS (Data Server)）は、アプリケーションからの要求をMDSとDSに中継します。
+GW (Gateway)（または DS (Data Server)）は、アプリケーションからの要求をMDSとDSに中継します。
 
-MDS (Metadata Server) は「実際のデータがどこに保存されているか」を保存しており、DSは実際にデータを保存しています。
+MDS (Metadata Server) は「データがどこに保存されているか」を保存しており、DSは実際にデータを保存しています。
 
                         App     App     App
            (2)       (1) |       |       |
@@ -191,10 +191,10 @@ MDS (Metadata Server) は、どのレプリケーション･セットに実際�
 
 ## 管理と監視
 
-すべてのデータサーバ CS (Configuration Server) に登録されています。管理ツールや監視ツールは、CSの設定を書き換えたり、CSからサーバの一覧表を取得することで、すべてのDSを一斉に制御したり情報を収集したりします。
+すべての DS (Data Server) は CS (Configuration Server) に登録されています。管理ツールや監視ツールは、CSの設定を書き換えたり、CSからサーバの一覧表を取得することで、すべてのDSを一斉に制御します。
 
                      (1)      (2)
-       Administrator --> Tool --> CS
+      Administrator --> ツール --> CS
                          / \
     +-------------+     |   -------------  (3)
     |             |     |       |        \
@@ -216,7 +216,7 @@ TODO: See 運用
 SpreadOSD インストール
 ======================
 
-SpreadOSDは Ruby で実装された分散ストレージシステムです。
+SpreadOSDはRubyで実装された分散ストレージシステムです。
 make installでインストールするか、RubyGemsを使ってインストールすることができます。
 
 
@@ -344,7 +344,7 @@ SpreadOSDを1台のホスト上で動かしてテストすることができま�
     [localhost]$ spread-ds --cs 127.0.0.1 --address 127.0.0.1:18903 --nid 3 --rsid 1 \
                            --name ds3 --store ./data-ds3 --http 18080 &
     
-    # HTTPクライアントを受け入れるために --http (port) オプションを指定します
+    # HTTPクライアントを受け入れるために --http (port) 引数を指定します
 
 *spreadctl*コマンドを使ってクラスタの状態を確認してください。
 
@@ -683,13 +683,272 @@ SpreadOSD APIリファレンス
 
 ## HTTP API
 
-TODO
+### GET /data/&lt;key&gt;
+
+オブジェクトのデータを取得します。
+
+オブジェクトが見つかった場合はステータスコード*200 OK*で返り、*application/octet-stream*のデータを返します。
+オブジェクトが見つからなかった場合はステータスコード*404 Not Found*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
+  - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
+
+
+### POST /data/&lt;key&gt;
+
+オブジェクトを追加します。
+
+成功した場合はステータスコード*200 OK*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *data=&lt;bytes&gt;* 追加するデータ本体を設定します。このパラメータは必須です。
+  - *vname=&lt;string&gt;* 追加するオブジェクトのバージョン名を設定します。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。
+  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+
+
+### PUT /data/&lt;key&gt;
+
+オブジェクトを追加します。
+
+動作はPOSTと同じでが、成功した場合はステータスコード*202 Accepted*で返ります。
+
+
+### GET /attrs/&lt;key&gt;
+
+オブジェクトの属性を取得します。
+
+成功した場合はステータスコード*200 OK*で返り、*form=*パラメータで指定されたフォーマットでエンコードされたデータを返します。
+
+次のパラメータを指定することができます：
+
+  - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
+  - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
+  - *format=&lt;string&gt;* 属性のフォーマットを指定します。json (JSON; application/json)、msgpack (MessagePack; application/x-msgpack)、tsv (Tab-separated values; text/tab-separated-values) を指定することができます。デフォルトは json です。
+
+
+### POST /attrs/&lt;key&gt;
+
+オブジェクトの属性を上書きして更新します。
+
+オブジェクトが見つかった場合はステータスコード*200 OK*で返ります。
+オブジェクトが見つからなかった場合はステータスコード*404 Not Found*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。このパラメータは必須です。
+  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+
+
+### GET /api/get\_data
+
+オブジェクトのデータを取得します。
+
+オブジェクトが見つかった場合はステータスコード*200 OK*で返り、*application/octet-stream*のデータを返します。
+オブジェクトが見つからなかった場合はステータスコード*404 Not Found*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 取得するオブジェクトのキーを設定します。このパラメータは必須です。
+  - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
+  - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
+
+
+### GET /api/get\_attrs
+
+オブジェクトの属性を取得します。
+
+成功した場合はステータスコード*200 OK*で返り、*form=*パラメータで指定されたフォーマットでエンコードされたデータを返します。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 取得するオブジェクトのキーを設定します。このパラメータは必須です。
+  - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
+  - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
+  - *format=&lt;string&gt;* 属性のフォーマットを指定します。json (JSON; application/json)、msgpack (MessagePack; application/x-msgpack)、tsv (Tab-separated values; text-tab-separated-values) を指定することができます。デフォルトは json です。
+
+
+### POST /api/add
+
+オブジェクトを追加します。
+
+成功した場合はステータスコード*200 OK*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 追加するオブジェクトのキーを設定します。このパラメータは必須です。
+  - *data=&lt;bytes&gt;* 追加するデータ本体を設定します。このパラメータは必須です。
+  - *vname=&lt;string&gt;* 追加するオブジェクトのバージョン名を設定します。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。
+  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+
+
+### POST /api/update\_attrs
+
+オブジェクトの属性を上書きして更新します。
+
+成功した場合はステータスコード*200 OK*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 追加するオブジェクトのキーを設定します。このパラメータは必須です。
+  - *attrs=&lt;bytes&gt;* 属性本体を設定します。このパラメータは必須です。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。
+  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+
+
+### POST /api/remove
+
+オブジェクトを削除します。
+
+削除に成功した場合はステータスコード*200 OK*で返ります。
+オブジェクトが存在しなかった場合はステータスコード*404 Not Found*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 削除するオブジェクトのキーを設定します。このパラメータは必須です。
+
+
+### GET /api/url
+
+オブジェクトが実際に保存されている DS (Data Server) を1つ選択し、そこから直接データを取得するためのURLを取得します。DSに*--http*引数か*--http-redirect-port*引数が設定されている場合のみ有効です。
+
+オブジェクトが見つかった場合はステータスコード*200 OK*で返り、*text/plain*形式でURLを返します。
+オブジェクトが見つからなかった場合はステータスコード*404 Not Found*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 取得するオブジェクトのキーを設定します。このパラメータは必須です。
+  - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
+  - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
+
+TODO: See Direct data transfer with X-Accel-Redirect
+
+
+### GET /redirect/&lt;key&gt;
+
+GET /api/url&key=&lt;key&gt; と似ていますが、オブジェクトが実際に見つかった場合はステータスコード*302 Found*で返り、*Location:*ヘッダを使ってリダイレクトします。
+
+TODO: See Direct data transfer with X-Accel-Redirect
 
 
 ## MessagePack-RPC API
 
 TODO
 
+### 取得API
+
+#### get(key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
+
+オブジェクトのデータと属性を取得します。
+
+
+#### get\_data(key:Raw) -&gt; data:Raw
+
+オブジェクトのデータを取得します。
+
+
+#### get\_attrs(key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
+
+オブジェクトの属性を取得します。
+
+
+#### read(key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+オブジェクトのデータの一部を取得します。
+
+
+### バージョン指定付きの取得API
+
+#### gett(vtime:Integer, key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
+
+時刻を指定して、オブジェクトのデータを取得します。指定した時刻以前に作成された最新のバージョンを返します。
+
+
+#### gett\_data(vtime:Integer, key:Raw) -&gt; data:Raw
+
+時刻を指定して、オブジェクトのデータを取得します。指定した時刻以前に作成された最新のバージョンを返します。
+
+
+#### gett\_attrs(vtime:Integer, key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
+
+時刻を指定して、オブジェクトの属性を取得します。指定した時刻以前に作成された最新のバージョンを返します。
+
+
+#### readt(vtime:Integer, key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+時刻を指定して、オブジェクトのデータの一部を取得します。指定した時刻以前に作成された最新のバージョンを返します。
+
+
+#### getv(vname:Raw, key:Raw) -&gt; [data:Raw, attributes:Map&lt;Raw,Raw&gt;]
+
+バージョン名を指定して、オブジェクトのデータと属性を取得します。指定した名前に一致するバージョンを返します。
+
+
+#### getv\_data(vname:Raw, key:Raw) -&gt; data:Raw
+
+バージョン名を指定して、オブジェクトのデータを取得します。指定した名前に一致するバージョンを返します。
+
+
+#### getv\_attrs(vname:Raw, key:Raw) -&gt; attributes:Map&lt;Raw,Raw&gt;
+
+バージョン名を指定して、オブジェクトの属性を取得します。指定した名前に一致するバージョンを返します。
+
+
+#### readv(vname:Raw, key:Raw, offset:Integer, size:Integer) -&gt; data:Raw
+
+バージョン名を指定して、オブジェクトのデータの一部を取得します。指定した名前に一致するバージョンを返します。
+
+
+### 追加API
+
+#### add(key:Raw, data:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
+
+オブジェクトを追加します。バージョン名は空になります。
+
+
+#### add\_data(key:Raw, data:Raw) -&gt; objectKey:Object
+
+オブジェクトを追加します。属性は空の連想配列になります。バージョン名は空になります。
+
+
+#### addv(vname:Raw, key:Raw, data:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
+
+バージョン名を指定してオブジェクトを追加します。
+
+
+#### addv\_data(vname:Raw, key:Raw, data:Raw) -&gt; objectKey:Object
+
+バージョン名を指定してオブジェクトを追加します。属性は空の連想配列になります。
+
+
+### 削除API
+
+#### remove(key:Raw)
+
+オブジェクトを削除します。
+
+
+### 上書き更新API
+
+#### update\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;)
+
+オブジェクトの属性を上書きして更新します。
+
+
+### 直接取得API
+
+#### getd\_data(objectKey:Object) -&gt; data:Raw
+
+MDSに問い合わせをせずに、データを取得します。
+
+
+#### readd(objectKey:Object, offset:Integer, size:Integer) -&gt; data:Raw
+
+MDSに問い合わせをせずに、データの一部を取得します。
 
 
 
@@ -698,6 +957,92 @@ SpreadOSD 改善とデバッグ
 
 TODO
 
+## ソースツリー
+
+    lib/spread-osd
+    |
+    +-- lib/                    Fundamental libraries
+    |   |
+    |   +-- ebus.rb             EventBus
+    |   +-- cclog.rb            Logging library
+    |   +-- vbcode.rb           Variable byte code
+    |
+    +-- logic/
+    |   |
+    |   +-- node.rb             Definition of the Node class
+    |   +-- okey.rb             Definition of the ObjectKey class
+    |   +-- tsv_data.rb         Base class to use tab separated values
+    |   +-- fault_detector.rb   Fault detector
+    |   +-- membership.rb       Node list and replication-set list
+    |   +-- weight.rb           Load balancing feature
+    |
+    +-- service/
+    |   |
+    |   +-- base.rb
+    |   +-- bus.rb
+    |   |
+    |   +-- process.rb
+    |   |
+    |   +-- heartbeat.rb
+    |   +-- sync.rb
+    |   +-- time_check.rb
+    |   |
+    |   +-- membership.rb
+    |   +-- master_select.rb
+    |   +-- balance.rb
+    |   +-- weight.rb
+    |   |
+    |   +-- data_client.rb
+    |   +-- data_server.rb
+    |   +-- data_server_url.rb
+    |   +-- slave.rb
+    |   |
+    |   +-- gateway.rb
+    |   +-- gateway_ro.rb
+    |   +-- gw_http.rb
+    |   |
+    |   +-- config.rb
+    |   +-- config_cs.rb
+    |   +-- config_ds.rb
+    |   +-- config_gw.rb
+    |   |
+    |   +-- stat.rb
+    |   +-- stat_cs.rb
+    |   +-- stat_ds.rb
+    |   +-- stat_gw.rb
+    |   |
+    |   +-- rpc.rb
+    |   +-- rpc_cs.rb
+    |   +-- rpc_ds.rb
+    |   +-- rpc_gw.rb
+    |   |
+    |   +-- rts.rb
+    |   +-- rts_file.rb
+    |   +-- rts_memory.rb
+    |   |
+    |   +-- ulog.rb
+    |   +-- ulog_file.rb
+    |   +-- ulog_memory.rb
+    |   |
+    |   +-- mds.rb
+    |   +-- mds_tt.rb
+    |   |
+    |   +-- storage.rb
+    |   +-- storage_dir.rb
+    |
+    +-- command/
+    |   |
+    |   +-- ctl.rb              Control tool
+    |   +-- cs.rb               CS main
+    |   +-- ds.rb               DS main
+    |   +-- gw.rb               GW main
+    |   +-- cli.rb              Command line client program
+    |
+    +-- default.rb              Some constants like default port number
+    |
+    +-- log.rb
+    |
+    +-- version.rb
 
 
 Upstartを使ってサーバプロセスを管理する - SpreadOSD HowTo
