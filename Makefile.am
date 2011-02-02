@@ -102,6 +102,47 @@ $(bin_SCRIPTS):
 
 .PHONY: $(bin_SCRIPTS)
 
+HTML_DOCS = \
+	doc/index.html \
+	doc/index.ja.html \
+	doc/api.html \
+	doc/api.ja.html \
+	doc/arch.html \
+	doc/arch.ja.html \
+	doc/build.html \
+	doc/build.ja.html \
+	doc/command.html \
+	doc/command.ja.html \
+	doc/devel.html \
+	doc/devel.ja.html \
+	doc/faq.html \
+	doc/faq.ja.html \
+	doc/fault.html \
+	doc/fault.ja.html \
+	doc/howto.html \
+	doc/howto.ja.html \
+	doc/install.html \
+	doc/install.ja.html \
+	doc/operation.html \
+	doc/operation.ja.html
+
 MOSTLYCLEANFILES = \
-	$(bin_SCRIPTS)
+	$(bin_SCRIPTS) \
+	$(HTML_DOCS)
+
+.md.html:
+	ruby doc/erbdoc.rb $< $@.tmp
+	mv $@.tmp $@
+
+doc/index.html: README.md
+	ruby doc/erbdoc.rb $< $@.tmp
+	mv $@.tmp $@
+
+doc/index.ja.html: README.ja.md
+	ruby doc/erbdoc.rb $< $@.tmp
+	mv $@.tmp $@
+
+$(HTML_DOCS): doc/erbdoc.rb doc/doc.erb
+
+htmldoc: $(HTML_DOCS)
 
