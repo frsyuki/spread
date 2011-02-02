@@ -34,21 +34,27 @@ It means that management cost doesn't grow even if scale of the cluster grows.
 
 SpreadOSD stores set of *objects* identified by a **key** (a string). Each object has both **data** (an sequence of bytes) and **attributes** (an associative array).
 
-        key             data                  attributes
-    +----------+-------------------+---------------------------------+
-    | "image1" |  "HTJ P N G" ...  |  { type:png, date:2011-07-29 }  |
-    +----------+-------------------+---------------------------------+
-    |  key     |  bytes .........  |  { key:value, key:value, ... }  |
-    +----------+-------------------+---------------------------------+
-    |  key     |  bytes .........  |  { key:value, key:value, ... }  |
-    +----------+-------------------+---------------------------------+
-    ...
-
-And each object can have multiple *versions*.
-You can get back old version of the object unless you surely delete it.
+And each object can have multiple **versions**. You can get back old version of the object unless you surely delete it.
 Each version is identified by name or created time (UNIX time at UTC).
 
+      key                        object
+                        data                  attributes
+                 +-----------------+---------------------------------+       ---+
+    "image1" =>  |  "HTJ PNG ..."  |  { type:png, date:2011-07-29 }  |--+       | each object can
+                 +-----------------+---------------------------------+  |--+    | have multiple
+                   +-----------------+----------------------------------+  |    | versoins
+                      +----------------+-----------------------------------+    |
+                                                                             ---+
+                 +-----------------+---------------------------------+
+      key    =>  |  bytes .......  |  { key:value, key:value, ... }  |--+
+                 +-----------------+---------------------------------+  |--+
+                   +-----------------+----------------------------------+  |
+                      +----------------+-----------------------------------+
+    
+      ...    =>  ...
+
 TODO: See API Reference
+
 
 
 ## Learm more
@@ -429,6 +435,15 @@ Now the cluster is active. Try to set and get using http client, or *spreadcli* 
     {"type":"png"}
     val1
 
+Note that you can't change the IP address of the configuration server.
+In other words, the address becomes identifier of a cluster.
+
+It is good idea to set exclusive IP alias for the address:
+
+    [on node01]$ ifconfig eth0:0 192.168.0.254
+    [on node01]$ spread-cs --mds tt:node01--node02 -s /var/spread/cs \
+                           -l 192.168.0.254
+
 TODO: See Operations
 
 
@@ -622,48 +637,50 @@ TODO
 
 ## Recovering data server
 
-TODO
+If a data server is crashed, its state becomes "FAULT" as follows:
+
+    $ spreadctl node01 nodes
+    nid            name                 address                location    rsid      state
+      0          node03       192.168.0.13:18900      subnet-192.168.000       0     active
+      1          node04       192.168.0.14:18900      subnet-192.168.000       0     FAULT
+      2          node05       192.168.0.15:18900      subnet-192.168.000       1     active
+      3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
+
+Recovering operation of the data servers is different depending on which data is lost (HDD is crashed) or not (process is down).
 
 ### If data is not lost
 
-TODO
+Restart the server process without changing **--nid** option and **--rsid** option.
 
-Restart the server process with same **--nid** option and same **--rsid** option.
+You can use different IP address (--address option) from the crashed server on the substitute server. But be sure to take over all data including relay timestamp (*rts-*\* files) and update log (*ulog-*\* files).
 
 ### If data is lost
 
-TODO
-
-Detach the crashed server first:
+If data is lost, the server must be removed first。
 
     $ spreadctl node01 remove_node 1
 
 Then add new node.
 TODO: See Adding a server to existing replication-set
 
+
 ## Recovering configuration server
 
-TODO
-
-Since IP address of the configuration server can't be change, you have to restart use same IP address of the crashed server on a substitute server.
-
-It is good ide to use IP alias for the address of configuration server.
+Since IP address of the configuration server can't be change, you must use same IP address of the crashed server on a substitute server. Or if exclusive IP alias is set for the address, set it to the substitute server.
 
 ### If data is not lost
 
-TODO
-
+Just restart the spread-cs process without changing the **--port** option.
 
 ### If data is lost
 
-TODO
-
-Copy cluster information data from another data server or gateway:
+Configuration server stores cluster information (*membership* and *fault* files), and actually other nodes cache them.
+So copy the cached information from another data server or gateway:
 
     [on node01]$ mkdir /var/spread/cs
     [on node01]$ scp node03:/var/spread/node03/membership node03:/var/spread/node03/fault /var/spread/cs/
 
-Restart the server process with same **--port** option.
+Then restart the server process.
 
 
 ## Recovering gateway
@@ -1144,7 +1161,18 @@ TODO
 Visualize load with Nagios - SpreadOSD HowTo
 =============================================
 
-TODO: 
+TODO:
+
+
+
+FAQ - SpreadOSD
+===============
+
+### DS or GW says "sytem time must be adjusted"
+
+This message is shown when system time of the DS or GW is too different from the system time of CS. You should use ntpd or ntpdate command to adjust it.
+
+GW (or DS) uses system time to set creation time when adding (and removing) a object. It is used to get old version of objects. If the system is not adjusted correctly, You can't get exact snapshot by specifying object's version in time.
 
 
 

@@ -28,7 +28,7 @@ test "run normally" do
 			key = keyf % i
 			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'add_data' do
+			test 'add_data PUT /data' do
 				gw.http_client {|http|
 					req = Net::HTTP::Put.new("/data/#{key}")
 					req.body = _data
@@ -37,7 +37,7 @@ test "run normally" do
 				}
 			end
 
-			test 'update_attrs' do
+			test 'update_attrs PUT /attrs' do
 				gw.http_client {|http|
 					req = Net::HTTP::Put.new("/attrs/#{key}")
 					req.body = JSON.dump(_attrs)
@@ -51,11 +51,11 @@ test "run normally" do
 			key = keyf % i
 			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'get_data' do
+			test 'get_data /api' do
 				data = nil
 
 				gw.http_client {|http|
-					res = http.get("/rpc/get_data?key=#{key}")
+					res = http.get("/api/get_data?key=#{key}")
 					test_equals "200", res.code, "get_data 200 OK"
 					data = res.body
 				}
@@ -63,11 +63,11 @@ test "run normally" do
 				test_equals _data, data, 'get_data _data == data'
 			end
 
-			test "get_attrs" do
+			test "get_attrs /api" do
 				attrs = nil
 
 				gw.http_client {|http|
-					res = http.get("/rpc/get_attrs?key=#{key}")
+					res = http.get("/api/get_attrs?key=#{key}")
 					test_equals "200", res.code, "get_attrs 200 OK"
 					attrs = JSON.parse(res.body)
 				}
@@ -79,9 +79,11 @@ test "run normally" do
 		NUM.times do |i|
 			key = keyf % i
 
-			test "remove" do
+			test "remove /api" do
 				gw.http_client {|http|
-					res = http.post('/rpc/remove', "key=#{key}")
+					req = Net::HTTP::Post.new('/api/remove')
+					req.set_form_data({:key=>key})
+					res = http.request(req)
 					test_equals "200", res.code, "remove 200 OK"
 				}
 			end
@@ -90,16 +92,16 @@ test "run normally" do
 		NUM.times do |i|
 			key = keyf % i
 
-			test 'removed get_data' do
+			test 'removed get_data /api' do
 				gw.http_client {|http|
-					res = http.get("/rpc/get_data?key=#{key}")
+					res = http.get("/api/get_data?key=#{key}")
 					test_equals "404", res.code, 'get_data 404 Not Found'
 				}
 			end
 
-			test 'removed get_attrs' do
+			test 'removed get_attrs /api' do
 				gw.http_client {|http|
-					res = http.get("/rpc/get_attrs?key=#{key}")
+					res = http.get("/api/get_attrs?key=#{key}")
 					test_equals "404", res.code, 'get_attrs 404 Not Found'
 				}
 			end
