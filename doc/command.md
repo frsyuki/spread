@@ -79,6 +79,7 @@ TODO
        set_mds <URI>                set MDS uri
        items                        show stored number of items
        version                      show software version of nodes
+       locate <key>                 show which servers store the key
 
 ### spreadcli: command line client
 

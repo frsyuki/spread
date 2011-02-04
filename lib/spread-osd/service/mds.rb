@@ -46,6 +46,11 @@ class MDSBus < Bus
 	#   found: removed ObjectKey
 	#   not found: nil
 	call_slot :remove
+
+	# @return
+	#   found: array of [ObjectKey, vtime, vname]
+	#   not found: []
+	call_slot :util_locate
 end
 
 
@@ -132,7 +137,8 @@ class MDSService < Service
 		:get_okey_attrs,
 		:add,
 		:update_attrs,
-		:remove
+		:remove,
+		:util_locate
 
 	extend Forwardable
 
@@ -142,7 +148,8 @@ class MDSService < Service
 		:get_okey_attrs,
 		:add,
 		:update_attrs,
-		:remove
+		:remove,
+		:util_locate
 end
 
 
@@ -218,6 +225,9 @@ class MDS
 	#def remove(key, &cb)
 	#end
 
+	#def util_locate(key, &cb)
+	#end
+
 	protected
 	def get_current_vtime(at_least=0)
 		now = Time.now.utc.to_i
@@ -244,6 +254,7 @@ class NullMDS < MDS
 		:get_okey_attrs,
 		:add,
 		:remove,
+		:util_locate,
 		:open
 	].each {|method|
 		def_delegator :self, :raise_error, method

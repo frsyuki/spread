@@ -67,6 +67,10 @@ class StatService < Service
 		VERSION
 	end
 
+	def stat_cs_address
+		ConfigBus.get_cs_address
+	end
+
 	def stat_nodes
 		StatBus.membership_info
 	end

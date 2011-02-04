@@ -291,6 +291,27 @@ class TokyoTyrantMDS < MDS
 		cb.call(nil, $!)
 	end
 
+	def util_locate(key, &cb)
+		array = @hardb.read(key) {|rdb|
+			qry = RDBQRY.new(rdb)
+			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
+			qry.searchget(COLS_RESERVED)
+		}
+
+		array.reject! {|map|
+			!is_valid_map(map) || is_removed(map)
+		}
+
+		array.map! {|map|
+			[to_okey(map), map[COL_VNAME]]
+		}
+
+		cb.call(array, nil)
+
+	rescue
+		cb.call(nil, $!)
+	end
+
 	private
 	def to_okey(map)
 		key = map[COL_KEY]

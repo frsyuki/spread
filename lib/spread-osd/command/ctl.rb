@@ -30,6 +30,7 @@ def usage
 	puts "   set_mds <URI>                set MDS uri"
 	puts "   items                        show stored number of items"
 	puts "   version                      show software version of nodes"
+	puts "   locate <key>                 show which servers store the key"
 	exit 1
 end
 
@@ -230,6 +231,31 @@ when 'version'
 		pid = f_pid.get rescue nil
 		version = f_version.get rescue nil
 		puts VERSION_FORMAT % [node.nid, node.name, pid, version]
+	}
+
+when 'locate'
+	key = cmd_args(1)
+
+	nodes = get_nodes
+
+	gwnode = nodes.first
+	vers = $net.get_session(*gwnode.address).call(:util_locate, key)
+
+	if vers.empty?
+		$stderr.puts "not found."
+		exit 0
+	end
+
+	NODE_FORMAT = "   > %-15s nid=%-3s %23s %23s"
+
+	vers.each {|(key,vtime,rsid),vname|
+		time = Time.at(vtime)
+		puts "vtime=[#{time}]  vname=#{vname.inspect}\trsid=#{rsid}:"
+		nodes.each {|node|
+			if node.rsids.include?(rsid)
+				puts NODE_FORMAT % [node.name, node.nid, node.address, node.location]
+			end
+		}
 	}
 
 else

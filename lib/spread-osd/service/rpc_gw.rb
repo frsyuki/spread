@@ -42,6 +42,7 @@ class GWRPCBus < Bus
 	call_slot :url
 	call_slot :urlt
 	call_slot :urlv
+	call_slot :util_locate
 end
 
 
@@ -217,6 +218,14 @@ class GWRPCService < RPCService
 	def urlv(vname, key)
 		vname = vname.to_s  # TODO type check
 		dispatch(GWRPCBus, :urlv, vname, key)
+	end
+
+
+	####
+	## Utility
+	##
+	def util_locate(key)
+		dispatch(GWRPCBus, :util_locate, key)
 	end
 
 

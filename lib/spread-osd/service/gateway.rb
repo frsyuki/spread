@@ -290,6 +290,19 @@ class GatewayService < Service
 		ar
 	end
 
+	def rpc_util_locate(key)
+		ar = MessagePack::RPC::AsyncResult.new
+		MDSBus.util_locate(key) {|array,error|
+			if error
+				$log.warn(error)
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			else
+				ar.result(array)
+			end
+		}
+		ar
+	end
 
 	ebus_connect :GWRPCBus,
 		:get          => :rpc_get,
@@ -314,7 +327,8 @@ class GatewayService < Service
 		:remove       => :rpc_remove,
 		:url          => :rpc_url,
 		:urlt         => :rpc_urlt,
-		:urlv         => :rpc_urlv
+		:urlv         => :rpc_urlv,
+		:util_locate  => :rpc_util_locate
 end
 
 

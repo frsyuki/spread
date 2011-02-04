@@ -4,7 +4,7 @@ Direct data transfer using Nginx's X-Accel-Redirect - SpreadOSD HowTo
 ## Readers of this HowTo
 
 Photo storage system of web services is one of the most suitable usages of SpreadOSD. In these web sites, you probably use HTTP load balancers in front of the application servers.
-If you are using [Nginx](http://wiki.nginx.org/Main) as the HTTP load balancer, you can reduce CPU load and network traffic of the application servers using nginx's "X-Accel-Redirect" feature.
+If you are using [nginx](http://wiki.nginx.org/Main) as the HTTP load balancer, you can reduce CPU load and network traffic of the application servers using nginx's "X-Accel-Redirect" feature.
 
 It assumes following web backend system in this document:
 
@@ -72,9 +72,10 @@ You can reduce CPU load and network traffic by setting up following architecture
     location / {
       proxy_pass  http://real.server.host;
     
-      # the application should return
+      # the application should return:
       #      X-Accel-Redirect: /reproxy
-      #      X-Reproxy-URL: http://url/got/from/spread-gw
+      #      X-Reproxy-URL: http://host:port/url/got/from/spread-gw
+      #      Content-Type: actual/content-type
     }
     
     location = /reproxy {
@@ -86,6 +87,9 @@ You can reduce CPU load and network traffic by setting up following architecture
 
       # pass to the URL
       proxy_pass $reproxy;
+
+      # inherits Content-Type header
+      proxy_hide_header Content-Type
     }
 
 TODO
@@ -96,16 +100,31 @@ TODO
 TODO
 
 
-### Adding headers
+## DS setting
+
+    [on node04]$ spread-ds --cs cs.node --address node04 --nid N --rsid R --name N \
+                           -s /var/spread/node04 \
+                           --http 19800
 
 TODO
-
-Content-Types
 
 
 ## Accelerating DS performance by offloading GET requests to Nginx
 
 TODO
+
+    server {
+      listen 19800;
+      server_name localhost;
+      sendfile on;
+      location / {
+        root /var/spread/node04/data;
+      }
+    }
+
+    [on node04]$ spread-ds --cs cs.node --address node04 --nid N --rsid R --name N \
+                           -s /var/spread/node04 \
+                           --http-redirect-port 19800
 
 
 ## References
