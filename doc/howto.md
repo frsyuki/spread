@@ -1,39 +1,12 @@
 HowTo - SpreadOSD
 =================
 
-Managing server process using Upstart - SpreadOSD HowTo
-=======================================================
-
 TODO
 
-
-Direct data transfer with X-Accel-Redirect - SpreadOSD HowTo
-=============================================================
-
-TODO
-
-
-Redundancy of Tokyo Tyrant MDS - SpreadOSD HowTo
-================================================
-
-TODO
-
-
-Geo-redundancy - SpreadOSD HowTo
-================================
-
-TODO
-
-
-Visualize load with MUNIN - SpreadOSD HowTo
-============================================
-
-TODO
-
-
-Visualize load with Nagios - SpreadOSD HowTo
-=============================================
-
-TODO:
-
+  - [Direct data transfer using Nginx's X-Accel-Redirect](howto/nginx.md)
+  - TODO: Managing server process using Upstart
+  - TODO: Redundancy of Tokyo Tyrant MDS
+  - TODO: Geo-redundancy
+  - TODO: Visualize load with MUNIN
+  - TODO: Visualize load with Nagios
 

@@ -121,6 +121,8 @@ HTML_DOCS = \
 	doc/fault.ja.html \
 	doc/howto.html \
 	doc/howto.ja.html \
+	doc/howto/nginx.html \
+	doc/howto/nginx.ja.html \
 	doc/install.html \
 	doc/install.ja.html \
 	doc/operation.html \

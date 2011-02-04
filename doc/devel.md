@@ -3,7 +3,26 @@ Debugging and Improvement - SpreadOSD
 
 TODO
 
-## Source tree
+## Share your knowledge
+
+### Share your questions and discoveries
+
+### Share your HOWTOs
+
+### Share your improvements
+
+## Getting the latest source codes
+
+
+## Source codes
+
+### Asynchronous communication using MessagePack-RPC
+
+### EventBus
+
+### ProcessBus
+
+### Source tree
 
     lib/spread-osd
     |
@@ -89,4 +108,23 @@ TODO
     +-- log.rb
     |
     +-- version.rb
+
+
+## Improving SpreadOSD
+
+### Writing storage engine
+
+### Writing MDS engine
+
+### Writing update log engine
+
+### Writing master node selector
+
+### Writing load-balancing engine
+
+### Adding statics item
+
+### Adding MessagePack-RPC API
+
+### Adding HTTP API
 

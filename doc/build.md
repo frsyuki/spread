@@ -72,7 +72,26 @@ Next step：[API Reference](api.md)
 
 It runs runs 6-node cluster in following tutorial:
 
-TODO figure
+         node01               nod02
+        +------+             +------+
+        |  MDS --------------- MDS  |
+        |      |      \      +------+
+        |  CS  |       \
+        +------+        --- Dual-master replication
+    
+     +- - - - - - +       +- - - - - - +
+     |   node03   |       |   node05   |
+        +------+             +------+
+     |  |  DS  |  |       |  |  DS  |  |
+        +------+             +------+   
+     |            |       |            |
+         node04               node06    
+     |  +------+  |       |  +------+  |
+        |  DS  |             |  DS  |   
+     |  +------+  |       |  +------+  |
+     +------------+       +------------+
+    replication-set 0    replication-set 1
+
 
     # node01 and node02: run two Tokyo Tyrant servers as dual-master.
     [on node01]$ mkdir /var/spread/mds1

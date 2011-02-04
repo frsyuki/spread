@@ -26,8 +26,8 @@ SpreadOSD APIリファレンス
 
   - *data=&lt;bytes&gt;* 追加するデータ本体を設定します。このパラメータは必須です。
   - *vname=&lt;string&gt;* 追加するオブジェクトのバージョン名を設定します。
-  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。
-  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定した形式でエンコードします。
+  - *format=&lt;string&gt;* 属性のエンコード形式を指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
 
 
 ### PUT /data/&lt;key&gt;
@@ -41,13 +41,13 @@ SpreadOSD APIリファレンス
 
 オブジェクトの属性を取得します。
 
-成功した場合はステータスコード*200 OK*で返り、*form=*パラメータで指定されたフォーマットでエンコードされたデータを返します。
+成功した場合はステータスコード*200 OK*で返り、*form=*パラメータで指定された形式でエンコードされたデータを返します。
 
 次のパラメータを指定することができます：
 
   - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
   - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
-  - *format=&lt;string&gt;* 属性のフォーマットを指定します。json (JSON; application/json)、msgpack (MessagePack; application/x-msgpack)、tsv (Tab-separated values; text/tab-separated-values) を指定することができます。デフォルトは json です。
+  - *format=&lt;string&gt;* 属性のエンコード形式を指定します。json (JSON; application/json)、msgpack (MessagePack; application/x-msgpack)、tsv (Tab-separated values; text/tab-separated-values) を指定することができます。デフォルトは json です。
 
 
 ### POST /attrs/&lt;key&gt;
@@ -59,8 +59,8 @@ SpreadOSD APIリファレンス
 
 次のパラメータを指定することができます：
 
-  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。このパラメータは必須です。
-  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定した形式でエンコードします。このパラメータは必須です。
+  - *format=&lt;string&gt;* 属性のエンコード形式を指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
 
 
 ### GET /api/get\_data
@@ -81,14 +81,14 @@ SpreadOSD APIリファレンス
 
 オブジェクトの属性を取得します。
 
-成功した場合はステータスコード*200 OK*で返り、*form=*パラメータで指定されたフォーマットでエンコードされたデータを返します。
+成功した場合はステータスコード*200 OK*で返り、*form=*パラメータで指定された形式でエンコードされたデータを返します。
 
 次のパラメータを指定することができます：
 
   - *key=&lt;string&gt;* 取得するオブジェクトのキーを設定します。このパラメータは必須です。
   - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
   - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
-  - *format=&lt;string&gt;* 属性のフォーマットを指定します。json (JSON; application/json)、msgpack (MessagePack; application/x-msgpack)、tsv (Tab-separated values; text-tab-separated-values) を指定することができます。デフォルトは json です。
+  - *format=&lt;string&gt;* 属性のエンコード形式を指定します。json (JSON; application/json)、msgpack (MessagePack; application/x-msgpack)、tsv (Tab-separated values; text-tab-separated-values) を指定することができます。デフォルトは json です。
 
 
 ### POST /api/add
@@ -102,8 +102,8 @@ SpreadOSD APIリファレンス
   - *key=&lt;string&gt;* 追加するオブジェクトのキーを設定します。このパラメータは必須です。
   - *data=&lt;bytes&gt;* 追加するデータ本体を設定します。このパラメータは必須です。
   - *vname=&lt;string&gt;* 追加するオブジェクトのバージョン名を設定します。
-  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。
-  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定した形式でエンコードします。
+  - *format=&lt;string&gt;* 属性のエンコード形式を指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
 
 
 ### POST /api/update\_attrs
@@ -116,8 +116,8 @@ SpreadOSD APIリファレンス
 
   - *key=&lt;string&gt;* 追加するオブジェクトのキーを設定します。このパラメータは必須です。
   - *attrs=&lt;bytes&gt;* 属性本体を設定します。このパラメータは必須です。
-  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定したフォーマットでエンコードします。
-  - *format=&lt;string&gt;* 属性のフォーマットを指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
+  - *attrs=&lt;format&gt;* オブジェクトの属性を設定します。属性は*format=*で指定した形式でエンコードします。
+  - *format=&lt;string&gt;* 属性のエンコード形式を指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
 
 
 ### POST /api/remove
@@ -134,7 +134,7 @@ SpreadOSD APIリファレンス
 
 ### GET /api/url
 
-オブジェクトが実際に保存されている DS (Data Server) を1つ選択し、そこから直接データを取得するためのURLを取得します。DSに*--http*引数か*--http-redirect-port*引数が設定されている場合のみ有効です。
+オブジェクトが実際に保存されている DS (Data Server) を1つ選択し、そこから直接データを取得するためのURLを取得します。DSに*--http*引数か*--http-redirect-port*引数が設定されている場合にのみ有効です。
 
 オブジェクトが見つかった場合はステータスコード*200 OK*で返り、*text/plain*形式でURLを返します。
 オブジェクトが見つからなかった場合はステータスコード*404 Not Found*で返ります。

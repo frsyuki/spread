@@ -72,9 +72,9 @@ Prepare new server and copy existing data from other server on the replication-s
     #     -a  アーカイブモード
     #     -v  verboseモード
     #     -e  暗号化アルゴリズムを指定する
-    #         arcfour128アルゴリズムは高速ですが脆弱なアルゴリズムです。
-    #         もし安全なネットワークでない場合には "blowfish" アルゴリズムが良いでしょう。
-    #     --bwlimit 帯域を制限します（単位はKB/s）
+    #         arcfour128アルゴリズムは高速ですが脆弱なアルゴリズムです
+    #         もし安全なネットワークでない場合には "blowfish" アルゴリズムが良いでしょう
+    #     --bwlimit 帯域を制限する（単位はKB/s）
     [on node07]$ rsync -av -e 'ssh -c arcfour128' --bwlimit 32768 \
                        node03:/var/spread/node03/data /var/spread/node07/
 
@@ -181,4 +181,6 @@ TODO
 
 TODO
 
+
+次のステップ：[障害対応](fault.ja.md)
 

@@ -17,7 +17,7 @@ else
 	title = ARGV[0]
 end
 
-body.gsub!(/href=\"(:?doc\/)?([^\/]*)\.md\"/, 'href="\2.html"')
+body.gsub!(/href=\"(doc\/)?([^\/]*(:?\/[^\/]*))\.md\"/, 'href="\2.html"')
 
 result = ERB.new(erb).result
 File.open(out, "w") {|f|

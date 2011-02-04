@@ -54,8 +54,6 @@ SpreadOSDは、**キー**（文字列）によって識別される*オブジェ
     
       ...    =>  ...
 
-TODO: See APIリファレンス
-
 
 ## もっと知るには
 
@@ -65,9 +63,9 @@ TODO: See APIリファレンス
   - [運用](doc/operation.ja.md)
   - [障害対応](doc/fault.ja.md)
   - [コマンドラインリファレンス](doc/command.ja.md)
-  - [APiリファレンス](doc/api.ja.md)
+  - [APIリファレンス](doc/api.ja.md)
   - [改善とデバッグ](doc/devel.ja.md)
-  - [HowTo](doc/hwoto.ja.md)
+  - [HowTo](doc/howto.ja.md)
   - [FAQ](doc/faq.ja.md)
 
 
@@ -80,7 +78,7 @@ TODO: See APIリファレンス
 
 ## License
 
-    Copyright (C) 2010  FURUHASHI Sadayuki
+    Copyright (C) 2010-2011  FURUHASHI Sadayuki
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -96,6 +94,5 @@ TODO: See APIリファレンス
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 See also NOTICE file.
-
 
 

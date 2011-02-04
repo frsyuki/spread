@@ -29,6 +29,7 @@ If data is lost, the server must be removed first。
     $ spreadctl node01 remove_node 1
 
 Then add new node.
+
 TODO: See Adding a server to existing replication-set
 
 
@@ -36,9 +37,11 @@ TODO: See Adding a server to existing replication-set
 
 Since IP address of the configuration server can't be change, you must use same IP address of the crashed server on a substitute server. Or if exclusive IP alias is set for the address, set it to the substitute server.
 
+Recovering operation of the configuration server is different depending on which data is lost or not.
+
 ### If data is not lost
 
-Just restart the spread-cs process without changing the **--port** option.
+Restart the spread-cs process.
 
 ### If data is lost
 

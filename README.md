@@ -53,8 +53,6 @@ Each version is identified by name or created time (UNIX time at UTC).
     
       ...    =>  ...
 
-TODO: See API Reference
-
 
 ## Learm more
 
@@ -66,7 +64,7 @@ TODO: See API Reference
   - [Commandline reference](doc/command.md)
   - [API Reference](doc/api.md)
   - [Debugging and Improvement](doc/devel.md)
-  - [HowTo](doc/hwoto.md)
+  - [HowTo](doc/howto.md)
   - [FAQ](doc/faq.md)
 
 
