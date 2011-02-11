@@ -24,7 +24,7 @@ class DirectoryStorageService < StorageService
 	StorageSelector.register(:dir, self)
 
 	def open(expr)
-		@dir = expr
+		@dir = File.expand_path(expr)
 	end
 
 	def close
@@ -165,23 +165,29 @@ class DirectoryStorageService < StorageService
 
 	# for DataServerURLService
 	def self.encode_okey(okey)
-		instance.key_to_path(okey.vtime, okey.key)
+		subpath = key_to_subpath(okey.vtime, okey.key)
+		File.join(*subpath)
 	end
 
-	private
 	def key_to_path(vtime, key)
+		subpath = self.class.key_to_subpath(vtime, key)
+		File.join(@dir, "data", *subpath)
+	end
+
+	def self.key_to_subpath(vtime, key)
 		digest = Digest::MD5.digest(key)
 		box = "%03d" % digest.unpack('C')[0]
 		kdir = encode_path(key)
 		fname = "v#{vtime}"
-		File.join(@dir, "data", box, kdir, fname)
+		return box, kdir, fname
 	end
 
-	def encode_path(s)
+	private
+	def self.encode_path(s)
 		URI.encode(s, /[^-_.a-zA-Z0-9]/n)
 	end
 
-	def decode_path(b)
+	def self.decode_path(b)
 		URI.decode(b, /[^-_.a-zA-Z0-9]/n)
 	end
 
