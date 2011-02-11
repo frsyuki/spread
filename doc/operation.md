@@ -40,7 +40,7 @@ Finally, confirm the status of the cluster:
       4          node07       192.168.0.17:18900      subnet-192.168.000       2     active
       5          node08       192.168.0.18:18900      subnet-192.168.000       2     active
 
-TODO: See: Changing weight of load balancing
+See: Changing weight of replication-sets
 
 
 ### Adding a server to existing replication-set
@@ -91,7 +91,9 @@ Finally, confirm the status of the cluster:
       3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
       4          node07       192.168.0.17:18900      subnet-192.168.000       0     active
 
+<!--
 TODO: See HowTo Geo-redundancy
+-->
 
 
 ## Removing a data server
@@ -133,9 +135,11 @@ Finally, confirm the status of the cluster:
       3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
 
 
-## Changing weight of load balancing
+## Changing weight of replication-sets
 
+<!--
 TODO
+-->
 
     $ spreadctl node01 weight
     rsid   weight       nids   names
@@ -152,13 +156,16 @@ TODO
 
 ## Monitoring load
 
+<!--
 TODO
+-->
 
     $ spreadtop node01
 
 Type 's' to toggle short mode.
 
 
+<!--
 ## Backup
 
 TODO
@@ -178,6 +185,7 @@ TODO
 ### Backup metadata
 
 TODO
+-->
 
 
 Next step: [Fault management](fault.md)

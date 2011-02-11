@@ -1,7 +1,9 @@
 Commandline reference - SpreadOSD
 =================================
 
+<!--
 TODO
+-->
 
 ## Server commands
 
@@ -12,6 +14,28 @@ TODO
         -l, --listen HOST                listen address
         -m, --mds ADDRESS                address of metadata server
         -M, --mds-cache EXPR             mds cache
+        -s, --store PATH                 path to base directory
+            --fault_store PATH           path to fault status file
+            --membership_store PATH      path to membership status file
+            --weight_store PATH          path to weight status file
+        -o, --log PATH
+        -v, --verbose                    show debug messages
+            --trace                      show debug and trace messages
+            --color-log                  force to enable color log
+
+
+### spread-gw: gateway
+
+    Usage: spread-gw [options]
+        -c, --cs ADDRESS                 address of config server
+        -p, --port PORT                  listen port
+        -l, --listen HOST                listen address
+        -t, --http PORT                  http listen port
+            --http-error-page PATH       path to eRuby template file
+        -R, --read-only                  read-only mode
+        -N, --read-only-name NAME        read-only mode using the version name
+        -T, --read-only-time TIME        read-only mode using the time
+        -L, --location STRING            enable location-aware master selection
         -s, --store PATH                 path to base directory
             --fault_store PATH           path to fault status file
             --membership_store PATH      path to membership status file
@@ -44,28 +68,6 @@ TODO
         -T, --read-only-time TIME        read-only mode using the time
             --fault_store PATH           path to fault status file
             --membership_store PATH      path to membership status file
-        -o, --log PATH
-        -v, --verbose                    show debug messages
-            --trace                      show debug and trace messages
-            --color-log                  force to enable color log
-
-
-### spread-gw: gateway
-
-    Usage: spread-gw [options]
-        -c, --cs ADDRESS                 address of config server
-        -p, --port PORT                  listen port
-        -l, --listen HOST                listen address
-        -t, --http PORT                  http listen port
-            --http-error-page PATH       path to eRuby template file
-        -R, --read-only                  read-only mode
-        -N, --read-only-name NAME        read-only mode using the version name
-        -T, --read-only-time TIME        read-only mode using the time
-        -L, --location STRING            enable location-aware master selection
-        -s, --store PATH                 path to base directory
-            --fault_store PATH           path to fault status file
-            --membership_store PATH      path to membership status file
-            --weight_store PATH          path to weight status file
         -o, --log PATH
         -v, --verbose                    show debug messages
             --trace                      show debug and trace messages

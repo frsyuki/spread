@@ -1,7 +1,9 @@
 SpreadOSD 運用
 ==============
 
+<!--
 TODO
+-->
 
 ## DSの追加
 
@@ -40,7 +42,7 @@ TODO
       4          node07       192.168.0.17:18900      subnet-192.168.000       2     active
       5          node08       192.168.0.18:18900      subnet-192.168.000       2     active
 
-TODO: See: Changing weight of load balancing
+参考: 重みの設定
 
 
 ### 既存のレプリケーション･セットにサーバを追加する
@@ -93,7 +95,9 @@ Prepare new server and copy existing data from other server on the replication-s
       3          node06       192.168.0.16:18900      subnet-192.168.000       1     active
       4          node07       192.168.0.17:18900      subnet-192.168.000       0     active
 
+<!--
 TODO: See HowTo Geo-redundancy
+-->
 
 
 ## DSの離脱
@@ -137,7 +141,11 @@ DSのプロセスを終了させます：
 
 ## 重みの設定
 
-TODO
+新しいデータを保存するレプリケーション･セットは、*重み*に基づいて決定されます。デフォルトの重みは10です。
+
+例えば、レプリケーション･セット0の重みが5で、レプリケーション･セット1の重みが5のとき、新しいデータは 5/(10+5) の割合でレプリケーション･セット0に、10/(10+5) の割合でレプリケーション･セット1に保存されます。
+
+重みを確認するには **spreadctl** **weight** コマンドを使用し、重みを変更するには **spreadctl** **set_weight** コマンドを使用します：
 
     $ spreadctl node01 weight
     rsid   weight       nids   names
@@ -154,13 +162,16 @@ TODO
 
 ## 負荷の監視
 
+<!--
 TODO
+-->
 
     $ spreadtop node01
 
 Type 's' to toggle short mode.
 
 
+<!--
 ## バックアップ
 
 TODO
@@ -180,6 +191,7 @@ TODO
 ### メタデータのバックアップ
 
 TODO
+-->
 
 
 次のステップ：[障害対応](fault.ja.md)

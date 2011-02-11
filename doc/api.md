@@ -147,19 +147,21 @@ Following parameters are acceptable:
   - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
   - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
 
-TODO: See Direct data transfer with X-Accel-Redirect
+See: [Direct data transfer using Nginx's X-Accel-Redirect](howto/nginx.md)
 
 
 ### GET /redirect/&lt;key&gt;
 
 This is similar to GET /api/url?key=&lt;key&gt;, but this returns status code *302 Found* and redirects using *Location:* header.
 
-TODO: See Direct data transfer with X-Accel-Redirect
+See: [Direct data transfer using Nginx's X-Accel-Redirect](howto/nginx.md)
 
 
 ## MessagePack-RPC API
 
+<!--
 TODO
+-->
 
 ### Getting API
 

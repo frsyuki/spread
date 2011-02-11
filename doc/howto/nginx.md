@@ -3,8 +3,8 @@ Direct data transfer using Nginx's X-Accel-Redirect - SpreadOSD HowTo
 
 ## Readers of this HowTo
 
-Photo storage system of web services is one of the most suitable usages of SpreadOSD. In these web sites, you probably use HTTP load balancers in front of the application servers.
-If you are using [nginx](http://wiki.nginx.org/Main) as the HTTP load balancer, you can reduce CPU load and network traffic of the application servers using nginx's "X-Accel-Redirect" feature.
+Photo storage system of web services is one of the most suitable usages of SpreadOSD. In these web sites, you probably use HTTP reverse proxies in front of the application servers.
+If you are using [nginx](http://wiki.nginx.org/Main) as the HTTP reverse proxy, you can reduce CPU load and network traffic of the application servers using nginx's "X-Accel-Redirect" feature.
 
 It assumes following web backend system in this document:
 
@@ -69,6 +69,9 @@ You can reduce CPU load and network traffic by setting up following architecture
 
 ## Nginx setting
 
+Add following setting to nginx.conf:
+
+    # location setting for real application servers
     location / {
       proxy_pass  http://real.server.host;
     
@@ -92,26 +95,58 @@ You can reduce CPU load and network traffic by setting up following architecture
       proxy_hide_header Content-Type
     }
 
-TODO
-
 
 ## Application code
 
-TODO
+Application should return a HTTP response that includes "X-Accel-Redirect","X-Reproxy-URL" and "Content-Type" headers.
+
+"X-Accel-Redirect" header describes internal location setting of nginx. In this example, set "X-Accel-Redirect: /reproxy".
+
+"X-Reproxy-URL" header describes the actual URL of the data taken from a GW.
+
+"Content-Type" header describes the actual content-type of the data.
+
+    require 'sinatra'
+    require 'net/http'
+    
+    get '/get_my_image' do
+      # Gets actual URL of the data from spread-gw
+      url = nil
+      Net::HTTP.start("gateway01", 8088) do |http|
+        res = http.get("/api/uri?key=my_image")
+        url = res.body
+      end
+      
+      # Sets response headers
+      headers "X-Accel-Redirect" => "/reproxy"
+      headers "X-Reproxy-URL" => url
+      headers "Content-Type" => "image/png"
+      
+      # Returns empty body
+      return ""
+    end
 
 
 ## DS setting
+
+HTTP interface must be enabled on all DSs by *--http PORT* option.
 
     [on node04]$ spread-ds --cs cs.node --address node04 --nid N --rsid R --name N \
                            -s /var/spread/node04 \
                            --http 19800
 
-TODO
+Or you can use *--http-redirect-port PORT* option to return actual data using another HTTP server.
 
 
-## Accelerating DS performance by offloading GET requests to Nginx
+### Accelerating DS performance by offloading GET requests
 
-TODO
+DS is written in Ruby and relatively slow. You can accelerate performance by using other HTTP servers (like nginx, lighttpd or thttpd) to acceleration to GET requests.
+
+#### thttpd for acceleration
+
+    [on node04]$ thttpd -p 19800 -d /var/spread/node04/data
+
+#### nginx for acceleration
 
     server {
       listen 19800;
@@ -121,6 +156,12 @@ TODO
         root /var/spread/node04/data;
       }
     }
+
+#### DS setting
+
+<!--
+TODO
+-->
 
     [on node04]$ spread-ds --cs cs.node --address node04 --nid N --rsid R --name N \
                            -s /var/spread/node04 \

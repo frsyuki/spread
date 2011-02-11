@@ -1,7 +1,9 @@
 SpreadOSD 障害対応
 ==================
 
+<!--
 TODO
+-->
 
 ## DSの復旧
 
@@ -30,7 +32,7 @@ DSを復旧する手順は、データが失われた（HDDが故障した）か
 
 この後で新しいノードを追加してください。
 
-TODO: See Adding a server to existing replication-set
+See: [既存のレプリケーション･セットにサーバを追加する](operation.md)
 
 
 ## CSの復旧

@@ -1,6 +1,7 @@
 SpreadOSD 改善とデバッグ
 ========================
 
+<!--
 TODO
 
 ## 知識を共有しよう
@@ -13,15 +14,18 @@ TODO
 
 
 ## 最新のソースコードの入手
+-->
 
 
 ## ソースコード
 
+<!--
 ### MessagePack-RPCと非同期通信
 
 ### EventBus
 
 ### ProcessBus
+-->
 
 ### ソースツリー
 
@@ -111,6 +115,7 @@ TODO
     +-- version.rb
 
 
+<!--
 ## SpreadOSDを改善する
 
 ### ストレージエンジンを書く
@@ -130,4 +135,5 @@ TODO
 ### MessagePack-RPC APIを追加する
 
 ### HTTP APIを追加する
+-->
 

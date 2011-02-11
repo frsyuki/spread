@@ -30,7 +30,7 @@ If data is lost, the server must be removed first。
 
 Then add new node.
 
-TODO: See Adding a server to existing replication-set
+See: [Adding a server to existing replication-set](operation.md)
 
 
 ## Recovering configuration server

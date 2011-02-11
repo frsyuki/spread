@@ -145,19 +145,21 @@ SpreadOSD APIリファレンス
   - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
   - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
 
-TODO: See Direct data transfer with X-Accel-Redirect
+参考：[NginxのX-Accel-Redirectを使って直接データを転送する](howto/nginx.ja.md)
 
 
 ### GET /redirect/&lt;key&gt;
 
 GET /api/url?key=&lt;key&gt; と似ていますが、オブジェクトが実際に見つかった場合はステータスコード*302 Found*で返り、*Location:*ヘッダを使ってリダイレクトします。
 
-TODO: See Direct data transfer with X-Accel-Redirect
+参考：[NginxのX-Accel-Redirectを使って直接データを転送する](howto/nginx.ja.md)
 
 
 ## MessagePack-RPC API
 
+<!--
 TODO
+-->
 
 ### 取得API
 

@@ -1,6 +1,7 @@
 Debugging and Improvement - SpreadOSD
 =====================================
 
+<!--
 TODO
 
 ## Share your knowledge
@@ -11,16 +12,20 @@ TODO
 
 ### Share your improvements
 
+
 ## Getting the latest source codes
+-->
 
 
 ## Source codes
 
+<!--
 ### Asynchronous communication using MessagePack-RPC
 
 ### EventBus
 
 ### ProcessBus
+-->
 
 ### Source tree
 
@@ -110,6 +115,7 @@ TODO
     +-- version.rb
 
 
+<!--
 ## Improving SpreadOSD
 
 ### Writing storage engine
@@ -127,4 +133,5 @@ TODO
 ### Adding MessagePack-RPC API
 
 ### Adding HTTP API
+-->
 

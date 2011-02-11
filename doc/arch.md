@@ -82,7 +82,11 @@ Metadata servers know which replication-set stores the data. So gateway (or data
 
   1. Application sends get request to a GW or DS. Any of GW or DS can respond to the requests.
   2. GW (or DS) sends search query to MDS. MDS returns ID of replication-set that has the requested data if it's found.
-  3. GW (or DS) selects a DS from the replication-set, and sends get request to the DS. The DS is selected using location-aware algorithm (TODO: See HowTo Geo-redundancy).
+  3. GW (or DS) selects a DS from the replication-set, and sends get request to the DS. The DS is selected using location-aware algorithm
+
+<!--
+(TODO: See HowTo Geo-redundancy).
+-->
 
 
 ### Updating and geting attributes
