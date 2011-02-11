@@ -16,9 +16,11 @@ TODO
             --fault_store PATH           path to fault status file
             --membership_store PATH      path to membership status file
             --weight_store PATH          path to weight status file
+        -o, --log PATH
         -v, --verbose                    show debug messages
             --trace                      show debug and trace messages
             --color-log                  force to enable color log
+
 
 ### spread-ds: data server
 
@@ -42,9 +44,11 @@ TODO
         -T, --read-only-time TIME        read-only mode using the time
             --fault_store PATH           path to fault status file
             --membership_store PATH      path to membership status file
+        -o, --log PATH
         -v, --verbose                    show debug messages
             --trace                      show debug and trace messages
             --color-log                  force to enable color log
+
 
 ### spread-gw: gateway
 
@@ -62,6 +66,7 @@ TODO
             --fault_store PATH           path to fault status file
             --membership_store PATH      path to membership status file
             --weight_store PATH          path to weight status file
+        -o, --log PATH
         -v, --verbose                    show debug messages
             --trace                      show debug and trace messages
             --color-log                  force to enable color log

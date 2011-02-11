@@ -68,9 +68,9 @@ require 'spread-osd/service/ulog'
 require 'spread-osd/service/ulog_file'
 require 'spread-osd/service/ulog_memory'
 require 'spread-osd/service/time_check'
+require 'spread-osd/service/log'
 require 'spread-osd/default'
 require 'spread-osd/version'
-require 'spread-osd/log'
 require 'optparse'
 
 include SpreadOSD
@@ -196,6 +196,10 @@ op.on('--membership_store PATH', "path to membership status file") do |path|
 	conf.membership_path = path
 end
 
+op.on('-o', '--log PATH') do |path|
+	conf.log_path = path
+end
+
 op.on('-v', '--verbose', "show debug messages", TrueClass) do |b|
 	$log.level = 1 if b
 end
@@ -284,6 +288,7 @@ end
 
 
 ProcessService.init
+LogService.open!
 SyncClientService.init
 HeartbeatMemberService.init
 RoutRobinWeightBalanceService.init
@@ -315,7 +320,7 @@ MDSCacheService.init
 CachedMDSService.init
 TimeCheckService.init
 
-log_event_bus
+LogService.instance.log_event_bus
 
 ProcessBus.run
 

@@ -9,7 +9,6 @@ nobase_pkgdata_SCRIPTS = \
 	bin/spreadctl \
 	bin/spreadtop \
 	lib/spread-osd/default.rb \
-	lib/spread-osd/log.rb \
 	lib/spread-osd/command/cli.rb \
 	lib/spread-osd/command/cs.rb \
 	lib/spread-osd/command/ctl.rb \
@@ -39,6 +38,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/gateway_ro.rb \
 	lib/spread-osd/service/gw_http.rb \
 	lib/spread-osd/service/heartbeat.rb \
+	lib/spread-osd/service/log.rb \
 	lib/spread-osd/service/master_select.rb \
 	lib/spread-osd/service/mds.rb \
 	lib/spread-osd/service/mds_tt.rb \

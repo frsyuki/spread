@@ -22,6 +22,7 @@ class ProcessBus < Bus
 	signal_slot :run
 	signal_slot :shutdown
 	signal_slot :on_timer
+	signal_slot :on_sighup
 	call_slot :start_timer
 	call_slot :submit
 	call_slot :get_session
@@ -44,6 +45,9 @@ class ProcessService < Service
 		@timer = start_timer(1.0, true) do
 			ProcessBus.on_timer
 		end
+		Signal.trap(:HUP) {
+			ProcessBus.on_sighup
+		}
 	end
 
 	def submit(task=nil, &block)

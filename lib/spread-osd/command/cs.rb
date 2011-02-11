@@ -45,9 +45,9 @@ require 'spread-osd/service/balance'
 require 'spread-osd/service/master_select'
 require 'spread-osd/service/mds'
 require 'spread-osd/service/mds_cache'
+require 'spread-osd/service/log'
 require 'spread-osd/default'
 require 'spread-osd/version'
-require 'spread-osd/log'
 require 'optparse'
 
 include SpreadOSD
@@ -115,6 +115,10 @@ op.on('--weight_store PATH', "path to weight status file") do |path|
 	conf.weight_path = path
 end
 
+op.on('-o', '--log PATH') do |path|
+	conf.log_path = path
+end
+
 op.on('-v', '--verbose', "show debug messages", TrueClass) do |b|
 	$log.level = 1 if b
 end
@@ -157,6 +161,7 @@ end
 
 
 ProcessService.init
+LogService.open!
 SyncServerService.init
 HeartbeatServerService.init
 MembershipManagerService.init
@@ -165,7 +170,7 @@ MDSConfigService.init
 MDSCacheConfigService.init
 CSStatService.init
 
-log_event_bus
+LogService.instance.log_event_bus
 
 ProcessBus.run
 

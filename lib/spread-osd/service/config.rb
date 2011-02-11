@@ -31,6 +31,7 @@ class ConfigBus < Bus
 	call_slot :get_fault_path
 	call_slot :get_membership_path
 	call_slot :get_weight_path
+	call_slot :get_log_path
 
 	call_slot :get_initial_mds_uri
 	call_slot :get_initial_mds_cache_uri
@@ -49,11 +50,13 @@ class ConfigService < Service
 	attr_accessor :fault_path
 	attr_accessor :membership_path
 	attr_accessor :weight_path
+	attr_accessor :log_path
 
 	ebus_connect :ConfigBus,
 		:get_fault_path      => :fault_path,
 		:get_membership_path => :membership_path,
-		:get_weight_path     => :weight_path
+		:get_weight_path     => :weight_path,
+		:get_log_path        => :log_path
 end
 
 
