@@ -54,7 +54,7 @@ class TimeCheckService < Service
 				ack_check(cs_time)
 			rescue
 				$log.error "time check error: #{$!}"
-				$log.error $!.backtrace.pretty_inspect
+				$log.error_backtrace $!.backtrace
 			end
 		end
 	end

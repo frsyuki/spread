@@ -130,7 +130,7 @@ class SyncClientService < SyncService
 				ack_sync(data_array)
 			rescue
 				$log.error "sync error: #{$!}"
-				$log.error $!.backtrace.pretty_inspect
+				$log.error_backgrace $!.backtrace
 			end
 		end
 	end

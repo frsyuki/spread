@@ -89,7 +89,7 @@ class HeartbeatClientService < Service
 				ack_heartbeat(hbres)
 			rescue
 				$log.error "heartbeat error: #{$!}"
-				$log.error $!.backtrace.pretty_inspect
+				$log.error_backtrace $!.backtrace
 			end
 		end
 	end

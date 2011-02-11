@@ -138,7 +138,7 @@ class TokyoTyrantMDS < MDS
 		end
 
 		def close
-			@dbmap.each_pari {|addr,rdb|
+			@dbmap.each_pair {|addr,rdb|
 				rdb.close rescue nil
 			}
 		end

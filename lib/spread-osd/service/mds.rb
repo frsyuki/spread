@@ -125,7 +125,7 @@ class MDSService < Service
 			old_mds.close
 		rescue
 			$log.error "MDS close error: #{$!}"
-			$log.error $!.backtrace.pretty_inspect
+			$log.error_backtrace $!.backtrace
 		end
 	end
 

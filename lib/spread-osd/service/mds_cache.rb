@@ -97,7 +97,7 @@ class MDSCacheService < Service
 			old_cache.close
 		rescue
 			$log.error "MDSCache close error: #{$!}"
-			$log.error $!.backtrace.pretty_inspect
+			$log.error_backtrace $!.backtrace
 		end
 	end
 
@@ -208,7 +208,8 @@ class CachedMDSService < Service
 	def get_okey(key, version=nil, &cb)
 		if version == nil
 			if okey = get_cache(key)
-				return okey
+				cb.call(okey, nil)
+				return
 			end
 		end
 		MDSBus.get_okey(key, version) {|okey,error|
