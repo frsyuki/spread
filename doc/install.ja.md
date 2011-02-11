@@ -11,7 +11,7 @@ SpreadOSDを実行するには次のソフトウェアが必要です：
 
   - [Tokyo Cabinet](http://fallabs.com/tokyocabinet/) &gt;= 1.4.40
   - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) &gt;= 1.1.40
-  - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.1
+  - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.2
   - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) &gt;= 0.4.3
   - [tokyocabinet gem](http://rubygems.org/gems/tokyocabinet) &gt;= 1.29
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) &gt;= 1.13

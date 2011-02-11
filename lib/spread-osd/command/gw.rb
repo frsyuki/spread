@@ -120,6 +120,10 @@ op.on('-t', '--http PORT', "http listen port") do |addr|
 	conf.http_gateway_address = Address.new(host, port)
 end
 
+op.on('--http-error-page PATH', 'path to eRuby template file') do |path|
+	conf.http_gateway_error_template_file = path
+end
+
 op.on('-R', '--read-only', "read-only mode", TrueClass) do |b|
 	read_only_gw = b
 end

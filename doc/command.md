@@ -34,6 +34,7 @@ TODO
         -u, --ulog PATH                  path to update log directory
         -r, --rts PATH                   path to relay timestamp directory
         -t, --http PORT                  http listen port
+            --http-error-page PATH       path to eRuby template file
             --http-redirect-port PORT
             --http-redirect-path FORMAT
         -R, --read-only                  read-only mode
@@ -52,6 +53,7 @@ TODO
         -p, --port PORT                  listen port
         -l, --listen HOST                listen address
         -t, --http PORT                  http listen port
+            --http-error-page PATH       path to eRuby template file
         -R, --read-only                  read-only mode
         -N, --read-only-name NAME        read-only mode using the version name
         -T, --read-only-time TIME        read-only mode using the time

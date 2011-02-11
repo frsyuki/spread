@@ -24,11 +24,13 @@ class GWConfigService < ConfigService
 
 	attr_accessor :read_only_version
 	attr_accessor :http_gateway_address
+	attr_accessor :http_gateway_error_template_file
 
 	ebus_connect :ConfigBus,
 		:self_location,
 		:read_only_version,
 		:http_gateway_address,
+		:http_gateway_error_template_file,
 		:get_cs_address => :cs_address
 end
 

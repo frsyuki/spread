@@ -41,6 +41,7 @@ class ConfigBus < Bus
 	call_slot :get_cs_address
 	call_slot :read_only_version
 	call_slot :http_gateway_address
+	call_slot :http_gateway_error_template_file
 end
 
 

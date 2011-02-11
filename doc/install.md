@@ -11,7 +11,7 @@ Following softwares are required to run SpreadOSD:
 
   - [Tokyo Cabinet](http://fallabs.com/tokyocabinet/) &gt;= 1.4.40
   - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) &gt;= 1.1.40
-  - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.1
+  - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.2
   - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) &gt;= 0.4.3
   - [tokyocabinet gem](http://rubygems.org/gems/tokyocabinet) &gt;= 1.29
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) &gt;= 1.13
@@ -60,8 +60,8 @@ First, install folowing packages using the package management system:
 Following procedure installs Ruby and SpreadOSD:
 
     # Installs ruby-1.9 into /opt/local/spread
-    $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p0.tar.bz2
-    $ tar jxvf ruby-1.9.2-p0.tar.bz2
+    $ wget ftp://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.2-p136.tar.bz2
+    $ tar jxvf ruby-1.9.2-p136.tar.bz2
     $ cd ruby-1.9.2
     $ ./configure --prefix=/opt/local/spread
     $ make

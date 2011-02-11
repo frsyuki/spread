@@ -22,19 +22,40 @@ class HTTPGatewayService < Service
 	def self.open!
 		require 'rack'
 		require 'webrick'
+		require 'erb'
 		require 'json'
 		require 'thread'
-		instance.init(ConfigBus.http_gateway_address)
+		instance.init(ConfigBus.http_gateway_address, ConfigBus.http_gateway_error_template_file)
 	end
 
 	DEFAULT_FORMAT = 'json'
+
+	DEFAULT_TEMPLATE =<<EOF
+<html>
+<head>
+<title><%= code %> <%= title %></title>
+</head>
+<body>
+<center><h1><%= code %> <%= title %></h1></center>
+<hr>
+<center>SpreadOSD <%= SpreadOSD::VERSION %></center>
+</body>
+</html>
+EOF
 
 	def initialize
 		@thread = nil
 		@server = nil
 	end
 
-	def init(addr)
+	def init(addr, tmplfile)
+		if tmplfile
+			erb = File.read(tmplfile)
+		else
+			erb = DEFAULT_TEMPLATE
+		end
+		@erb = ERB.new(erb)
+
 		opt = {
 			:BindAddress => addr.host,
 			:Port => addr.port,
@@ -670,16 +691,18 @@ class HTTPGatewayService < Service
 	end
 
 	def html_response(code, title, msg=nil)
-		if msg
-			body = ['<html><head></head><body><h1>',
-							code.to_s, ' ', title,
-							'</h1><p>', CGI.escapeHTML(msg.to_s), "</p></body></html>\r\n"]
-		else
-			body = ['<html><head></head><body><h1>',
-							code.to_s, ' ', title,
-							"</h1></body></html>\r\n"]
-		end
-		return [code, {'Content-Type'=>'text/html'}, body]
+		body = @erb.result(SpreadOSD.HTTPGatewayService_get_binding(code, title, msg))
+		return [code, {'Content-Type'=>'text/html'}, [body]]
+		#if msg
+		#	body = ['<html><head></head><body><h1>',
+		#					code.to_s, ' ', title,
+		#					'</h1><p>', CGI.escapeHTML(msg.to_s), "</p></body></html>\r\n"]
+		#else
+		#	body = ['<html><head></head><body><h1>',
+		#					code.to_s, ' ', title,
+		#					"</h1></body></html>\r\n"]
+		#end
+		#return [code, {'Content-Type'=>'text/html'}, body]
 	end
 
 	protected
@@ -758,6 +781,11 @@ class HTTPGatewayService < Service
 		$log.error msg.join("\n")
 		r.error(e)
 	end
+end
+
+
+def self.HTTPGatewayService_get_binding(code, title, message)
+	binding
 end
 
 

@@ -42,6 +42,9 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/master_select.rb \
 	lib/spread-osd/service/mds.rb \
 	lib/spread-osd/service/mds_tt.rb \
+	lib/spread-osd/service/mds_cache.rb \
+	lib/spread-osd/service/mds_cache_mem.rb \
+	lib/spread-osd/service/mds_cache_memcached.rb \
 	lib/spread-osd/service/membership.rb \
 	lib/spread-osd/service/process.rb \
 	lib/spread-osd/service/rpc.rb \
@@ -74,6 +77,8 @@ nobase_pkgdata_SCRIPTS = \
 	test/07_http_get_set_remove_2.rt \
 	test/08_read_only_time.rt \
 	test/09_read_only_name.rt \
+	test/10_http_get_set_remove_3.rt \
+	test/11_mds_cache_memcached.rt \
 	test/chukan.rb \
 	test/common.rb
 
