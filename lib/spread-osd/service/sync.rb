@@ -22,6 +22,7 @@ SYNC_MEMBERSHIP     = 0
 SYNC_FAULT_LIST     = 1
 SYNC_REPLSET_WEIGHT = 2
 SYNC_MDS_URI        = 3
+SYNC_MDS_CACHE_URI  = 4
 
 
 class SyncBus < Bus

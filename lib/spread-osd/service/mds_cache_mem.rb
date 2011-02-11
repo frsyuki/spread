@@ -18,15 +18,45 @@
 module SpreadOSD
 
 
-class CSConfigService < ConfigService
-	#attr_accessor :self_address
+class LocalMemoryMDSCache < MDSCache
+	MDSCacheSelector.register(:mem, self)
 
-	attr_accessor :mds_uri
-	attr_accessor :mds_cache_uri
+	def initialize
+		require 'tokyocabinet'
+	end
 
-	ebus_connect :ConfigBus,
-		:get_initial_mds_uri => :mds_uri,
-		:get_initial_mds_cache_uri => :mds_cache_uri
+	def open(expr)
+		@db = TokyoCabinet::ADB.new
+		if expr.empty?
+			@size = "32m"
+		else
+			@size = expr
+		end
+		name = "+#capsiz=#{@size}"
+		unless @db.open(name)
+			raise "failed to MDS local memory cache database: #{@db.errmsg(@db.ecode)}"
+		end
+	end
+
+	def close
+		@db.close
+	end
+
+	def get(key)
+		@db[key]
+	end
+
+	def set(key, val)
+		@db[key] = val
+	end
+
+	def invalidate(key)
+		@db.delete(key)
+	end
+
+	def to_s
+		"<LocalMemoryMDSCache size=#{@size}>"
+	end
 end
 
 

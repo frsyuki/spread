@@ -204,6 +204,11 @@ def start_gw(n=0, *args)
 	gw
 end
 
+def start_memcached(port, *args)
+	m = spawn("memcached -p #{port} #{args.join(' ')}")
+	m
+end
+
 def term_all(*procs)
 	procs.each {|pr| pr.term rescue p($!) }
 	procs.each {|pr| pr.join rescue p($!) }

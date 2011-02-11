@@ -19,8 +19,6 @@ module SpreadOSD
 
 
 class CSRPCBus < Bus
-	call_slot :get_mds_uri
-	call_slot :set_mds_uri
 	call_slot :heartbeat
 	call_slot :sync_config
 	call_slot :add_node
@@ -29,19 +27,14 @@ class CSRPCBus < Bus
 	call_slot :recover_node
 	call_slot :set_replset_weight
 	call_slot :reset_replset_weight
+	call_slot :get_mds_uri
+	call_slot :set_mds_uri
+	call_slot :get_mds_cache_uri
+	call_slot :set_mds_cache_uri
 end
 
 
 class CSRPCService < RPCService
-	def get_mds_uri
-		dispatch(CSRPCBus, :get_mds_uri)
-	end
-
-	def set_mds_uri(uri)
-		force_binary!(uri)
-		dispatch(CSRPCBus, :set_mds_uri, uri)
-	end
-
 	def heartbeat(nid=nil, sync_hash)
 		force_binary!(sync_hash) if sync_hash
 		dispatch(CSRPCBus, :heartbeat, nid, sync_hash)
@@ -78,6 +71,15 @@ class CSRPCService < RPCService
 
 	def reset_replset_weight(rsid)
 		dispatch(CSRPCBus, :reset_replset_weight, rsid)
+	end
+
+	def get_mds_uri
+		dispatch(CSRPCBus, :get_mds_uri)
+	end
+
+	def set_mds_uri(uri)
+		force_binary!(uri)
+		dispatch(CSRPCBus, :set_mds_uri, uri)
 	end
 
 	def stat(cmd)

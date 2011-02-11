@@ -9,10 +9,13 @@ You can install using *make install* or using RubyGems.
 
 Following softwares are required to run SpreadOSD:
 
+  - [Tokyo Cabinet](http://fallabs.com/tokyocabinet/) &gt;= 1.4.40
   - [Tokyo Tyrant](http://fallabs.com/tokyotyrant/) &gt;= 1.1.40
   - [ruby](http://www.ruby-lang.org/) &gt;= 1.9.1
   - [msgpack-rpc gem](http://rubygems.org/gems/msgpack-rpc) &gt;= 0.4.3
+  - [tokyocabinet gem](http://rubygems.org/gems/tokyocabinet) &gt;= 1.29
   - [tokyotyrant gem](http://rubygems.org/gems/tokyotyrant) &gt;= 1.13
+  - [memcache-client gem](http://rubygems.org/gems/memcache-client) &gt;= 1.8.5
   - [rack gem](http://rubygems.org/gems/rack) &gt;= 1.2.1
 
 
@@ -66,7 +69,9 @@ Following procedure installs Ruby and SpreadOSD:
     
     # Installs required gems
     $ sudo /opt/local/spread/bin/gem install msgpack-rpc
+    $ sudo /opt/local/spread/bin/gem install tokyocabinet
     $ sudo /opt/local/spread/bin/gem install tokyotyrant
+    $ sudo /opt/local/spread/bin/gem install memcache-client
     $ sudo /opt/local/spread/bin/gem install rack
     
     # Installs SpreadOSD

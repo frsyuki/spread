@@ -1,0 +1,84 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << File.dirname(__FILE__)
+require 'common'
+
+LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
+SIZE   = (ARGV[1] || 10).to_i
+NUM    = (ARGV[2] || 50).to_i
+
+mds = start_mds
+cs = start_cs("--mds-cache mem:64m")
+ds0 = start_ds(0, 0)
+ds1 = start_ds(1, 0)
+ds2 = start_ds(2, 1)
+ds3 = start_ds(3, 1)
+
+cs.show_nodes
+cs.show_version
+
+gw = start_gw
+
+pid = Process.pid
+keyf = "#{pid}-key%d"
+_data = "@"*SIZE
+
+test "run normally" do
+	c = gw.client
+
+	LOOP.times {|o|
+		NUM.times do |i|
+			key = keyf % i
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'add' do
+				c.call(:add, key, _data, _attrs)
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'get' do
+				data, attrs = c.call(:get, key)
+				test_equals _data, data, 'get _data == data'
+				test_equals _attrs, attrs, 'get _attrs == attrs'
+			end
+
+			test 'get_data' do
+				data = c.call(:get_data, key)
+				test_equals _data, data, 'get_data _data == data'
+			end
+
+			test 'get_attrs' do
+				attrs = c.call(:get_attrs, key)
+				test_equals _attrs, attrs, 'get_attrs _attrs == attrs'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test "remove" do
+				removed = c.call(:remove, key)
+				test_equals true, removed, 'removed == true'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test 'removed get' do
+				data, attrs = c.call(:get, key)
+				test_equals nil, data, 'get_data _data is removed'
+				test_equals nil, attrs, 'get_attrs _attrs is removed'
+			end
+		end
+	}
+end
+
+cs.show_items
+cs.show_stat
+
+term_all(ds0, ds1, ds2, ds3, gw, mds, cs, mc1, mc2)
+

@@ -44,6 +44,7 @@ require 'spread-osd/service/weight'
 require 'spread-osd/service/balance'
 require 'spread-osd/service/master_select'
 require 'spread-osd/service/mds'
+require 'spread-osd/service/mds_cache'
 require 'spread-osd/default'
 require 'spread-osd/version'
 require 'spread-osd/log'
@@ -92,6 +93,10 @@ end
 
 op.on('-m', '--mds ADDRESS', "address of metadata server") do |addrs|
 	conf.mds_uri = addrs
+end
+
+op.on('-M', '--mds-cache EXPR', "mds cache") do |s|
+	conf.mds_cache_uri = s
 end
 
 op.on('-s', '--store PATH', "path to base directory") do |path|
@@ -157,6 +162,7 @@ HeartbeatServerService.init
 MembershipManagerService.init
 WeightManagerService.init
 MDSConfigService.init
+MDSCacheConfigService.init
 CSStatService.init
 
 log_event_bus

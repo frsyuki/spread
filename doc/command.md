@@ -11,6 +11,7 @@ TODO
         -p, --port PORT                  listen port
         -l, --listen HOST                listen address
         -m, --mds ADDRESS                address of metadata server
+        -M, --mds-cache EXPR             mds cache
         -s, --store PATH                 path to base directory
             --fault_store PATH           path to fault status file
             --membership_store PATH      path to membership status file

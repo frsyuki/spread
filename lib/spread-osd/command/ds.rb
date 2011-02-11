@@ -20,7 +20,6 @@ require 'digest/md5'
 require 'digest/sha1'
 require 'csv'
 require 'cgi'
-require 'tokyotyrant'
 require 'spread-osd/lib/cclog'
 require 'spread-osd/lib/ebus'
 require 'spread-osd/lib/vbcode'
@@ -47,6 +46,9 @@ require 'spread-osd/service/data_server_url'
 require 'spread-osd/service/data_client'
 require 'spread-osd/service/mds'
 require 'spread-osd/service/mds_tt'
+require 'spread-osd/service/mds_cache'
+require 'spread-osd/service/mds_cache_mem'
+require 'spread-osd/service/mds_cache_memcached'
 require 'spread-osd/service/gateway'
 require 'spread-osd/service/gateway_ro'
 require 'spread-osd/service/gw_http'
@@ -305,6 +307,8 @@ DataServerService.init
 DataServerURLService.init
 DSStatService.init
 MDSService.init
+MDSCacheService.init
+CachedMDSService.init
 TimeCheckService.init
 
 log_event_bus

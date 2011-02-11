@@ -119,6 +119,8 @@ class MDSService < Service
 		old_mds = @mds
 		@mds = mds
 
+		$log.info "using MDS: #{@mds}"
+
 		begin
 			old_mds.close
 		rescue

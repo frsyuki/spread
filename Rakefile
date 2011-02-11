@@ -14,7 +14,9 @@ begin
 		gemspec.require_paths = ["lib"]
 		gemspec.add_dependency "msgpack", ">= 0.4.4"
 		gemspec.add_dependency "msgpack-rpc", ">= 0.4.3"
+		gemspec.add_dependency "tokyocabinet", ">= 1.29"
 		gemspec.add_dependency "tokyotyrant", ">= 1.13"
+		gemspec.add_dependency "memcache-client", ">= 1.8.5"
 		gemspec.add_dependency "rack", ">= 1.2.1"
 		gemspec.test_files = Dir["test/test_*.rb"]
 		gemspec.files = Dir["lib/**/*", "ext/**/*", "test/**/*", "spec/**/*", "tasks/**/*"] +
