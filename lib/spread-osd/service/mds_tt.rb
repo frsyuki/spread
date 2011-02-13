@@ -176,12 +176,14 @@ class TokyoTyrantMDS < MDS
 			unless rdb.open(*addr)
 				$log.warn "failed to connect TokyoTyrant MDS: #{addr}"
 			end
+			rdb.setindex(COL_KEY, TokyoTyrant::RDBTBL::ITLEXICAL)
 			rdb
 		end
 
 		def ensure_rdb(rdb, addr)
 			if FATAL_ERROR.include?(rdb.ecode)
 				rdb.close rescue nil
+				rdb.instance_eval("@ecode = ESUCCESS")  # FIXME
 				rdb.open(*addr)
 			end
 			return rdb
