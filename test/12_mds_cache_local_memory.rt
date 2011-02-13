@@ -35,24 +35,26 @@ test "run normally" do
 			end
 		end
 
-		NUM.times do |i|
-			key = keyf % i
-			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+		3.times do
+			NUM.times do |i|
+				key = keyf % i
+				_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
 
-			test 'get' do
-				data, attrs = c.call(:get, key)
-				test_equals _data, data, 'get _data == data'
-				test_equals _attrs, attrs, 'get _attrs == attrs'
-			end
+				test 'get' do
+					data, attrs = c.call(:get, key)
+					test_equals _data, data, 'get _data == data'
+					test_equals _attrs, attrs, 'get _attrs == attrs'
+				end
 
-			test 'get_data' do
-				data = c.call(:get_data, key)
-				test_equals _data, data, 'get_data _data == data'
-			end
+				test 'get_data' do
+					data = c.call(:get_data, key)
+					test_equals _data, data, 'get_data _data == data'
+				end
 
-			test 'get_attrs' do
-				attrs = c.call(:get_attrs, key)
-				test_equals _attrs, attrs, 'get_attrs _attrs == attrs'
+				test 'get_attrs' do
+					attrs = c.call(:get_attrs, key)
+					test_equals _attrs, attrs, 'get_attrs _attrs == attrs'
+				end
 			end
 		end
 
@@ -80,5 +82,5 @@ end
 cs.show_items
 cs.show_stat
 
-term_all(ds0, ds1, ds2, ds3, gw, mds, cs, mc1, mc2)
+term_all(ds0, ds1, ds2, ds3, gw, mds, cs)
 
