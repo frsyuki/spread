@@ -62,6 +62,7 @@ Each version is identified by name or created time (UNIX time at UTC).
   - [Operation](doc/operation.md)
   - [Fault management](doc/fault.md)
   - [Commandline reference](doc/command.md)
+  - [Plug-in Reference](doc/plugin.md)
   - [API Reference](doc/api.md)
   - [Debugging and Improvement](doc/devel.md)
   - [HowTo](doc/howto.md)

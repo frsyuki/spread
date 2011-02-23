@@ -19,7 +19,7 @@ module SpreadOSD
 
 
 class LocalMemoryMDSCache < MDSCache
-	MDSCacheSelector.register(:mem, self)
+	MDSCacheSelector.register(:local, self)
 
 	def initialize
 		require 'tokyocabinet'

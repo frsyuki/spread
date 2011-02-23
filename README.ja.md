@@ -63,6 +63,7 @@ SpreadOSDは、**キー**（文字列）によって識別される*オブジェ
   - [運用](doc/operation.ja.md)
   - [障害対応](doc/fault.ja.md)
   - [コマンドラインリファレンス](doc/command.ja.md)
+  - [プラグインリファレンス](doc/plugin.ja.md)
   - [APIリファレンス](doc/api.ja.md)
   - [改善とデバッグ](doc/devel.ja.md)
   - [HowTo](doc/howto.ja.md)

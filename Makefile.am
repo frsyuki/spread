@@ -136,7 +136,9 @@ HTML_DOCS = \
 	doc/install.html \
 	doc/install.ja.html \
 	doc/operation.html \
-	doc/operation.ja.html
+	doc/operation.ja.html \
+	doc/plugin.html \
+	doc/plugin.ja.html
 
 MOSTLYCLEANFILES = \
 	$(bin_SCRIPTS) \

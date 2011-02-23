@@ -7,7 +7,7 @@ SIZE   = (ARGV[1] || 10).to_i
 NUM    = (ARGV[2] || 50).to_i
 
 mds = start_mds
-cs = start_cs("--mds-cache mem:64m")
+cs = start_cs("--mds-cache local:64m")
 ds0 = start_ds(0, 0)
 ds1 = start_ds(1, 0)
 ds2 = start_ds(2, 1)
