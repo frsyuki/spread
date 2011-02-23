@@ -218,12 +218,12 @@ Gets a part data of the object.
 
 ### Removing API
 
-#### remove(key:Raw)
+#### remove(key:Raw) -&gt; removed:Boolean
 
 
 ### In-place updating API
 
-#### update\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;)
+#### update\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
 
 
 ### Direct getting API

@@ -15,27 +15,13 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-require 'tokyotyrant'
-
 module SpreadOSD
 
 
-# single node:
-#   host1:port1
-#
-# master-slave:
-#   host1:port1,host2:port2
-#
-# master-slave with read weight:
-#   host1:port1,host2:port2;0,1
-#
-# dual-master:
-#   host1:port1--host2:port2
-#
 class TokyoTyrantMDS < MDS
-	MDSSelector.register(:tt, self)
+	require 'tokyotyrant'
 
-	DEFAULT_PORT = 1978
+	MDSSelector.register(:tt, self)
 
 	COL_PK      = ''
 	COL_KEY     = '_key'
@@ -49,8 +35,8 @@ class TokyoTyrantMDS < MDS
 
 	RDBQRY = TokyoTyrant::RDBQRY
 
-	class HARDB
-		DEFAULT_WEIGHT = 10
+	class HADB < BasicHADB
+		DEFAULT_PORT = 1978
 
 		FATAL_ERROR = [
 			TokyoTyrant::RDB::EINVALID,
@@ -61,137 +47,34 @@ class TokyoTyrantMDS < MDS
 			TokyoTyrant::RDB::EMISC
 		]
 
-		def initialize(expr)
-			@dbmap = {}     # {Address => TokyoTyrant::RDB}
-			@writers = []   # [Address]
-			@readers = []   # [Address]
-			@readers_rr = 0
-
-			expr.split('--').each {|line|
-				nodes, weights = line.strip.split(';',2)
-
-				addrs = nodes.strip.split(',').map {|node|
-					host, port = node.split(':',2)
-					port ||= DEFAULT_PORT
-					port = port.to_i
-					host.strip!
-					Address.new(host, port)
-				}
-
-				weights = (weights||"").strip.split(',').map {|x| x.to_i }
-
-				@writers << addrs.first
-
-				addrs.each_with_index {|addr,i|
-					weight = weights[i] ||= DEFAULT_WEIGHT
-					weight.times {
-						@readers << addr
-					}
-					@dbmap[addr] = nil
-				}
-
-				$log.info "TokyoTyrant MDS -- #{addrs.join(',')};#{weights.join(',')}"
-			}
-
-			if @dbmap.empty?
-				raise "empty expression"
-			end
-
-			if @dbmap.size == 1
-				# single node
-				@readers = [@readers[0]]
-			else
-				@readers = @readers.sort_by {|addr| rand }
-			end
-
-			# open remote database
-			@dbmap.keys.each {|addr|
-				@dbmap[addr] = open_rdb(addr)
-			}
-
-		rescue
-			@dbmap.each_pair {|addr,rdb|
-				if rdb
-					rdb.close rescue nil
-				end
-			}
-			raise "TokyoTyrant MDS: invlaid address expression: #{$!}"
-		end
-
-		def write(key, &block)
-			if @writers.size == 1
-				n = 0
-			else
-				n = hash_key(key) % @writers.size
-			end
-			ha_call(@writers, n) {|rdb|
-				block.call(rdb)
-			}
-		end
-
-		def read(key, &block)
-			@readers_rr += 1
-			@readers_rr = 0 if @readers_rr >= @readers.size
-			ha_call(@readers, @readers_rr) {|rdb|
-				block.call(rdb)
-			}
-		end
-
-		def close
-			@dbmap.each_pair {|addr,rdb|
-				rdb.close rescue nil
-			}
-		end
-
-		private
-		def hash_key(key)
-			digest = Digest::MD5.digest(key)
-			digest.unpack('C')[0]
-		end
-
-		def ha_call(array, idx, &block)
-			rdb = nil
-			failed = []
-			sz = array.size
-			sz.times {
-				addr = array[idx % sz]
-				unless failed.include?(addr)
-					rdb = @dbmap[addr]
-					if ensure_rdb(rdb, addr)
-						result = block.call(rdb)
-						unless FATAL_ERROR.include?(rdb.ecode)
-							return result
-						end
-						failed << addr
-					end
-				end
-				idx += 1
-			}
-			raise "TokyoTyrant MDS error: #{rdb.errmsg(rdb.ecode)}"
-		end
-
-		def open_rdb(addr)
-			rdb = TokyoTyrant::RDBTBL.new
-			rdb.instance_eval("@enc = 'ASCII-8BIT'")  # FIXME
-			unless rdb.open(*addr)
+		def open_db(addr)
+			db = TokyoTyrant::RDBTBL.new
+			db.instance_eval("@enc = 'ASCII-8BIT'")  # FIXME
+			unless db.open(*addr)
 				$log.warn "failed to connect TokyoTyrant MDS: #{addr}"
 			end
-			rdb.setindex(COL_KEY, TokyoTyrant::RDBTBL::ITLEXICAL)
-			rdb
+			db.setindex(COL_KEY, TokyoTyrant::RDBTBL::ITLEXICAL)
+			db
 		end
 
-		def ensure_rdb(rdb, addr)
-			if FATAL_ERROR.include?(rdb.ecode)
-				rdb.close rescue nil
-				rdb.instance_eval("@ecode = ESUCCESS")  # FIXME
-				rdb.open(*addr)
+		def ensure_db(db, addr)
+			if FATAL_ERROR.include?(db.ecode)
+				db.close rescue nil
+				db.instance_eval("@ecode = ESUCCESS")  # FIXME
+				db.open(*addr)
 			end
-			return rdb
+			return db
 		rescue
 			return nil
 		end
-	end
 
+		def error_result?(db, result)
+			if FATAL_ERROR.include?(db.ecode)
+				return db.errmsg(db.ecode)
+			end
+			return nil
+		end
+	end
 
 	def initialize
 		@random = Random.new
@@ -199,35 +82,35 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def open(expr)
-		@hardb = HARDB.new(expr)
+		@hadb = HADB.new(expr)
 	end
 
 	def close
-		@hardb.close
+		@hadb.close
 	end
 
 	def get_okey(key, version=nil, &cb)
 		map = get_impl(key, version, COLS_RESERVED)
 		if map && !is_removed(map)
 			okey = to_okey(map)
-			cb.call(okey, nil)
+			cb.call(okey, nil) rescue nil
 		else
-			cb.call(nil, nil)
+			cb.call(nil, nil) rescue nil
 		end
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	def get_attrs(key, version=nil, &cb)
 		map = get_impl(key, version)
 		if map && !is_removed(map)
 			attrs = to_attrs(map)
-			cb.call(attrs, nil)
+			cb.call(attrs, nil) rescue nil
 		else
-			cb.call(nil, nil)
+			cb.call(nil, nil) rescue nil
 		end
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	def get_okey_attrs(key, version=nil, &cb)
@@ -235,37 +118,37 @@ class TokyoTyrantMDS < MDS
 		if map && !is_removed(map)
 			okey = to_okey(map)
 			attrs = to_attrs(map)
-			cb.call([okey, attrs], nil)
+			cb.call([okey, attrs], nil) rescue nil
 		else
-			cb.call(nil, nil)
+			cb.call(nil, nil) rescue nil
 		end
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	def add(key, attrs={}, vname=nil, &cb)
 		okey = add_impl(key, attrs, vname)
-		cb.call(okey, nil)
+		cb.call(okey, nil) rescue nil
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	def update_attrs(key, attrs, &cb)
 		okey = update_impl(key) {|old_attrs|
 			attrs
 		}
-		cb.call(okey, nil)
+		cb.call(okey, nil) rescue nil
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	#def merge_attrs(key, attrs, &cb)
 	#	okey = update_impl(key) {|old_attrs|
 	#		old_attrs.merge(attrs)
 	#	}
-	#	cb.call(okey, nil)
+	#	cb.call(okey, nil) rescue nil
 	#rescue
-	#	cb.call(nil, $!)
+	#	cb.call(nil, $!) rescue nil
 	#end
 
 	def remove(key, &cb)
@@ -282,21 +165,21 @@ class TokyoTyrantMDS < MDS
 			# insert
 			pk = new_pk(map[COL_PK])
 			map = to_map({}, okey, nil, true)
-			@hardb.write(key) {|rdb| rdb.put(pk, map) }
+			@hadb.write(key) {|rdb| rdb.put(pk, map) }
 
 			okey = to_okey(map)
-			cb.call(okey, nil)
+			cb.call(okey, nil) rescue nil
 
 		else
-			cb.call(nil, nil)
+			cb.call(nil, nil) rescue nil
 		end
 
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	def util_locate(key, &cb)
-		array = @hardb.read(key) {|rdb|
+		array = @hadb.read(key) {|rdb|
 			qry = RDBQRY.new(rdb)
 			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
 			qry.searchget(COLS_RESERVED)
@@ -310,10 +193,10 @@ class TokyoTyrantMDS < MDS
 			[to_okey(map), map[COL_VNAME]]
 		}
 
-		cb.call(array, nil)
+		cb.call(array, nil) rescue nil
 
 	rescue
-		cb.call(nil, $!)
+		cb.call(nil, $!) rescue nil
 	end
 
 	private
@@ -354,7 +237,7 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def get_impl_head(key, cols=nil)
-		map = @hardb.read(key) {|rdb|
+		map = @hadb.read(key) {|rdb|
 			qry = RDBQRY.new(rdb)
 			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
 			qry.setorder(COL_VTIME, RDBQRY::QONUMDESC)
@@ -373,7 +256,7 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def get_impl_vname(key, vname, cols=nil)
-		map = @hardb.read(key) {|rdb|
+		map = @hadb.read(key) {|rdb|
 			qry = RDBQRY.new(rdb)
 			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
 			qry.addcond(COL_VNAME, RDBQRY::QCSTREQ, vname)
@@ -393,7 +276,7 @@ class TokyoTyrantMDS < MDS
 	end
 
 	def get_impl_vtime(key, vtime, cols)
-		map = @hardb.read(key) {|rdb|
+		map = @hadb.read(key) {|rdb|
 			qry = RDBQRY.new(rdb)
 			qry.addcond(COL_KEY, RDBQRY::QCSTREQ, key)
 			qry.addcond(COL_VTIME, RDBQRY::QCNUMLE, vtime.to_s)
@@ -470,7 +353,7 @@ class TokyoTyrantMDS < MDS
 			# insert
 			pk = new_pk(map[COL_PK])
 			map = to_map(attrs, okey, vname)
-			@hardb.write(key) {|rdb| rdb.put(pk, map) }
+			@hadb.write(key) {|rdb| rdb.put(pk, map) }
 
 		else
 			attrs ||= {}
@@ -480,20 +363,20 @@ class TokyoTyrantMDS < MDS
 			# insert
 			pk = new_pk()
 			map = to_map(attrs, okey, vname)
-			@hardb.write(key) {|rdb| rdb.put(pk, map) }
+			@hadb.write(key) {|rdb| rdb.put(pk, map) }
 		end
 
 		return okey
 	end
 
-	def update_impl(key, &attrs_block)
+	def update_impl(key, &modifier)
 		map = get_impl_head(key, nil)
 
 		if map && !is_removed(map)
 			okey = to_okey(map)
 
 			# create new attrs
-			attrs = attrs_block.call( to_attrs(map) )
+			attrs = modifier.call( to_attrs(map) )
 
 			# reject old attributes
 			map.reject! {|k,v| !COLS_RESERVED.include?(k) }
@@ -503,7 +386,7 @@ class TokyoTyrantMDS < MDS
 
 			# update
 			pk = map.delete(COL_PK)
-			@hardb.write(key) {|rdb| rdb.put(pk, map) }
+			@hadb.write(key) {|rdb| rdb.put(pk, map) }
 
 			return okey
 

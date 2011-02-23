@@ -82,7 +82,7 @@ class CSProcess < ServerProcess
 		@port = CS_PORT
 
 		ddir = init_data_dir("cs")
-		super("#{CMD_CS} --mds 127.0.0.1:#{MDS_PORT} -p #{@port} -s #{ddir} #{args.join(' ')} #{OPT}")
+		super("#{CMD_CS} --mds tt:127.0.0.1:#{MDS_PORT} -p #{@port} -s #{ddir} #{args.join(' ')} #{OPT}")
 
 		set_display("cs")
 	end
@@ -205,7 +205,7 @@ def start_gw(n=0, *args)
 end
 
 def start_memcached(port, *args)
-	m = spawn("memcached -p #{port} #{args.join(' ')}")
+	m = spawn("memcached -U 0 -p #{port} #{args.join(' ')}")
 	m
 end
 

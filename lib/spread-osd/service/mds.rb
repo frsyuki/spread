@@ -227,8 +227,15 @@ class MDS
 	#def remove(key, &cb)
 	#end
 
-	#def util_locate(key, &cb)
-	#end
+	def util_locate(key, &cb)
+		get_okey(key) {|okey|
+			if okey
+				cb.call([okey, nil], nil) rescue nil
+			else
+				cb.call([], nil) rescue nil
+			end
+		}
+	end
 
 	protected
 	def get_current_vtime(at_least=0)

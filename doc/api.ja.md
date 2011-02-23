@@ -249,14 +249,14 @@ TODO
 
 ### 削除API
 
-#### remove(key:Raw)
+#### remove(key:Raw) -&gt; removed:Boolean
 
 オブジェクトを削除します。
 
 
 ### 上書き更新API
 
-#### update\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;)
+#### update\_attrs(key:Raw, attributes:Map&lt;Raw,Raw&gt;) -&gt; objectKey:Object
 
 オブジェクトの属性を上書きして更新します。
 
