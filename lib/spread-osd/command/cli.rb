@@ -39,6 +39,9 @@ def usage
 	puts "   add_data <key> <data>               set data"
 	puts "   addv_data <vname> <key> <data>      set data with version name"
 	puts "   update_attrs <key> <json>           update attributes"
+	puts "   delete <key>                        delete the data and attributes"
+	puts "   deletet <time> <key>                delete the data and attributes using the time"
+	puts "   deletev <vname> <key>               delete the data and attributes using the version name"
 	puts "   remove <key>                        remove the data and attributes"
 	exit 1
 end
@@ -213,6 +216,18 @@ when 'update_attrs'
 	key, json = cmd_args(2)
 	attrs = JSON.parse(json)
 	pp call(nil, :update_attrs, key, attrs)
+
+when 'delete'
+	key = cmd_args(1)
+	pp call(nil, :delete, key)
+
+when 'deletet'
+	vtime, key = cmd_args(1)
+	pp call(nil, :deletet, vtime.to_i, key)
+
+when 'deletev'
+	vname, key = cmd_args(2)
+	pp call(nil, :deletev, vname, key)
 
 when 'remove'
 	key = cmd_args(1)

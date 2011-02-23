@@ -31,8 +31,8 @@ class DSStatService < GWStatService
 		StatBus.cmd_write
 	end
 
-	def stat_cmd_remove
-		StatBus.cmd_remove
+	def stat_cmd_delete
+		StatBus.cmd_delete
 	end
 end
 

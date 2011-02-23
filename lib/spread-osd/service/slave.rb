@@ -87,7 +87,7 @@ class SlaveService < Service
 					@storage.set(vtime, key, data)
 				end
 			else
-				@storage.remove(vtime, key)
+				@storage.delete(vtime, key)
 			end
 		end
 	end

@@ -129,12 +129,13 @@ class DirectoryStorageService < StorageService
 	#	true
 	#end
 
-	def remove(vtime, key)
-		$log.trace { "DirectoryStorage: remove vtime=#{vtime} key=#{key.dump}" }
+	def delete(vtime, key)
+		$log.trace { "DirectoryStorage: delete vtime=#{vtime} key=#{key.dump}" }
 
 		path = key_to_path(vtime, key)
 		begin
 			File.unlink(path)
+			Dir.rmdir(File.dirname(path)) rescue nil
 			return true
 		rescue
 			return false

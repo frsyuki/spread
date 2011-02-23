@@ -177,22 +177,22 @@ when 'set_mds'
 
 when 'stat', 'status'
 	STAT_FORMAT = "%4s %15s %10s %10s %10s %10s %30s"
-	puts STAT_FORMAT % %w[nid name uptime #read #write #remove time]
+	puts STAT_FORMAT % %w[nid name uptime #read #write #delete time]
 	each_node {|s,node|
 		f_uptime = s.call_async(:stat, 'uptime')     rescue nil
 		f_read   = s.call_async(:stat, 'cmd_read')   rescue nil
 		f_write  = s.call_async(:stat, 'cmd_write')  rescue nil
-		f_remove = s.call_async(:stat, 'cmd_remove') rescue nil
+		f_delete = s.call_async(:stat, 'cmd_delete') rescue nil
 		f_time   = s.call_async(:stat, 'time')       rescue nil
-		[f_uptime, f_read, f_write, f_remove, f_time]
-	}.each {|node,(f_uptime,f_read,f_write,f_remove,f_time)|
+		[f_uptime, f_read, f_write, f_delete, f_time]
+	}.each {|node,(f_uptime,f_read,f_write,f_delete,f_time)|
 		uptime = f_uptime.get rescue nil
 		read   = f_read.get   rescue nil
 		write  = f_write.get  rescue nil
-		remove = f_remove.get rescue nil
+		delete = f_delete.get rescue nil
 		time   = f_time.get   rescue nil
 		time &&= Time.at(time).localtime
-		puts STAT_FORMAT % [node.nid, node.name, uptime, read, write, remove, time]
+		puts STAT_FORMAT % [node.nid, node.name, uptime, read, write, delete, time]
 	}
 
 when 'items'

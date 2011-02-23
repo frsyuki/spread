@@ -256,6 +256,41 @@ class GatewayService < Service
 	end
 
 
+	def rpc_delete(key)
+		rpc_delete_impl(nil, key)
+	end
+
+	def rpc_deletet(vtime, key)
+		rpc_delete_impl(vtime, key)
+	end
+
+	def rpc_deletev(vname, key)
+		rpc_delete_impl(vname, key)
+	end
+
+	def rpc_delete_impl(version, key)
+		ar = MessagePack::RPC::AsyncResult.new
+		CachedMDSBus.delete(key, version) {|okey,error|
+			if error
+				$log.warn("failed delete a key from MDS: key=#{key.inspect}: #{error}")
+				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
+				ar.error(error.to_s)
+			elsif okey
+				DataClientBus.delete(okey) {|deleted,error|
+					if error
+						ar.error(error.to_s)
+					else
+						ar.result(deleted)
+					end
+				}
+			else
+				ar.result(false)
+			end
+		}
+		ar
+	end
+
+
 	def rpc_url(key)
 		rpc_url_impl(nil, key)
 	end
@@ -325,6 +360,9 @@ class GatewayService < Service
 		:addv_data    => :rpc_addv_data,
 		:update_attrs => :rpc_update_attrs,
 		:remove       => :rpc_remove,
+		:delete       => :rpc_delete,
+		:deletet      => :rpc_deletet,
+		:deletev      => :rpc_deletev,
 		:url          => :rpc_url,
 		:urlt         => :rpc_urlt,
 		:urlv         => :rpc_urlv,

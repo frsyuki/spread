@@ -32,6 +32,11 @@ class DataClientBus < Bus
 	# @return nil
 	call_slot :set
 
+	# @return
+	#   deleted: true
+	#   not found: nil
+	call_slot :delete
+
 	## @return nil
 	#call_slot :write
 
@@ -60,6 +65,10 @@ class DataClientService < Service
 		call_rsid(okey, :set_direct, okey, data, &cb)
 	end
 
+	def delete(okey, &cb)
+		call_rsid(okey, :delete_direct, okey, &cb)
+	end
+
 	#def write(okey, offset, data, &cb)
 	#	call_rsid(okey, :write_direct, okey, offset, data, &cb)
 	#end
@@ -76,6 +85,7 @@ class DataClientService < Service
 		:get,
 		:read,
 		:set,
+		:delete,
 		:url
 
 	private
@@ -97,12 +107,12 @@ class DataClientService < Service
 		MembershipBus.get_session_nid(nid).callback(*args) do |f|
 			if f.error
 				if nids.empty?
-					cb.call(nil, f.error)
+					cb.call(nil, f.error) rescue nil
 				else
 					ha_call(nids, args, &cb)
 				end
 			else
-				cb.call(f.result, nil)
+				cb.call(f.result, nil) rescue nil
 			end
 		end
 	end

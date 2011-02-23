@@ -24,7 +24,7 @@ class DataServerService < Service
 		@self_rsids = ConfigBus.self_rsids
 		@stat_cmd_read = 0
 		@stat_cmd_write = 0
-		@stat_cmd_remove = 0
+		@stat_cmd_delete = 0
 	end
 
 	def rpc_get_direct(okey)
@@ -69,13 +69,14 @@ class DataServerService < Service
 		StorageBus.exist(okey.vtime, okey.key)
 	end
 
-	def rpc_remove_direct(okey)
-		@stat_cmd_remove += 1
+	def rpc_delete_direct(okey)
+		@stat_cmd_delete += 1
 		d = UpdateLogData.new(okey.vtime, okey.key)
+		deleted = nil
 		UpdateLogBus.append(d.dump) do
-			StorageBus.remove(okey.vtime, okey.key)
+			deleted = StorageBus.delete(okey.vtime, okey.key)
 		end
-		nil
+		deleted
 	end
 
 	def rpc_replicate_pull(pos, limit)
@@ -88,7 +89,7 @@ class DataServerService < Service
 				break
 			end
 			d = UpdateLogData.load(raw)
-			# set or remove
+			# set or delete
 			if mkeys.include?(d.key)
 				pos = npos
 			else
@@ -98,12 +99,12 @@ class DataServerService < Service
 					data = StorageBus.get(d.vtime, d.key)
 					mkeys << d.key
 				end
-				# data may be null => removed
+				# data may be null => deleted
 				if data
 					msgs << [d.vtime, d.key, d.offset, data]
 					msize += data.size
 				else
-					# data is removed
+					# data is deleted
 					msgs << [d.vtime, d.key, 0, nil]
 				end
 				pos = npos
@@ -143,7 +144,7 @@ class DataServerService < Service
 
 	attr_reader :stat_cmd_read
 	attr_reader :stat_cmd_write
-	attr_reader :stat_cmd_remove
+	attr_reader :stat_cmd_delete
 
 	ebus_connect :ProcessBus,
 		:on_timer
@@ -152,13 +153,13 @@ class DataServerService < Service
 		:db_items => :stat_db_items,
 		:cmd_read => :stat_cmd_read,
 		:cmd_write => :stat_cmd_write,
-		:cmd_remove => :stat_cmd_remove
+		:cmd_delete => :stat_cmd_delete
 
 	ebus_connect :DSRPCBus,
 		:get_direct       => :rpc_get_direct,
 		:set_direct       => :rpc_set_direct,
 		:read_direct      => :rpc_read_direct,
-		:remove_direct    => :rpc_remove_direct,
+		:delete_direct    => :rpc_delete_direct,
 		:replicate_pull   => :rpc_replicate_pull,
 		:replicate_notify => :rpc_replicate_notify
 end

@@ -154,26 +154,44 @@ class TokyoTyrantMDS < MDS
 	def remove(key, &cb)
 		map = get_impl_head(key, COLS_REQUIRED)
 		if map && !is_removed(map)
+			okey = to_okey(map)
+
 			# optional: inherit rsid
 			rsid = map[COL_RSID].to_i
 
 			# get current vtime later than old vtime
 			vtime = get_current_vtime(map[COL_VTIME].to_i)
 
-			okey = new_okey(key, vtime, rsid)
+			remove_okey = new_okey(key, vtime, rsid)
 
 			# insert
 			pk = new_pk(map[COL_PK])
-			map = to_map({}, okey, nil, true)
+			map = to_map({}, remove_okey, nil, true)
 			@hadb.write(key) {|rdb| rdb.put(pk, map) }
 
-			okey = to_okey(map)
 			cb.call(okey, nil) rescue nil
 
 		else
 			cb.call(nil, nil) rescue nil
 		end
 
+	rescue
+		cb.call(nil, $!) rescue nil
+	end
+
+	def delete(key, version=nil, &cb)
+		map = get_impl(key, version, COLS_RESERVED)
+		if map && !is_removed(map)
+			okey = to_okey(map)
+
+			pk = map[COL_PK]
+			@hadb.write(key) {|rdb| rdb.delete(pk) }
+
+			cb.call(okey, nil) rescue nil
+
+		else
+			cb.call(nil, nil) rescue nil
+		end
 	rescue
 		cb.call(nil, $!) rescue nil
 	end

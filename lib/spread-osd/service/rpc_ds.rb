@@ -21,7 +21,7 @@ module SpreadOSD
 class DSRPCBus < Bus
 	call_slot :get_direct
 	call_slot :set_direct
-	call_slot :remove_direct
+	call_slot :delete_direct
 	call_slot :copy
 	call_slot :read_direct
 	call_slot :url_direct
@@ -45,9 +45,9 @@ class DSRPCService < GWRPCService
 		dispatch(DSRPCBus, :set_direct, okey, data)
 	end
 
-	def remove_direct(okey)
+	def delete_direct(okey)
 		okey = ObjectKey.new.from_msgpack(okey)
-		dispatch(DSRPCBus, :remove_direct, okey)
+		dispatch(DSRPCBus, :delete_direct, okey)
 	end
 
 	def copy(okey, noid)

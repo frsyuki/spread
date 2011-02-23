@@ -59,6 +59,18 @@ class ReadOnlyGatewayService < GatewayService
 		raise_read_only_error
 	end
 
+	def rpc_delete(key)
+		raise_read_only_error
+	end
+
+	def rpc_deletet(vtime, key)
+		raise_read_only_error
+	end
+
+	def rpc_deletev(vname, key)
+		raise_read_only_error
+	end
+
 	def rpc_remove(key)
 		raise_read_only_error
 	end

@@ -26,7 +26,7 @@ class StatBus < Bus
 	call_slot :db_items
 	call_slot :cmd_read
 	call_slot :cmd_write
-	call_slot :cmd_remove
+	call_slot :cmd_delete
 end
 
 

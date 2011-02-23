@@ -28,7 +28,7 @@ class StorageBus < Bus
 
 	call_slot :read
 
-	call_slot :remove
+	call_slot :delete
 
 	call_slot :copy
 
@@ -92,7 +92,7 @@ class StorageService < Service
 	#def read(vtime, key, offset, size)
 	#end
 
-	#def remove(vtime, key)
+	#def delete(vtime, key)
 	#end
 
 	#def exist(vtime, key)
@@ -105,7 +105,7 @@ class StorageService < Service
 		:get,
 		:set,
 		:read,
-		:remove,
+		:delete,
 		:exist,
 		:get_items,
 		:open,

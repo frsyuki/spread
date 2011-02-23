@@ -99,6 +99,8 @@ class MemcacheMDS < MDS
 	end
 
 	def remove(key, &cb)
+		raise "version is not supported on memcache MDS" if version
+
 		e = get_impl(key)
 
 		if e
@@ -117,6 +119,11 @@ class MemcacheMDS < MDS
 
 	rescue
 		cb.call(nil, $!) rescue nil
+	end
+
+	def delete(key, version=nil, &cb)
+		raise "version is not supported on memcache MDS" if version
+		remove(key, &cb)
 	end
 
 	private

@@ -200,6 +200,7 @@ class CachedMDSBus < Bus
 	call_slot :add
 	call_slot :update_attrs
 	call_slot :remove
+	call_slot :delete
 	call_slot :util_locate
 end
 
@@ -241,6 +242,11 @@ class CachedMDSService < Service
 		MDSBus.remove(key, &cb)
 	end
 
+	def delete(key, version=nil, &cb)
+		invalidate_cache(key)
+		MDSBus.delete(key, version, &cb)
+	end
+
 	def util_locate(key, &cb)
 		MDSBus.util_locate(key, &cb)
 	end
@@ -252,6 +258,7 @@ class CachedMDSService < Service
 		:add,
 		:update_attrs,
 		:remove,
+		:delete,
 		:util_locate
 
 	private

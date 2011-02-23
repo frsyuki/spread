@@ -48,6 +48,11 @@ class MDSBus < Bus
 	call_slot :remove
 
 	# @return
+	#   found: removed ObjectKey
+	#   not found: nil
+	call_slot :delete
+
+	# @return
 	#   found: array of [ObjectKey, vtime, vname]
 	#   not found: []
 	call_slot :util_locate
@@ -140,6 +145,7 @@ class MDSService < Service
 		:add,
 		:update_attrs,
 		:remove,
+		:delete,
 		:util_locate
 
 	extend Forwardable
@@ -151,6 +157,7 @@ class MDSService < Service
 		:add,
 		:update_attrs,
 		:remove,
+		:delete,
 		:util_locate
 end
 
@@ -227,6 +234,9 @@ class MDS
 	#def remove(key, &cb)
 	#end
 
+	#def delete(key, version=nil, &cb)
+	#end
+
 	def util_locate(key, &cb)
 		get_okey(key) {|okey|
 			if okey
@@ -263,6 +273,7 @@ class NullMDS < MDS
 		:get_okey_attrs,
 		:add,
 		:remove,
+		:delete,
 		:util_locate,
 		:open
 	].each {|method|

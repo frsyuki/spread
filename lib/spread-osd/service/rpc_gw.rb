@@ -39,6 +39,9 @@ class GWRPCBus < Bus
 	call_slot :addv_data
 	call_slot :update_attrs
 	call_slot :remove
+	call_slot :delete
+	call_slot :deletet
+	call_slot :deletev
 	call_slot :url
 	call_slot :urlt
 	call_slot :urlv
@@ -193,9 +196,23 @@ class GWRPCService < RPCService
 		dispatch(GWRPCBus, :remove, key)
 	end
 
-	#def remove_attrs(key)
-	#	dispatch(GWRPCBus, :remove_attrs, key)
-	#end
+
+	####
+	## delete
+	##
+	def delete(key)
+		dispatch(GWRPCBus, :delete, key)
+	end
+
+	def deletet(vtime, key)
+		vtime = vtime.to_i  # TODO type check
+		dispatch(GWRPCBus, :deletet, vtime, key)
+	end
+
+	def deletev(vname, key)
+		vname = vname.to_s  # TODO type check
+		dispatch(GWRPCBus, :deletev, vname, key)
+	end
 
 
 	#def purge(key)
