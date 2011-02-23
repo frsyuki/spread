@@ -95,7 +95,9 @@ TODO
     |   +-- ulog_memory.rb
     |   |
     |   +-- mds.rb
+    |   +-- mds_ha.rb
     |   +-- mds_tt.rb
+    |   +-- mds_memcache.rb
     |   |
     |   +-- storage.rb
     |   +-- storage_dir.rb

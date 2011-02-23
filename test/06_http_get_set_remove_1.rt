@@ -81,12 +81,12 @@ test "run normally" do
 		NUM.times do |i|
 			key = keyf % i
 
-			test "remove /api" do
+			test "delete /api" do
 				gw.http_client {|http|
-					req = Net::HTTP::Post.new('/api/remove')
+					req = Net::HTTP::Post.new('/api/delete')
 					req.set_form_data({:key=>key})
 					res = http.request(req)
-					test_equals "200", res.code, "remove 200 OK"
+					test_equals "200", res.code, "delete 200 OK"
 				}
 			end
 		end
@@ -94,7 +94,7 @@ test "run normally" do
 		NUM.times do |i|
 			key = keyf % i
 
-			test 'removed get_data /data' do
+			test 'deleted get_data /data' do
 				gw.http_client {|http|
 					res = http.get("/data/#{key}")
 					test_equals "404", res.code, 'get_data 404 Not Found'
@@ -102,7 +102,7 @@ test "run normally" do
 				}
 			end
 
-			test 'removed get_attrs /attrs' do
+			test 'deleted get_attrs /attrs' do
 				gw.http_client {|http|
 					res = http.get("/attrs/#{key}")
 					test_equals "404", res.code, 'get_attrs 404 Not Found'

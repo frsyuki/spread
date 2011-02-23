@@ -379,6 +379,7 @@ EOF
 	#      add           key= [vname=] data= [attrs= [format=]]
 	#      add_data      (alias of add)
 	#      update_attrs  key= attrs= [format=]
+	#      delete        key= [vtimie=] [vname=]
 	#      remove        key=
 	#      url           key= [vtime=] [vname=]
 	#
@@ -398,6 +399,8 @@ EOF
 			http_rpc_add(env)
 		when 'update_attrs'
 			http_rpc_update_attrs(env)
+		when 'delete'
+			http_rpc_delete(env)
 		when 'remove'
 			http_rpc_remove(env)
 		when 'url'
@@ -531,6 +534,32 @@ EOF
 		okey = submit(GWRPCBus, :update_attrs, key, attrs)
 
 		if okey
+			return html_response(200, 'OK')
+		else
+			return html_response(404, 'Not Found', "key=`#{key}'")
+		end
+	end
+
+	def http_rpc_delete(env)
+		request = ::Rack::Request.new(env)
+		key = require_str(request, 'key')
+		vtime = optional_int(request, 'vtime')
+		if vtime
+			check_request(request, %w[key vtime])
+		else
+			vname = optional_str(request, 'vname')
+			check_request(request, %w[key vname])
+		end
+
+		if vtime
+			deleted = submit(GWRPCBus, :deletet, vtime, key)
+		elsif vname
+			deleted = submit(GWRPCBus, :deletev, vname, key)
+		else
+			deleted = submit(GWRPCBus, :delete, key)
+		end
+
+		if deleted
 			return html_response(200, 'OK')
 		else
 			return html_response(404, 'Not Found', "key=`#{key}'")

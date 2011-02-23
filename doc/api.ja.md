@@ -120,9 +120,23 @@ SpreadOSD APIリファレンス
   - *format=&lt;string&gt;* 属性のエンコード形式を指定します。*attrs=* が指定されているときだけ有効です。json (JSON)、msgpack (MessagePack)、tsv (Tab-separated values) を指定することができます。デフォルトは json です。
 
 
-### POST /api/remove
+### POST /api/delete
 
 オブジェクトを削除します。
+
+削除に成功した場合はステータスコード*200 OK*で返ります。
+オブジェクトが存在しなかった場合はステータスコード*404 Not Found*で返ります。
+
+次のパラメータを指定することができます：
+
+  - *key=&lt;string&gt;* 削除するオブジェクトのキーを設定します。このパラメータは必須です。
+  - *vtime=&lt;integer&gt;* 取得するオブジェクトのバージョンを世界協定時（UTC）のUNIX時刻で指定します。この時刻以前に作成された最新のバージョンを返します。*vname=*と同時に指定することはできません。
+  - *vname=&lt;string&gt;* 取得するオブジェクトのバージョンを名前で指定します。指定した名前に一致するバージョンを返します。*vtime=*と同時に指定することはできません。
+
+
+### POST /api/remove
+
+オブジェクトを削除します。POST /api/delete?key=&lt;key&gt; と似ていますが、MDSがバージョニングをサポートしている場合、実際のデータは削除せずに残します。
 
 削除に成功した場合はステータスコード*200 OK*で返ります。
 オブジェクトが存在しなかった場合はステータスコード*404 Not Found*で返ります。
@@ -249,9 +263,24 @@ TODO
 
 ### 削除API
 
-#### remove(key:Raw) -&gt; removed:Boolean
+#### delete(key:Raw) -&gt; deleted:Boolean
 
 オブジェクトを削除します。
+
+
+#### deletet(vtime:Integer, key:Raw) -&gt; deleted:Boolean
+
+時刻を指定して、オブジェクトを削除します。
+
+
+#### deletev(vname:Raw, key:Raw) -&gt; deleted:Boolean
+
+バージョン名を指定して、オブジェクトを削除します。
+
+
+#### remove(key:Raw) -&gt; removed:Boolean
+
+オブジェクトを削除します。delete(key) と似ていますが、
 
 
 ### 上書き更新API
@@ -265,7 +294,7 @@ TODO
 
 #### getd\_data(objectKey:Object) -&gt; data:Raw
 
-MDSに問い合わせをせずに、データを取得します。
+MDSに問い合わせをせずに、データを取得します。MDSがバージョニングをサポートしている場合、実際のデータは削除せずに残します。
 
 
 #### readd(objectKey:Object, offset:Integer, size:Integer) -&gt; data:Raw

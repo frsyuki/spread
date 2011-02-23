@@ -122,9 +122,23 @@ Following parameters are acceptable:
   - *format=&lt;string&gt;* Sets the format of the *attrs=* option. You can use json (JSON), msgpack (MessagePack) or tsv (Tab-separated values). The default value is json.
 
 
+### POST /api/delete
+
+Deletes the object.
+
+If it succeeded, it returns status code *200 OK*.
+If it is not found, it returns status code *204 Not Found*.
+
+Following parameters are acceptable:
+
+  - *key=&lt;string&gt;* Specify the key of the object. This parameters is required.
+  - *vtime=&lt;integer&gt;* Specify version of the object by UNIX time at UTC. It returns the latest version created before the time. This parameter can't be used with *vname=*.
+  - *vname=&lt;string&gt;* Specify version of the object by name. This parameter can't be used with *vtime=*.
+
+
 ### POST /api/remove
 
-Removes the object
+Removes the object. This is similer to POST /api/delete?key=&lt;key&gt;, but don't delete the actual data if the MDS supports versioning.
 
 If it succeeded, it returns status code *200 OK*.
 If it is not found, it returns status code *204 Not Found*.
@@ -216,7 +230,13 @@ Gets a part data of the object.
 #### addv\_data(vname:Raw, key:Raw, data:Raw) -&gt; objectKey:Object
 
 
-### Removing API
+### Deleting API
+
+#### delete(key:Raw) -&gt; deleted:Boolean
+
+#### deletet(vtime:Integer, key:Raw) -&gt; deleted:Boolean
+
+#### deletev(vname:Raw, key:Raw) -&gt; deleted:Boolean
 
 #### remove(key:Raw) -&gt; removed:Boolean
 

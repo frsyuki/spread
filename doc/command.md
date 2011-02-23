@@ -112,6 +112,9 @@ TODO
        add_data <key> <data>               set data
        addv_data <vname> <key> <data>      set data with version name
        update_attrs <key> <json>           update attributes
+       delete <key>                        delete the data and attributes
+       deletet <time> <key>                delete the data and attributes using the time
+       deletev <vname> <key>               delete the data and attributes using the version name
        remove <key>                        remove the data and attributes
 
 ### spreadtop: monitoring tool like 'top'
