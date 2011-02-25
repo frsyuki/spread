@@ -76,9 +76,22 @@ class TokyoTyrantMDS < MDS
 		end
 	end
 
-	def initialize
-		@random = Random.new
-		@pid = Process.pid
+	if defined?(Random)
+		def initialize
+			@random = Random.new
+			@pid = Process.pid
+		end
+	else
+		# Ruby 1.8
+		class PseudoRandom
+			def rand(n)
+				Kernel::rand(n)
+			end
+		end
+		def initialize
+			@random = PseudoRandom.new
+			@pid = Process.pid
+		end
 	end
 
 	def open(expr)

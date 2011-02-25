@@ -214,8 +214,8 @@ when 'items'
 	map = {}
 	each_node {|s,node|
 		f_items = s.call_async(:stat, 'db_items')
-		[f_items]
-	}.each {|node,(f_items)|
+		f_items
+	}.each {|node,f_items|
 		items = f_items.get rescue nil
 		rsids = node.rsids.sort.join(',')
 		puts ITEMS_FORMAT % [node.nid, node.name, rsids, items]

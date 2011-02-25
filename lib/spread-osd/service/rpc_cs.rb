@@ -35,7 +35,8 @@ end
 
 
 class CSRPCService < RPCService
-	def heartbeat(nid=nil, sync_hash)
+	#def heartbeat(nid=nil, sync_hash)
+	def heartbeat(nid, sync_hash)
 		force_binary!(sync_hash) if sync_hash
 		dispatch(CSRPCBus, :heartbeat, nid, sync_hash)
 	end

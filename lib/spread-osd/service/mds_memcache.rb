@@ -99,8 +99,6 @@ class MemcacheMDS < MDS
 	end
 
 	def remove(key, &cb)
-		raise "version is not supported on memcache MDS" if version
-
 		e = get_impl(key)
 
 		if e
