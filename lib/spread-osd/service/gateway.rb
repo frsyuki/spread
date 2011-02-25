@@ -78,12 +78,12 @@ class GatewayService < Service
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
-				DataClientBus.get(okey) {|data,error|
+				DataClientBus.get(okey, true) {|data,error|
 					if error
 						$log.warn(error)
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
-					data ||= ""
+					#data ||= ""
 					ar.result([data,attrs])
 				}
 			else
@@ -101,12 +101,12 @@ class GatewayService < Service
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
-				DataClientBus.get(okey) {|data,error|
+				DataClientBus.get(okey, true) {|data,error|
 					if error
 						$log.warn(error)
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
-					data ||= ""
+					#data ||= ""
 					ar.result(data, nil)
 				}
 			else
@@ -140,12 +140,12 @@ class GatewayService < Service
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
-				DataClientBus.read(okey, offset, size) {|data,error|
+				DataClientBus.read(okey, offset, size, true) {|data,error|
 					if error
 						$log.warn("failed to get data from DS: key=#{key.inspect}: #{error} rsid=#{okey.rsid}")
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 					end
-					data ||= ""
+					#data ||= ""
 					ar.result(data)
 				}
 			else
@@ -158,12 +158,13 @@ class GatewayService < Service
 
 	def rpc_getd_data(okey)
 		ar = MessagePack::RPC::AsyncResult.new
-		DataClientBus.get(okey) {|data,error|
+		DataClientBus.get(okey, true) {|data,error|
 			if error
 				$log.warn("failed to get data from DS: okey=#{okey}: #{error} rsid=#{okey.rsid}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			else
+				#data ||= ""
 				ar.result(data)
 			end
 		}
@@ -172,12 +173,13 @@ class GatewayService < Service
 
 	def rpc_readd(okey, offset, size)
 		ar = MessagePack::RPC::AsyncResult.new
-		DataClientBus.read(okey, offset, size) {|data,error|
+		DataClientBus.read(okey, offset, size, true) {|data,error|
 			if error
 				$log.warn("failed to get data from DS: okey=#{okey}: #{error} rsid=#{okey.rsid}")
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			else
+				#data ||= ""
 				ar.result(data)
 			end
 		}
@@ -311,7 +313,7 @@ class GatewayService < Service
 				$log.debug_backtrace error.backtrace if error.is_a?(Exception)
 				ar.error(error.to_s)
 			elsif okey
-				DataClientBus.url(okey) {|url,error|
+				DataClientBus.url(okey, true) {|url,error|
 					if error
 						$log.warn(error)
 						$log.debug_backtrace error.backtrace if error.is_a?(Exception)

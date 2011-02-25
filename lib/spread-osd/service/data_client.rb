@@ -53,32 +53,32 @@ end
 class DataClientService < Service
 	# TODO localhost optimization if DataServer is connected
 
-	def get(okey, &cb)
-		call_rsid(okey, :get_direct, okey, &cb)
+	def get(okey, found_expected=false, &cb)
+		call_rsid(okey, :get_direct, [okey], found_expected, &cb)
 	end
 
-	def read(okey, offset, size, &cb)
-		call_rsid(okey, :read_direct, okey, offset, size, &cb)
+	def read(okey, offset, size, found_expected=false, &cb)
+		call_rsid(okey, :read_direct, [okey, offset, size], found_expected, &cb)
 	end
 
 	def set(okey, data, &cb)
-		call_rsid(okey, :set_direct, okey, data, &cb)
+		call_rsid(okey, :set_direct, [okey, data], &cb)
 	end
 
 	def delete(okey, &cb)
-		call_rsid(okey, :delete_direct, okey, &cb)
+		call_rsid(okey, :delete_direct, [okey], &cb)
 	end
 
 	#def write(okey, offset, data, &cb)
-	#	call_rsid(okey, :write_direct, okey, offset, data, &cb)
+	#	call_rsid(okey, :write_direct, [okey, offset, data], &cb)
 	#end
 
 	#def resize(okey, size, &cb)
-	#	call_rsid(okey, :resize_direct, okey, size)
+	#	call_rsid(okey, :resize_direct, [okey], size)
 	#end
 
-	def url(okey, &cb)
-		call_rsid(okey, :url_direct, okey, &cb)
+	def url(okey, found_expected, &cb)
+		call_rsid(okey, :url_direct, [okey], found_expected, &cb)
 	end
 
 	ebus_connect :DataClientBus,
@@ -89,7 +89,7 @@ class DataClientService < Service
 		:url
 
 	private
-	def call_rsid(okey, *args, &cb)
+	def call_rsid(okey, method, args, not_nil_required=false, &cb)
 		nids = MasterSelectBus.select_master(okey.rsid, okey.key)
 		target_nids = nids.reject {|nid|
 			MembershipBus.is_fault(nid)
@@ -97,19 +97,19 @@ class DataClientService < Service
 		if target_nids.empty?
 			target_nids = nids
 		end
-		ha_call(target_nids, args, &cb)
+		ha_call(target_nids, method, args, not_nil_required, &cb)
 	rescue
 		cb.call(nil, $!)
 	end
 
-	def ha_call(nids, args, &cb)
+	def ha_call(nids, method, args, not_nil_required=false, &cb)
 		nid = nids.shift
-		MembershipBus.get_session_nid(nid).callback(*args) do |f|
-			if f.error
+		MembershipBus.get_session_nid(nid).callback(method, *args) do |f|
+			if f.error || (not_nil_required && f.result == nil)
 				if nids.empty?
 					cb.call(nil, f.error) rescue nil
 				else
-					ha_call(nids, args, &cb)
+					ha_call(nids, method, args, not_nil_required, &cb)
 				end
 			else
 				cb.call(f.result, nil) rescue nil
