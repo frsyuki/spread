@@ -81,9 +81,9 @@ nobase_pkgdata_SCRIPTS = \
 	test/09_read_only_name.rt \
 	test/10_http_get_set_remove_3.rt \
 	test/11_mds_cache_memcached.rt \
-	test/12_mds_cache_local_memory.rt.rt \
-	test/13_memcache_mds.rt.rt \
-	test/14_delete.rt.rt \
+	test/12_mds_cache_local_memory.rt \
+	test/13_memcache_mds.rt \
+	test/14_delete.rt \
 	test/chukan.rb \
 	test/common.rb
 
@@ -106,6 +106,10 @@ $(bin_SCRIPTS):
 	mkdir -p `dirname $@`
 	$(RUBY) -e "puts '#!'+File.expand_path('`which $(RUBY)`')" > "$@.tmp"
 	echo "\$$LOAD_PATH << '$(pkgdatadir)/lib'" >> "$@.tmp"
+	echo "begin" >> "$@.tmp"
+	echo "require 'rubygems'" >> "$@.tmp"
+	echo "rescue LoadError" >> "$@.tmp"
+	echo "end" >> "$@.tmp"
 	echo "load '$(pkgdatadir)/bin/`basename $@`'" >> "$@.tmp"
 	chmod 755 "$@.tmp"
 	mv "$@.tmp" "$@"
