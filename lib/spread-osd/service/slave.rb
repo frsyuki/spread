@@ -116,7 +116,7 @@ class SlaveService < Service
 		:try_replicate
 
 	private
-	PULL_LIMIT = 32*1024*1024  # 32MB
+	PULL_LIMIT = 128*1024*1024  # 128MB
 
 	def open_replicator(nid)
 		if repl = @repls[nid]

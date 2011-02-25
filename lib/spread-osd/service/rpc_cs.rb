@@ -82,6 +82,15 @@ class CSRPCService < RPCService
 		dispatch(CSRPCBus, :set_mds_uri, uri)
 	end
 
+	def get_mds_cache_uri
+		dispatch(CSRPCBus, :get_mds_cache_uri)
+	end
+
+	def set_mds_cache_uri(uri)
+		force_binary!(uri)
+		dispatch(CSRPCBus, :set_mds_cache_uri, uri)
+	end
+
 	def stat(cmd)
 		dispatch(RPCBus, :stat, cmd)
 	end

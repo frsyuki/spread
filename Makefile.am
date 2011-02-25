@@ -148,14 +148,6 @@ MOSTLYCLEANFILES = \
 	ruby doc/erbdoc.rb $< $@.tmp
 	mv $@.tmp $@
 
-doc/index.html: README.md
-	ruby doc/erbdoc.rb $< $@.tmp
-	mv $@.tmp $@
-
-doc/index.ja.html: README.ja.md
-	ruby doc/erbdoc.rb $< $@.tmp
-	mv $@.tmp $@
-
 $(HTML_DOCS): doc/erbdoc.rb doc/doc.erb
 
 htmldoc: $(HTML_DOCS)

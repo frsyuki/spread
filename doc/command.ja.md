@@ -187,6 +187,8 @@ TODO
        set_weight <rsid> <weight>   set distribution weight
        mds                          show MDS uri
        set_mds <URI>                set MDS uri
+       mds_cache                    show MDS cache uri
+       set_mds_cache <URI>          set MDS cache uri
        items                        show stored number of items
        version                      show software version of nodes
        locate <key>                 show which servers store the key

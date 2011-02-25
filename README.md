@@ -30,30 +30,6 @@ SpreadOSD provides some management tools to control all data servers all togethe
 It means that management cost doesn't grow even if scale of the cluster grows.
 
 
-### Data model
-
-SpreadOSD stores set of *objects* identified by a **key** (a string). Each object has both **data** (an sequence of bytes) and **attributes** (an associative array).
-
-And each object can have multiple **versions**. You can get back old version of the object unless you surely delete it.
-Each version is identified by name or created time (UNIX time at UTC).
-
-      key                        object
-                        data                  attributes
-                 +-----------------+---------------------------------+       ---+
-    "image1" =>  |  "HTJ PNG ..."  |  { type:png, date:2011-07-29 }  |--+       | each object can
-                 +-----------------+---------------------------------+  |--+    | have multiple
-                   +-----------------+----------------------------------+  |    | versoins
-                      +----------------+-----------------------------------+    |
-                                                                             ---+
-                 +-----------------+---------------------------------+
-      key    =>  |  bytes .......  |  { key:value, key:value, ... }  |--+
-                 +-----------------+---------------------------------+  |--+
-                   +-----------------+----------------------------------+  |
-                      +----------------+-----------------------------------+
-    
-      ...    =>  ...
-
-
 ## Learm more
 
   - [Architecture](doc/arch.md)

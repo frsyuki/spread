@@ -98,7 +98,7 @@ TODO: See HowTo Geo-redundancy
 
 ## Removing a data server
 
-You can remove data servers to reduce scale of the cluster.
+You can remove data servers from a replication-set. Note that you can't remove replication-sets.
 
 First of all, confirm current status of the cluster:
 

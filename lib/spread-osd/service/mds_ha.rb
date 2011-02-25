@@ -43,12 +43,8 @@ class BasicHADB
 		expr.split('--').each {|line|
 			nodes, weights = line.strip.split(';',2)
 
-			addrs = nodes.strip.split(',').map {|node|
-				host, port = node.split(':',2)
-				port ||= DEFAULT_PORT
-				port = port.to_i
-				host.strip!
-				Address.new(host, port)
+			addrs = nodes.strip.split(',').map {|addr|
+				parse_addr(addr)
 			}
 
 			weights = (weights||"").strip.split(',').map {|x| x.to_i }
@@ -117,6 +113,14 @@ class BasicHADB
 	end
 
 	protected
+	def parse_addr(addr)
+		host, port = addr.split(':',2)
+		port ||= self.class::DEFAULT_PORT
+		port = port.to_i
+		host.strip!
+		Address.new(host, port)
+	end
+
 	def open_db(addr)
 		raise "LOGIC ERROR: not implemented!"
 	end

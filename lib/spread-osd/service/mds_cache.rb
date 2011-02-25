@@ -129,7 +129,7 @@ module MDSCacheSelector
 
 	def self.select_class(uri)
 		if uri.empty?
-			return NullMDSCacheService
+			return NullMDSCache
 		end
 
 		if m = /^(\w{1,8})\:(.*)/.match(uri)

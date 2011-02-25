@@ -28,6 +28,8 @@ def usage
 	puts "   set_weight <rsid> <weight>   set distribution weight"
 	puts "   mds                          show MDS uri"
 	puts "   set_mds <URI>                set MDS uri"
+	puts "   mds_cache                    show MDS cache uri"
+	puts "   set_mds_cache <URI>          set MDS cache uri"
 	puts "   items                        show stored number of items"
 	puts "   version                      show software version of nodes"
 	puts "   locate <key>                 show which servers store the key"
@@ -165,15 +167,25 @@ when 'reset_weight'
 
 when 'mds'
 	cmd_args(0)
-
 	uri = call(nil, :get_mds_uri)
-
 	puts uri
 
 when 'set_mds'
 	uri = cmd_args(1)
-
 	pp call(nil, :set_mds_uri, uri)
+
+when 'mds_cache'
+	cmd_args(0)
+	uri = call(nil, :get_mds_cache_uri)
+	if !uri || uri.empty?
+		puts "null"
+	else
+		puts uri
+	end
+
+when 'set_mds_cache'
+	uri = cmd_args(1)
+	pp call(nil, :set_mds_cache_uri, uri)
 
 when 'stat', 'status'
 	STAT_FORMAT = "%4s %15s %10s %10s %10s %10s %30s"
