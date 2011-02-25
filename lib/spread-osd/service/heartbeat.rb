@@ -73,39 +73,81 @@ class HeartbeatClientService < Service
 		@heartbeat_nid = nil
 	end
 
-	def get_cs_session
-		ProcessBus.get_session(ConfigBus.get_cs_address)
-	end
+	#def get_cs_session
+	#	ProcessBus.get_session(ConfigBus.get_cs_address)
+	#end
+	#
+	#def on_timer
+	#	do_heartbeat
+	#end
+	#
+	#def do_heartbeat
+	#	sync_hash = SyncBus.get_hash
+	#	get_cs_session.callback(:heartbeat, @heartbeat_nid, sync_hash) do |future|
+	#		begin
+	#			hbres = HeartbeatResponse.new.from_msgpack(future.get)
+	#			ack_heartbeat(hbres)
+	#		rescue
+	#			$log.error "heartbeat error: #{$!}"
+	#			$log.error_backtrace $!.backtrace
+	#		end
+	#	end
+	#end
+	#
+	#def ack_heartbeat(hbres)
+	#	if hbres.sync_needed
+	#		SyncBus.try_sync
+	#	end
+	#end
+	#
+	#ebus_connect :ProcessBus,
+	#	:on_timer
+	#
+	#def heartbeat_blocking!
+	#	do_heartbeat.join
+	#end
 
-	def on_timer
-		do_heartbeat
-	end
-
-	def do_heartbeat
-		sync_hash = SyncBus.get_hash
-		get_cs_session.callback(:heartbeat, @heartbeat_nid, sync_hash) do |future|
-			begin
-				hbres = HeartbeatResponse.new.from_msgpack(future.get)
-				ack_heartbeat(hbres)
-			rescue
-				$log.error "heartbeat error: #{$!}"
-				$log.error_backtrace $!.backtrace
+	def run
+		@cs = MessagePack::RPC::Client.new(*ConfigBus.get_cs_address)
+		@end = false
+		@thread = Thread.new do
+			while !@end
+				sleep 1
+				do_heartbeat_blocking
 			end
 		end
 	end
 
-	def ack_heartbeat(hbres)
-		if hbres.sync_needed
-			SyncBus.try_sync
+	def shutdown
+		@end = true
+		#@thread.join
+		@cs.close
+	end
+
+	def do_heartbeat_blocking
+		sync_hash = SyncBus.get_hash
+		begin
+			res = @cs.call(:heartbeat, @heartbeat_nid, sync_hash)
+			hbres = HeartbeatResponse.new.from_msgpack(res)
+			if hbres.sync_needed
+				ProcessBus.submit {
+					SyncBus.try_sync
+				}
+			end
+		rescue
+			$log.error "heartbeat error: #{$!}"
+			$log.error_backtrace $!.backtrace
 		end
+		nil
 	end
 
 	def heartbeat_blocking!
-		do_heartbeat.join
+		do_heartbeat_blocking
 	end
 
 	ebus_connect :ProcessBus,
-		:on_timer
+		:run,
+		:shutdown
 end
 
 
@@ -115,18 +157,25 @@ class HeartbeatMemberService < HeartbeatClientService
 		@heartbeat_nid = ConfigBus.self_nid
 	end
 
-	def ack_heartbeat(hbres)
-		super
+	#def ack_heartbeat(hbres)
+	#	super
+	#
+	#	if hbres.term
+	#		# do nothing
+	#	else
+	#		# MembershipMemberService
+	#		#register_self
+	#	end
+	#
+	#	MembershipBus.try_register_node
+	#end
 
-		if hbres.term
-			# do nothing
-		else
-			# MembershipMemberService
-			#register_self
-		end
-
+	def on_timer
 		MembershipBus.try_register_node
 	end
+
+	ebus_connect :ProcessBus,
+		:on_timer
 end
 
 
