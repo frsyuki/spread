@@ -50,11 +50,11 @@ class DSRPCService < GWRPCService
 		dispatch(DSRPCBus, :delete_direct, okey)
 	end
 
-	def copy(okey, noid)
-		okey = ObjectKey.new.from_msgpack(okey)
-		noid = ObjectKey.new.from_msgpack(noid)
-		dispatch(DSRPCBus, :copy, okey, noid)
-	end
+	#def copy(okey, noid)
+	#	okey = ObjectKey.new.from_msgpack(okey)
+	#	noid = ObjectKey.new.from_msgpack(noid)
+	#	dispatch(DSRPCBus, :copy, okey, noid)
+	#end
 
 	def read_direct(okey, offset, size)
 		okey = ObjectKey.new.from_msgpack(okey)
