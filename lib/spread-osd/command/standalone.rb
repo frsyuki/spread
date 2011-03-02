@@ -1,20 +1,3 @@
-#
-#  SpreadOSD
-#  Copyright (C) 2010  FURUHASHI Sadayuki
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as
-#  published by the Free Software Foundation, either version 3 of the
-#  License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 require 'msgpack/rpc'
 require 'digest/md5'
 require 'digest/sha1'
@@ -35,12 +18,14 @@ require 'spread-osd/service/process'
 require 'spread-osd/service/rpc'
 require 'spread-osd/service/rpc_gw'
 require 'spread-osd/service/rpc_ds'
+require 'spread-osd/service/rpc_cs'
 require 'spread-osd/service/stat'
 require 'spread-osd/service/stat_gw'
 require 'spread-osd/service/stat_ds'
 require 'spread-osd/service/config'
 require 'spread-osd/service/config_gw'
 require 'spread-osd/service/config_ds'
+require 'spread-osd/service/config_cs'
 require 'spread-osd/service/data_server'
 require 'spread-osd/service/data_server_url'
 require 'spread-osd/service/data_client'
@@ -78,6 +63,8 @@ require 'optparse'
 include SpreadOSD
 
 conf = DSConfigService.init
+mds_uri = nil
+mds_cache_uri = ""
 
 op = OptionParser.new
 
@@ -90,55 +77,38 @@ op = OptionParser.new
 end
 
 listen_host = '0.0.0.0'
-listen_port = nil
+listen_port = DS_DEFAULT_PORT
 
 read_only_gw = false
 
-op.on('-c', '--cs ADDRESS', "address of config server") do |addr|
-	host, port = addr.split(':',2)
-	port = port.to_i
-	port = CS_DEFAULT_PORT if port == 0
-	conf.cs_address = Address.new(host, port)
-end
-
-op.on('-i', '--nid ID', Integer, "unieque node id") do |nid|
-	conf.self_nid = nid
-end
-
-op.on('-n', '--name NAME', "node name") do |name|
-	conf.self_name = name
-end
-
-op.on('-a', '--address ADDRESS[:PORT]', "address of this node") do |addr|
-	host, port = addr.split(':',2)
-	port = port.to_i
-	if port != 0
-		listen_port = port
+op.on('-p', '--port PORT', "listen port") do |addr|
+	if addr.include?(':')
+		listen_host, listen_port = addr.split(':',2)
+		listen_port = listen_port.to_i
+		listen_port = DS_DEFAULT_PORT if listen_port == 0
 	else
-		port = DS_DEFAULT_PORT
+		listen_port = addr.to_i
 	end
-	conf.self_address = Address.new(host, port)
 end
 
-op.on('-l', '--listen HOST[:PORT]', "listen address") do |addr|
+op.on('-l', '--listen HOST', "listen address") do |addr|
 	if addr.include?(':')
 		host, port = addr.split(':',2)
 		port = port.to_i
-		if port != 0
-			listen_port = port
-		end
+		port = DS_DEFAULT_PORT if port == 0
 		listen_host = host
+		listen_port = port
 	else
 		listen_host = addr
 	end
 end
 
-op.on('-g', '--rsid IDs', "replication set IDs") do |ids|
-	conf.self_rsids = ids.split(',').map {|id| id.to_i }
+op.on('-m', '--mds EXPR', "address of metadata server") do |s|
+	mds_uri = s
 end
 
-op.on('-L', '--location STRING', "location of this node") do |str|
-	conf.self_location = str
+op.on('-M', '--mds-cache EXPR', "mds cache") do |s|
+	mds_cache_uri = s
 end
 
 op.on('-s', '--store PATH', "path to storage directory") do |path|
@@ -222,35 +192,20 @@ begin
 		raise "unknown option: #{ARGV[0].dump}"
 	end
 
-	unless conf.self_nid
-		raise "--nid option is required"
-	end
+	conf.self_address = Address.new('127.0.0.1', listen_port)
+	conf.cs_address = conf.self_address
 
-	unless conf.self_name
-		raise "--name option is required"
-	end
+	conf.self_nid = 1
+	conf.self_name = "standalone"
+	conf.self_rsids = [1]
 
-	unless conf.self_address
-		raise "--address option is required"
+	a = conf.self_address.host
+	if a.include?('.')
+		s = a.split('.')[0,3].map{|v4| "%03d" % v4.to_i }.join('.')
+	else
+		s = a.split(':')[0,4].map{|v6| "%04x" % v6.to_i(16) }.join(':')
 	end
-
-	unless conf.self_rsids
-		raise "--rsid option is required"
-	end
-
-	unless conf.self_location
-		a = conf.self_address.host
-		if a.include?('.')
-			s = a.split('.')[0,3].map{|v4| "%03d" % v4.to_i }.join('.')
-		else
-			s = a.split(':')[0,4].map{|v6| "%04x" % v6.to_i(16) }.join(':')
-		end
-		conf.self_location = "subnet-#{s}"
-	end
-
-	unless conf.cs_address
-		raise "--cs option is required"
-	end
+	conf.self_location = "subnet-#{s}"
 
 	unless conf.storage_path
 		raise "--store option is required"
@@ -282,8 +237,6 @@ begin
 		$log.warn "--http-redirect-port option is ignored"
 	end
 
-	listen_port ||= DS_DEFAULT_PORT
-
 rescue
 	usage $!.to_s
 end
@@ -291,8 +244,7 @@ end
 
 ProcessService.init
 LogService.open!
-SyncClientService.init
-HeartbeatMemberService.init
+StandaloneSyncService.init
 RoutRobinWeightBalanceService.init
 WeightMemberService.init
 if conf.self_location.empty?
@@ -300,7 +252,7 @@ if conf.self_location.empty?
 else
 	LocationAwareMasterSelectService.init
 end
-MembershipMemberService.init
+StandaloneMembershipService.init
 DataClientService.init
 if read_only_gw
 	ReadOnlyGatewayService.init
@@ -326,10 +278,9 @@ LogService.instance.log_event_bus
 
 ProcessBus.run
 
-TimeCheckService.instance.check_blocking! rescue nil
-SyncClientService.instance.sync_blocking! rescue nil
-MembershipMemberService.instance.register_self_blocking! rescue nil
-#HeartbeatMemberService.instance.heartbeat_blocking! rescue nil
+StandaloneMembershipService.instance.rpc_add_node(conf.self_nid, conf.self_address, conf.self_name, conf.self_rsids, conf.self_location)
+MDSService.instance.reopen(mds_uri)
+MDSCacheService.instance.reopen(mds_cache_uri) if mds_cache_uri
 
 net = ProcessBus.serve_rpc(DSRPCService.instance)
 net.listen(listen_host, listen_port)

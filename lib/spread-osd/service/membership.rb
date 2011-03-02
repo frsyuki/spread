@@ -322,4 +322,10 @@ class MembershipMemberService < MembershipClientService
 end
 
 
+class StandaloneMembershipService < MembershipManagerService
+	def on_timer
+	end
+end
+
+
 end

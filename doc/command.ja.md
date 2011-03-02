@@ -12,7 +12,7 @@ TODO
     Usage: spread-cs [options]
         -p, --port PORT                  listen port
         -l, --listen HOST                listen address
-        -m, --mds ADDRESS                address of metadata server
+        -m, --mds EXPR                   address of metadata server
         -M, --mds-cache EXPR             mds cache
         -s, --store PATH                 path to base directory
             --fault_store PATH           path to fault status file

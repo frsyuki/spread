@@ -153,4 +153,54 @@ class SyncClientService < SyncService
 end
 
 
+class StandaloneSyncService < SyncServerService
+	def initialize
+		@callback_array = []
+		@client_hash_array = []
+		super
+	end
+
+	def register_callback(id, initial_hash, &block)
+		@callback_array[id] = block
+		@client_hash_array[id] = initial_hash
+		nil
+	end
+
+	def try_sync
+		do_sync
+		nil
+	end
+
+	def sync_blocking!
+		do_sync.join
+	end
+
+	ebus_connect :SyncBus,
+		:register_callback,
+		:try_sync
+
+	private
+	def do_sync
+		result = []
+
+		@client_hash_array.each_with_index {|hash,id|
+			if h = @hash_array[id]
+				if h != hash
+					result[id] = MessagePack.unpack(@data_array[id].to_msgpack)
+				end
+			end
+		}
+
+		result.each_with_index {|obj,id|
+			if obj
+				if callback = @callback_array[id]
+					$log.debug "sync: #{id} => #{obj.inspect}"
+					@client_hash_array[id] = callback.call(obj)
+				end
+			end
+		}
+	end
+end
+
+
 end

@@ -91,8 +91,8 @@ op.on('-l', '--listen HOST', "listen address") do |addr|
 	end
 end
 
-op.on('-m', '--mds ADDRESS', "address of metadata server") do |addrs|
-	conf.mds_uri = addrs
+op.on('-m', '--mds EXPR', "address of metadata server") do |s|
+	conf.mds_uri = s
 end
 
 op.on('-M', '--mds-cache EXPR', "mds cache") do |s|
