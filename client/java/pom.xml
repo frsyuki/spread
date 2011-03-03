@@ -37,7 +37,7 @@
 		<dependency>
 			<groupId>org.msgpack</groupId>
 			<artifactId>msgpack</artifactId>
-			<version>0.5.0-devel</version>
+			<version>0.5.1-devel</version>
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
@@ -45,6 +45,12 @@
 			<artifactId>msgpack-rpc</artifactId>
 			<version>0.6.1-devel</version>
 			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.8.1</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
