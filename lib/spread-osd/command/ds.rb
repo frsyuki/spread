@@ -19,6 +19,7 @@ require 'msgpack/rpc'
 require 'digest/md5'
 require 'digest/sha1'
 require 'csv'
+require 'fileutils'
 require 'cgi'
 require 'spread-osd/lib/cclog'
 require 'spread-osd/lib/ebus'
@@ -255,6 +256,8 @@ begin
 	unless conf.storage_path
 		raise "--store option is required"
 	end
+
+	FileUtils.mkdir_p(conf.storage_path)
 
 	unless conf.ulog_path
 		conf.ulog_path = conf.storage_path

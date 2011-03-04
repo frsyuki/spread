@@ -47,6 +47,7 @@ nobase_pkgdata_SCRIPTS = \
 	lib/spread-osd/service/mds.rb \
 	lib/spread-osd/service/mds_ha.rb \
 	lib/spread-osd/service/mds_tt.rb \
+	lib/spread-osd/service/mds_tc.rb \
 	lib/spread-osd/service/mds_memcache.rb \
 	lib/spread-osd/service/mds_cache.rb \
 	lib/spread-osd/service/mds_cache_mem.rb \
@@ -88,6 +89,7 @@ nobase_pkgdata_SCRIPTS = \
 	test/12_mds_cache_local_memory.rt \
 	test/13_memcache_mds.rt \
 	test/14_delete.rt \
+	test/15_standalone.rt \
 	test/chukan.rb \
 	test/common.rb
 

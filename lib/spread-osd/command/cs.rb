@@ -19,6 +19,7 @@ require 'msgpack/rpc'
 require 'digest/md5'
 require 'digest/sha1'
 require 'csv'
+require 'fileutils'
 require 'spread-osd/lib/cclog'
 require 'spread-osd/lib/ebus'
 require 'spread-osd/lib/vbcode'
@@ -141,6 +142,10 @@ begin
 
 	unless conf.mds_uri
 		raise "--mds option is required"
+	end
+
+	if store_path
+		FileUtils.mkdir_p(store_path)
 	end
 
 	if !conf.fault_path && store_path

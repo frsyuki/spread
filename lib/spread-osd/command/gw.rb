@@ -19,6 +19,7 @@ require 'msgpack/rpc'
 require 'digest/md5'
 require 'digest/sha1'
 require 'csv'
+require 'fileutils'
 require 'cgi'
 require 'spread-osd/lib/cclog'
 require 'spread-osd/lib/ebus'
@@ -186,6 +187,10 @@ begin
 
 	unless conf.cs_address
 		raise "--cs option is required"
+	end
+
+	if store_path
+		FileUtils.mkdir_p(store_path)
 	end
 
 	if !conf.fault_path && store_path

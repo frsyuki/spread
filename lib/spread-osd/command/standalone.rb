@@ -2,6 +2,7 @@ require 'msgpack/rpc'
 require 'digest/md5'
 require 'digest/sha1'
 require 'csv'
+require 'fileutils'
 require 'cgi'
 require 'spread-osd/lib/cclog'
 require 'spread-osd/lib/ebus'
@@ -215,6 +216,8 @@ begin
 	unless mds_uri
 		mds_uri = "local:#{conf.storage_path}/mds.tct"
 	end
+
+	FileUtils.mkdir_p(conf.storage_path)
 
 	unless conf.ulog_path
 		conf.ulog_path = conf.storage_path
