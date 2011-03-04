@@ -84,6 +84,8 @@ class BasicHADB
 				close_db(db) rescue nil
 			end
 		}
+		$log.error $!
+		$log.error_backtrace $!.backtrace
 		raise "MDS: invlaid address expression: #{$!}"
 	end
 

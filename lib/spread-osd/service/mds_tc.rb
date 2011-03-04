@@ -18,8 +18,8 @@
 module SpreadOSD
 
 
-class TokyoTyrantMDS < MDS
-	MDSSelector.register(:tt, self)
+class LocalTokyoCabinetMDS < MDS
+	MDSSelector.register(:local, self)
 
 	COL_PK      = ''
 	COL_KEY     = '_key'
@@ -33,30 +33,49 @@ class TokyoTyrantMDS < MDS
 
 	def self.define_consts
 		unless const_defined?(:QRY)
-			require 'tokyotyrant'
-			const_set(:QRY, TokyoTyrant::RDBQRY)
-			HADB.const_set(:TBL, TokyoTyrant::RDBTBL)
+			require 'tokyocabinet'
+			const_set(:QRY, TokyoCabinet::TDBQRY)
+			HADB.const_set(:TDB, TokyoCabinet::TDB)
 			HADB.const_set(:FATAL_ERROR, [
-				TokyoTyrant::RDB::EINVALID,
-				TokyoTyrant::RDB::ENOHOST,
-				TokyoTyrant::RDB::EREFUSED,
-				TokyoTyrant::RDB::ESEND,
-				TokyoTyrant::RDB::ERECV,
-				TokyoTyrant::RDB::EMISC
+				TokyoCabinet::TDB::ETHREAD,
+				TokyoCabinet::TDB::EINVALID,
+				TokyoCabinet::TDB::ENOFILE,
+				TokyoCabinet::TDB::ENOPERM,
+				TokyoCabinet::TDB::EMETA,
+				TokyoCabinet::TDB::ERHEAD,
+				TokyoCabinet::TDB::EOPEN,
+				TokyoCabinet::TDB::ECLOSE,
+				TokyoCabinet::TDB::ETRUNC,
+				TokyoCabinet::TDB::ESYNC,
+				TokyoCabinet::TDB::ESTAT,
+				TokyoCabinet::TDB::ESEEK,
+				TokyoCabinet::TDB::EREAD,
+				TokyoCabinet::TDB::EWRITE,
+				TokyoCabinet::TDB::EMMAP,
+				TokyoCabinet::TDB::ELOCK,
+				TokyoCabinet::TDB::EUNLINK,
+				TokyoCabinet::TDB::ERENAME,
+				TokyoCabinet::TDB::EMKDIR,
+				TokyoCabinet::TDB::ERMDIR,
+				#TokyoCabinet::TDB::EKEEP,
+				#TokyoCabinet::TDB::ENOREC,
+				TokyoCabinet::TDB::EMISC
 			])
 		end
 	end
 
 	class HADB < BasicHADB
-		DEFAULT_PORT = 1978
+		def parse_addr(addr)
+			addr
+		end
 
 		def open_db(addr)
-			db = TBL.new
+			db = TDB.new
 			db.instance_eval("@enc = 'ASCII-8BIT'")  # FIXME
-			unless db.open(*addr)
-				$log.warn "failed to connect TokyoTyrant MDS: #{addr}"
+			unless db.open(addr, TDB::OCREAT|TDB::OWRITER)
+				$log.warn "failed to connect local TokyoCabinet MDS: #{addr}"
 			end
-			db.setindex(COL_KEY, TBL::ITLEXICAL)
+			db.setindex(COL_KEY, TDB::ITLEXICAL)
 			db
 		end
 
@@ -218,7 +237,11 @@ class TokyoTyrantMDS < MDS
 		array = @hadb.read(key) {|rdb|
 			qry = QRY.new(rdb)
 			qry.addcond(COL_KEY, QRY::QCSTREQ, key)
-			qry.searchget(COLS_RESERVED)
+			qry.search.map {|key|
+				rdb.get(key)
+				map[COL_PK] = key
+				map
+			}
 		}
 
 		array.reject! {|map|
@@ -278,7 +301,11 @@ class TokyoTyrantMDS < MDS
 			qry.addcond(COL_KEY, QRY::QCSTREQ, key)
 			qry.setorder(COL_VTIME, QRY::QONUMDESC)
 			qry.setlimit(1)
-			array = qry.searchget(cols)
+			array = qry.search.map {|key|
+				map = rdb.get(key)
+				map[COL_PK] = key
+				map
+			}
 			array[0]
 		}
 
@@ -298,7 +325,11 @@ class TokyoTyrantMDS < MDS
 			qry.addcond(COL_VNAME, QRY::QCSTREQ, vname)
 			qry.setorder(COL_VTIME, QRY::QONUMDESC)
 			qry.setlimit(1)
-			array = qry.searchget(cols)
+			array = qry.search.map {|key|
+				rdb.get(key)
+				map[COL_PK] = key
+				map
+			}
 			array[0]
 		}
 
@@ -318,7 +349,11 @@ class TokyoTyrantMDS < MDS
 			qry.addcond(COL_VTIME, QRY::QCNUMLE, vtime.to_s)
 			qry.setorder(COL_VTIME, QRY::QONUMDESC)
 			qry.setlimit(1)
-			array = qry.searchget(cols)
+			array = qry.search.map {|key|
+				rdb.get(key)
+				map[COL_PK] = key
+				map
+			}
 			array[0]
 		}
 
@@ -470,3 +505,4 @@ end
 
 
 end
+

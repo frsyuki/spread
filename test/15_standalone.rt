@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << File.dirname(__FILE__)
+require 'common'
+
+LOOP   = (ARGV[0] || ENV["LOOP"] || (ENV["HEAVY"] ? 20 : 3)).to_i
+SIZE   = (ARGV[1] || 10).to_i
+NUM    = (ARGV[2] || 50).to_i
+
+standalone = start_standalone
+
+pid = Process.pid
+keyf = "#{pid}-key%d"
+_data = "@"*SIZE
+
+test "run normally" do
+	c = standalone.client
+
+	LOOP.times {|o|
+		NUM.times do |i|
+			key = keyf % i
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'add' do
+				c.call(:add, key, _data, _attrs)
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+			_attrs = {"loop"=>o.to_s, "attr#{i}"=>i.to_s}
+
+			test 'get' do
+				data, attrs = c.call(:get, key)
+				test_equals _data, data, 'get _data == data'
+				test_equals _attrs, attrs, 'get _attrs == attrs'
+			end
+
+			test 'get_data' do
+				data = c.call(:get_data, key)
+				test_equals _data, data, 'get_data _data == data'
+			end
+
+			test 'get_attrs' do
+				attrs = c.call(:get_attrs, key)
+				test_equals _attrs, attrs, 'get_attrs _attrs == attrs'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test "remove" do
+				removed = c.call(:remove, key)
+				test_equals true, removed, 'removed == true'
+			end
+		end
+
+		NUM.times do |i|
+			key = keyf % i
+
+			test 'removed get' do
+				data, attrs = c.call(:get, key)
+				test_equals nil, data, 'get_data _data is removed'
+				test_equals nil, attrs, 'get_attrs _attrs is removed'
+			end
+		end
+	}
+end
+
+term_all(standalone)
+

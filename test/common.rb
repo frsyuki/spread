@@ -10,6 +10,7 @@ CMD_CS  = "#{CMD_BASE}/cs.rb"
 CMD_DS  = "#{CMD_BASE}/ds.rb"
 CMD_GW  = "#{CMD_BASE}/gw.rb"
 CMD_CTL = "#{CMD_BASE}/ctl.rb"
+CMD_STANDALONE = "#{CMD_BASE}/standalone.rb"
 
 CS_PORT = (ENV["CS_PORT"] || 49700).to_i
 DS_PORT = (ENV["DS_PORT"] || 49900).to_i
@@ -179,6 +180,33 @@ class GWProcess < ServerProcess
 	end
 end
 
+class StandaloneProcess < ServerProcess
+	def initialize(*args)
+		@port = DS_PORT
+		@http_port = DS_HTTP_PORT
+
+		ddir = init_data_dir("standalone")
+		super("#{CMD_STANDALONE} -s #{ddir} -p #{@port} -t #{@http_port} #{args.join(' ')} #{OPT}")
+
+		set_display("standalone")
+	end
+
+	attr_reader :port
+	attr_reader :http_port
+
+	def join_started
+		stdout_join('start on')
+	end
+
+	def client
+		MessagePack::RPC::Client.new(host, @port)
+	end
+
+	def http_client(path, &block)
+		Net::HTTP.start("127.0.0.1", @http_port, &block)
+	end
+end
+
 
 def start_mds(*args)
 	mds = MDSProcess.new(*args)
@@ -202,6 +230,12 @@ def start_gw(n=0, *args)
 	gw = GWProcess.new(n, *args)
 	gw.join_started
 	gw
+end
+
+def start_standalone(*args)
+	standalone = StandaloneProcess.new(*args)
+	standalone.join_started
+	standalone
 end
 
 def start_memcached(port, *args)

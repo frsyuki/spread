@@ -32,6 +32,7 @@ require 'spread-osd/service/data_client'
 require 'spread-osd/service/mds'
 require 'spread-osd/service/mds_ha'
 require 'spread-osd/service/mds_tt'
+require 'spread-osd/service/mds_tc'
 require 'spread-osd/service/mds_memcache'
 require 'spread-osd/service/mds_cache'
 require 'spread-osd/service/mds_cache_mem'
@@ -209,6 +210,10 @@ begin
 
 	unless conf.storage_path
 		raise "--store option is required"
+	end
+
+	unless mds_uri
+		mds_uri = "local:#{conf.storage_path}/mds.tct"
 	end
 
 	unless conf.ulog_path
